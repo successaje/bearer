@@ -3,6 +3,24 @@
 **For:** anyone wondering why Bearer is built the way it is.
 Newest first. Each entry: date, decision, reason, alternatives considered.
 
+## 2026-11-08 · 8 Tgas per derived-key request; `create_vault` needs 44 Tgas
+
+- **Decision:** `GAS_FOR_DERIVED_KEY` is 8 Tgas (was 5) and `create_vault` refuses less than 44 Tgas of prepaid gas with `ERR_GAS`.
+- **Reason:** on testnet the signer's `derived_public_key` burns 5.29–5.37 Tgas (docs/SPIKES.md). With 5 Tgas static, creation only worked when the caller attached spare gas; with a tight budget the vault would be minted without keys until someone called `fetch_keys`.
+- **Alternatives:** keep 5 Tgas and rely on `fetch_keys` (a needless failure on every tight wallet); `function_call_weight` alone (doesn't protect the low end).
+
+## 2026-11-08 · FastNEAR RPC for testnet scripts
+
+- **Decision:** testnet scripts default to `https://test.rpc.fastnear.com`, overridable with `NEAR_RPC`; the SDK's testnet adapter will use the same default.
+- **Reason:** `rpc.testnet.near.org` is deprecated and returned HTTP 429 part-way through the signing spike; through it the same signature took about twice as long.
+- **Alternatives:** other providers listed at docs.near.org/api/rpc/providers.
+
+## 2026-11-08 · A dedicated testnet account for Bearer
+
+- **Decision:** Bearer's testnet accounts live under `bearer-1108-ffb3.testnet` (faucet-created). The spike contract is `v3a.`; later deploys use fresh `v3b.`, `v3c.` … subaccounts. Keys stay in `~/.near-credentials`; `.env` holds names only.
+- **Reason:** keeps Bearer separate from the sibling project's accounts (Q-015 disclosure) and follows brief 4.10: never upgrade a locked contract.
+- **Alternatives:** reuse the sibling project's account (mixes the two projects on-chain).
+
 ## 2026-11-08 · Build contracts with `cargo` and `--cfg near`, not the local cargo-near
 
 - **Decision:** build wasm with `RUSTFLAGS="--cfg near" cargo build --target wasm32-unknown-unknown --release`. Move to `cargo near build reproducible-wasm` with a current cargo-near for the committed, locked build (D5).

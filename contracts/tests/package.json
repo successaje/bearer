@@ -5,7 +5,8 @@
   "scripts": {
     "pretest": "../build.sh",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "spike:testnet": "node --env-file-if-exists=../../.env spike/testnet-sign.ts"
   },
   "devDependencies": {
     "@types/node": "^20",

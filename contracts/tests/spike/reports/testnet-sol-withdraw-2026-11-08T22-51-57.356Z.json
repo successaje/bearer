@@ -1,0 +1,97 @@
+{
+  "measured_at": "2026-11-08T22:51:45.472Z",
+  "contract": "v3a.bearer-1108-ffb3.testnet",
+  "token_id": "2",
+  "sol_address": "Dgx8782F7YJYYYYsKuk1uhdyPbvnu2DNRFrfKKGKgUKn",
+  "rpc": "https://api.devnet.solana.com",
+  "airdrop": {
+    "error": "Error: requestAirdrop: {\"code\":410,\"message\":\"The RPC faucet is closed on this cluster. Request test SOL at https://faucet.solana.com\"}"
+  },
+  "balance_lamports": 0,
+  "params": {
+    "recent_blockhash": "DL86vpEsXKsSdXt1pAWRiMZVLeNfEdG5PMDzB6P2QJgR",
+    "to": "Dgx8782F7YJYYYYsKuk1uhdyPbvnu2DNRFrfKKGKgUKn",
+    "lamports": "1000"
+  },
+  "status": "signed",
+  "error": null,
+  "near_tx": "https://testnet.nearblocks.io/txns/AWiMXRvuX3sRdVEmbcQ76TfEJahjuRE3yZssj26hpsvu",
+  "signed_visible_after_ms": 8287,
+  "gas": {
+    "total_tgas": 14.759,
+    "receipts": [
+      {
+        "executor": "v3a.bearer-1108-ffb3.testnet",
+        "tgas": 3.125,
+        "failed": false
+      },
+      {
+        "executor": "v1.signer-prod.testnet",
+        "tgas": 4.462,
+        "failed": false
+      },
+      {
+        "executor": "v1.signer-prod.testnet",
+        "tgas": 3.523,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      },
+      {
+        "executor": "v3a.bearer-1108-ffb3.testnet",
+        "tgas": 2.44,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      }
+    ]
+  },
+  "verified_with_web3js": true,
+  "simulation": {
+    "context": {
+      "apiVersion": "4.4.0",
+      "slot": 520177211
+    },
+    "value": {
+      "accounts": null,
+      "err": "AccountNotFound",
+      "fee": null,
+      "innerInstructions": null,
+      "loadedAccountsDataSize": 0,
+      "loadedAddresses": {
+        "readonly": [],
+        "writable": []
+      },
+      "logs": [],
+      "postBalances": [
+        0,
+        1
+      ],
+      "postTokenBalances": [],
+      "preBalances": [
+        0,
+        1
+      ],
+      "preTokenBalances": [],
+      "replacementBlockhash": null,
+      "returnData": null,
+      "unitsConsumed": 0
+    }
+  }
+}

@@ -8,6 +8,7 @@
  *   node spike/testnet-sign.ts btc-joined <token>   # 1–4 joined Bitcoin signatures (made-up inputs, never broadcast)
  *   node spike/testnet-sign.ts btc-vault            # alice creates a vault to fund with testnet4 BTC
  *   node spike/testnet-sign.ts btc-withdraw <token> # transfer to bob, break the seal, withdraw, broadcast
+ *   node spike/testnet-sign.ts sol-withdraw <token> # sign a devnet transfer; airdrop and broadcast if possible
  *
  * Needs BEARER_TESTNET_PARENT: a faucet-created testnet account whose key is in
  * ~/.near-credentials/testnet. Subaccount keys are written there too, never to the repo.
@@ -18,6 +19,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
+import { Transaction as SolTransaction } from "@solana/web3.js";
 import * as bitcoin from "bitcoinjs-lib";
 import { Account, KeyPair, PublicKey, actions } from "near-api-js";
 import { getAddress, parseTransaction, recoverTransactionAddress, type TransactionSerializedEIP1559 } from "viem";
@@ -28,6 +30,7 @@ const RPC = process.env.NEAR_RPC ?? "https://test.rpc.fastnear.com";
 const BASE_RPC = process.env.BASE_SEPOLIA_RPC ?? "https://sepolia.base.org";
 // Esplora API for testnet4. mempool.space/testnet4 is the brief's pointer but didn't answer from
 // this machine on 2026-11-08; Blockstream's and mempool.emzy.de's agreed on the tip.
+const SOL_RPC = process.env.SOLANA_RPC ?? "https://api.devnet.solana.com";
 const ESPLORA = process.env.ESPLORA_API ?? "https://blockstream.info/testnet4/api";
 const SIGNER = "v1.signer-prod.testnet";
 const PARENT = process.env.BEARER_TESTNET_PARENT;
@@ -204,6 +207,7 @@ type VaultView = {
   keys: { btc: string; evm: string; sol: string } | null;
   btc_address: string | null;
   evm_address: string | null;
+  sol_address: string | null;
   paths: { btc: string; evm: string; sol: string };
 };
 type Withdrawal = {
@@ -624,6 +628,89 @@ async function btcWithdraw(tokenId: string) {
   saveReport("testnet-btc-withdraw", report);
 }
 
+/* ---------- Solana ---------- */
+
+async function solRpc<T>(method: string, params: unknown[]): Promise<T> {
+  const res = await fetch(SOL_RPC, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+  });
+  const body = await res.json();
+  if (body.error) throw new Error(`${method}: ${JSON.stringify(body.error)}`);
+  return body.result as T;
+}
+
+/**
+ * Signs a devnet transfer from an opened vault with the MPC's Ed25519 domain. If the vault holds
+ * SOL (or a devnet airdrop works) it broadcasts and waits for confirmation; otherwise devnet
+ * simulates it with signature checks, which is enough to prove the signature and encoding.
+ */
+async function solWithdraw(tokenId: string) {
+  const vault = await view<VaultView>(CONTRACT, "vault", { token_id: tokenId });
+  if (vault.state.kind !== "opened" || !vault.sol_address) throw new Error(`vault ${tokenId} must be opened, with keys`);
+  const address = vault.sol_address;
+  const report: Record<string, unknown> = { measured_at: new Date().toISOString(), contract: CONTRACT, token_id: tokenId, sol_address: address, rpc: SOL_RPC };
+
+  let balance = (await solRpc<{ value: number }>("getBalance", [address, { commitment: "confirmed" }])).value;
+  if (balance < 10_000_000 && !process.env.NO_AIRDROP) {
+    try {
+      const sig = await solRpc<string>("requestAirdrop", [address, 1_000_000_000]);
+      for (let i = 0; i < 40 && balance < 10_000_000; i++) {
+        await sleep(1500);
+        balance = (await solRpc<{ value: number }>("getBalance", [address, { commitment: "confirmed" }])).value;
+      }
+      report.airdrop = { signature: sig, balance_after: balance };
+    } catch (e) {
+      report.airdrop = { error: String(e).slice(0, 300) };
+    }
+  }
+  report.balance_lamports = balance;
+
+  // A self-transfer: proves the whole path without needing a second funded account.
+  const { value } = await solRpc<{ value: { blockhash: string } }>("getLatestBlockhash", [{ commitment: "finalized" }]);
+  const params = { recent_blockhash: value.blockhash, to: address, lamports: "1000" };
+  const index = vault.withdrawal_count;
+  const owner = account(vault.owner_id);
+  const sent = await submit(owner, CONTRACT, [
+    actions.functionCall("withdraw_sol", { token_id: tokenId, params }, 60n * TGAS, WITHDRAW_DEPOSIT + ONE_YOCTO),
+  ]);
+  let w: Withdrawal | undefined;
+  for (let i = 0; i < 240; i++) {
+    [w] = await view<Withdrawal[]>(CONTRACT, "withdrawals", { token_id: tokenId, from_index: index, limit: 1 });
+    if (w && w.status !== "pending") break;
+    await sleep(500);
+  }
+  const signedMs = Date.now() - sent.sent;
+  const outcome = await finalOutcome(sent.hash, owner.accountId);
+  Object.assign(report, { params, status: w?.status, error: w?.error, near_tx: explorer(sent.hash), signed_visible_after_ms: signedMs, gas: gasReport(outcome) });
+  if (!w?.signed_raw_tx) {
+    console.log(JSON.stringify(report, null, 2));
+    saveReport("testnet-sol-withdraw", report);
+    return;
+  }
+
+  const raw = Buffer.from(w.signed_raw_tx, "hex");
+  const tx = SolTransaction.from(raw);
+  report.verified_with_web3js = tx.verifySignatures() && tx.feePayer?.toBase58() === address && tx.instructions.length === 1;
+  const b64 = raw.toString("base64");
+  if (balance >= 10_000_000) {
+    const sig = await solRpc<string>("sendTransaction", [b64, { encoding: "base64" }]);
+    let status: { confirmationStatus?: string; err?: unknown } | null = null;
+    const t0 = Date.now();
+    for (let i = 0; i < 60; i++) {
+      [status] = (await solRpc<{ value: ({ confirmationStatus: string; err: unknown } | null)[] }>("getSignatureStatuses", [[sig]])).value;
+      if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") break;
+      await sleep(1000);
+    }
+    Object.assign(report, { broadcast: { signature: sig, status, confirmed_after_ms: Date.now() - t0, explorer: `https://explorer.solana.com/tx/${sig}?cluster=devnet` } });
+  } else {
+    report.simulation = await solRpc("simulateTransaction", [b64, { encoding: "base64", sigVerify: true }]);
+  }
+  console.log(JSON.stringify(report, null, 2));
+  saveReport("testnet-sol-withdraw", report);
+}
+
 const cmd = process.argv[2];
 if (cmd === "setup") await setup();
 else if (cmd === "run") await run();
@@ -633,7 +720,8 @@ else if (cmd === "broadcast") await broadcast(process.argv[3] ?? "", Number(proc
 else if (cmd === "btc-joined") await btcJoined(process.argv[3] ?? "");
 else if (cmd === "btc-vault") await btcVault();
 else if (cmd === "btc-withdraw") await btcWithdraw(process.argv[3] ?? "");
+else if (cmd === "sol-withdraw") await solWithdraw(process.argv[3] ?? "");
 else {
-  console.log("usage: node spike/testnet-sign.ts setup|run|redeploy|gas-floor|broadcast|btc-joined|btc-vault|btc-withdraw");
+  console.log("usage: node spike/testnet-sign.ts setup|run|redeploy|gas-floor|broadcast|btc-joined|btc-vault|btc-withdraw|sol-withdraw");
   process.exitCode = 1;
 }

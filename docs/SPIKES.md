@@ -3,6 +3,29 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-08 · Solana: a withdrawal signed through the contract
+
+`withdraw_sol` on vault No. 0002 (opened, held by `bob.`), with a fresh devnet blockhash: a
+1,000-lamport transfer from the vault to itself. NEAR's MPC signed it with its Ed25519 domain and
+the callback checked the signature with `env::ed25519_verify` (N = 1).
+
+| | |
+|---|---|
+| Signed after | 8.3 s from submitting ([tx](https://testnet.nearblocks.io/txns/AWiMXRvuX3sRdVEmbcQ76TfEJahjuRE3yZssj26hpsvu)) |
+| Gas | 14.8 Tgas for the whole transaction |
+| Checked | `@solana/web3.js`: signature valid, the vault pays the fee, exactly one transfer |
+| Devnet simulation (`sigVerify: true`) | Passed signature checks; stopped at `AccountNotFound` because the vault holds no SOL yet |
+
+Devnet's RPC airdrop is closed ("Request test SOL at https://faucet.solana.com"), so funding
+needs the human. Once `Dgx8782F7YJYYYYsKuk1uhdyPbvnu2DNRFrfKKGKgUKn` holds about 0.05 devnet SOL:
+
+```bash
+cd contracts/tests && pnpm spike:testnet sol-withdraw 2
+```
+
+signs a new withdrawal and broadcasts it. Raw numbers:
+[`testnet-sol-withdraw-2026-11-08T22-51-57.356Z.json`](../contracts/tests/spike/reports/testnet-sol-withdraw-2026-11-08T22-51-57.356Z.json).
+
 ## 2026-11-08 · Bitcoin: joined signatures on the real signer (spike 1, Bitcoin part)
 
 `withdraw_btc` asks for one signature per input and joins the requests with `Promise::and` into a
@@ -107,5 +130,5 @@ step before that endpoint rate-limited it (HTTP 429); no report was saved from i
 - **Spike 3** through real wallets (near-connect).
 - **Spike 5** against chainsig.js: compared with the signer's view here; the chainsig.js check
   comes with the SDK's `deriveAddresses`.
-- **Spike 6, faucets (needs the human):** Base Sepolia ETH is done (see above). Still needed:
-  testnet4 BTC for vault No. 0004 (above) and Solana devnet SOL.
+- **Spike 6, faucets (needs the human):** Base Sepolia ETH and testnet4 BTC are funded. Still
+  needed: devnet SOL for vault No. 0002's Solana address (above).

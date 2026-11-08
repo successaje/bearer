@@ -1,0 +1,180 @@
+/**
+ * Shared Bearer v3 types. They mirror the contract's JSON views exactly
+ * (contracts/bearer/src/{lib,vault,evm,withdraw_evm}.rs); change both together.
+ * Big integers and nanosecond timestamps are decimal strings, as the contract sends them.
+ */
+
+export type ChainTag = "btc" | "evm" | "sol";
+export const CHAIN_TAGS: readonly ChainTag[] = ["btc", "evm", "sol"];
+
+export type Finish = "obsidian" | "champagne" | "graphite" | "ivory" | "midnight" | "sage";
+
+/** `sealed` → `opened` once, never back (invariant I1). */
+export type VaultState = { kind: "sealed" } | { kind: "opened"; at_ns: string; by: string };
+
+export interface DerivedKeys {
+  /** `secp256k1:…` */
+  btc: string;
+  /** `secp256k1:…` */
+  evm: string;
+  /** `ed25519:…` */
+  sol: string;
+}
+
+export interface Custody {
+  account_id: string;
+  since_ns: string;
+}
+
+/** `vault(token_id)` view. */
+export interface VaultView {
+  token_id: string;
+  owner_id: string;
+  state: VaultState;
+  /** Always 0 while sealed (invariant I4). */
+  signatures_requested: number;
+  withdrawal_count: number;
+  /** `null` until the signer's derived keys arrive (a block or two after creation). */
+  keys: DerivedKeys | null;
+  evm_address: string | null;
+  paths: Record<ChainTag, string>;
+  /** Last 16 holders, oldest first. */
+  custody: Custody[];
+  created_at_ns: string;
+  name: string | null;
+  finish: Finish;
+}
+
+export interface EvmWithdrawParams {
+  chain_id: string;
+  nonce: string;
+  to: string;
+  amount_wei: string;
+  gas_limit: string;
+  max_fee_per_gas: string;
+  max_priority_fee_per_gas: string;
+}
+
+/** Internally tagged by `chain`. Bitcoin and Solana variants arrive with their `withdraw_*`. */
+export type WithdrawalParams = { chain: "evm" } & EvmWithdrawParams;
+
+export type WithdrawalStatus = "pending" | "signed" | "failed";
+
+/** `withdrawals(token_id)` view entry. */
+export interface Withdrawal {
+  index: number;
+  params: WithdrawalParams;
+  path: string;
+  /** Hex hashes that were signed, one per sign request. */
+  payload_hashes: string[];
+  /** Hex of the signed transaction, ready to broadcast by anyone. */
+  signed_raw_tx: string | null;
+  status: WithdrawalStatus;
+  error: string | null;
+  requested_at_ns: string;
+}
+
+/** `get_config()` view. NEAR amounts are yoctoNEAR strings. */
+export interface ContractConfig {
+  evm_chain_ids: number[];
+  max_btc_inputs: number;
+  create_deposit: string;
+  withdraw_deposit: string;
+  mpc_sign_deposit: string;
+}
+
+/** Stable panic codes the contract can return. */
+export const ERROR_CODES = [
+  "ERR_NOT_OWNER",
+  "ERR_VAULT_OPENED",
+  "ERR_VAULT_SEALED",
+  "ERR_ALREADY_OPENED",
+  "ERR_NO_VAULT",
+  "ERR_NO_APPROVALS",
+  "ERR_DEPOSIT",
+  "ERR_GAS",
+  "ERR_KEYS_PENDING",
+  "ERR_KEYS_ALREADY_SET",
+  "ERR_NAME_TOO_LONG",
+  "ERR_CHAIN_NOT_SUPPORTED",
+  "ERR_BAD_ADDRESS",
+  "ERR_GAS_LIMIT_TOO_LOW",
+  "ERR_PRIORITY_FEE_ABOVE_MAX_FEE",
+  "ERR_CREATE_DEPOSIT_BELOW_STORAGE",
+  "ERR_WITHDRAW_DEPOSIT_BELOW_STORAGE",
+] as const;
+export type BearerErrorCode = (typeof ERROR_CODES)[number];
+
+/** Finds a known error code in a NEAR error message. */
+export function errorCodeOf(error: unknown): BearerErrorCode | null {
+  const text = error instanceof Error ? error.message : String(error);
+  return ERROR_CODES.find((code) => text.includes(code)) ?? null;
+}
+
+/** Derivation path, exactly as the contract builds it (invariant I5). */
+export function vaultPath(tokenId: string, chain: ChainTag): string {
+  return `bearer:v3:${tokenId}:${chain}`;
+}
+
+/* ---------- off-chain observation (SDK adapters fill these) ---------- */
+
+export interface ChainObservation {
+  chain: ChainTag;
+  address: string;
+  /** Confirmed balance in base units: sats, wei, lamports. */
+  confirmed: string;
+  /** Unconfirmed deposits in base units. */
+  pending: string;
+  /** Named data source, shown in the UI ("mempool.space testnet4"). */
+  source: string;
+  /** ms since epoch. */
+  observedAt: number;
+  explorerUrl: string;
+  /** True when this came from the simulated adapter. */
+  simulated: boolean;
+}
+
+/* ---------- the web app's client seam ---------- */
+
+export type WithdrawRequest =
+  | { chain: "evm"; to: string; amountWei: string }
+  | { chain: "btc"; to: string; amountSats: string }
+  | { chain: "sol"; to: string; lamports: string };
+
+export type AttackKind =
+  | "former_owner_withdraws"
+  | "former_owner_breaks_seal"
+  | "transfer_opened_vault"
+  | "withdraw_sealed_vault"
+  | "sign_arbitrary_bytes";
+
+export interface AttackResult {
+  kind: AttackKind;
+  rejected: boolean;
+  errorCode: string | null;
+  /** The test in contracts/tests that proves this. */
+  testName: string;
+  txHash: string | null;
+  simulated: boolean;
+}
+
+/**
+ * What the web app needs from Bearer. Mock (in-browser) and testnet (this SDK)
+ * implementations both satisfy it. `signer` is the connected NEAR account.
+ */
+export interface BearerClient {
+  listVaults(owner: string): Promise<VaultView[]>;
+  getVault(tokenId: string): Promise<VaultView | null>;
+  getWithdrawals(tokenId: string): Promise<Withdrawal[]>;
+  observe(vault: VaultView): Promise<ChainObservation[]>;
+
+  createVault(input: { name?: string; finish: Finish }, signer: string): Promise<VaultView>;
+  transfer(tokenId: string, receiver: string, signer: string): Promise<VaultView>;
+  /** One NEAR transaction: `break_seal` then the first `withdraw_*` (atomic). */
+  breakSealAndWithdraw(tokenId: string, first: WithdrawRequest, signer: string): Promise<Withdrawal>;
+  breakSeal(tokenId: string, signer: string): Promise<VaultView>;
+  withdraw(tokenId: string, request: WithdrawRequest, signer: string): Promise<Withdrawal>;
+
+  runAttack(kind: AttackKind, tokenId: string): Promise<AttackResult>;
+  accountExists(accountId: string): Promise<boolean>;
+}

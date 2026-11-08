@@ -1,0 +1,16 @@
+{
+  "name": "@bearer/sdk",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared Bearer vault types and helpers for the contract, scripts and web app",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}

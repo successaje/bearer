@@ -16,3 +16,6 @@ brief-build/brief.pdf
 
 # Local tool config (machine-specific paths)
 .claude/launch.json
+
+# Rust build output
+contracts/target/

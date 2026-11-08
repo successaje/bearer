@@ -88,7 +88,12 @@ for (const [chain, path] of Object.entries(${JSON.stringify(vault.paths)})) {
 
         <div className="mt-6">
           <div className="flex items-center justify-between">
-            <p className="text-[13.5px] font-medium">Derive the addresses yourself</p>
+            <p className="text-[13.5px] font-medium">
+              Derive the addresses yourself{" "}
+              <a href={`/derive?vault=${vault.token_id}`} className="ml-1 font-normal text-accent hover:underline">
+                or in your browser →
+              </a>
+            </p>
             <CopyButton value={snippet} label="Copy the derivation snippet" size="sm" />
           </div>
           <pre className="mt-2 overflow-x-auto rounded-control border border-line bg-[#0b0b0f] p-4 font-mono text-[12px] leading-relaxed text-[#d4d4d8]">

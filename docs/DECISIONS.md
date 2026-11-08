@@ -3,6 +3,18 @@
 **For:** anyone wondering why Bearer is built the way it is.
 Newest first. Each entry: date, decision, reason, alternatives considered.
 
+## 2026-11-08 · Bitcoin spends hand-rolled in the contract
+
+- **Decision:** `withdraw_btc` builds P2WPKH spends itself (BIP143 sighash, segwit serialization, bech32/bech32m, strict DER) in `contracts/bearer/src/bitcoin.rs`, without omni-transaction.
+- **Reason:** one transaction shape is allowed (vault inputs, one payment, change to the vault, SIGHASH_ALL), so the code is small and every byte is ours to audit; it matches the hand-rolled EVM path and keeps the wasm lean (+32 KB). Spike 2's fallback, taken on purpose. Checked against BIP143/173/350 vectors and, in the sandbox, against bitcoinjs-lib and noble for every sighash and signature. That cross-check caught a `hashOutputs` bug the unit vector missed.
+- **Alternatives:** omni-transaction 0.5 (more surface than one shape needs; would still need the same independent checks).
+
+## 2026-11-08 · Bitcoin withdrawal details
+
+- **Decision:** the deposit is `withdraw_deposit + mpc_sign_deposit` **per input** (brief 4.6 has one `withdraw_deposit` per withdrawal); inputs use sequence `0xfffffffd` (opt-in RBF); `verify_ecdsa` flips a high S to low S (and the recovery id) instead of rejecting it; change below 294 sats and payments below the dust limit are refused rather than silently given to fees.
+- **Reason:** a 4-input record with its signed transaction is about 2 KB, twice one deposit; RBF is how a stuck withdrawal gets a higher fee (brief 4.9); Bitcoin (BIP146) and Ethereum (EIP-2) both require low S and the signer doesn't promise it; silent fee bumps would surprise the owner.
+- **Alternatives:** a flat larger `withdraw_deposit` (overcharges Base withdrawals); final sequence (no fee bumps).
+
 ## 2026-11-08 · 8 Tgas per derived-key request; `create_vault` needs 44 Tgas
 
 - **Decision:** `GAS_FOR_DERIVED_KEY` is 8 Tgas (was 5) and `create_vault` refuses less than 44 Tgas of prepaid gas with `ERR_GAS`.

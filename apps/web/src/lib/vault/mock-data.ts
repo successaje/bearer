@@ -105,6 +105,7 @@ export function mockView(
       evm: `secp256k1:${mockBase58(`ke:${tokenId}`, 88)}`,
       sol: `ed25519:${mockBase58(`ks:${tokenId}`, 44)}`,
     },
+    btc_address: addresses.btc,
     evm_address: addresses.evm,
     paths: { btc: vaultPath(tokenId, "btc"), evm: vaultPath(tokenId, "evm"), sol: vaultPath(tokenId, "sol") },
     custody: [{ account_id: owner, since_ns: ns(createdAt) }],

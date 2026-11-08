@@ -36,6 +36,8 @@ export interface VaultView {
   withdrawal_count: number;
   /** `null` until the signer's derived keys arrive (a block or two after creation). */
   keys: DerivedKeys | null;
+  /** `tb1q…` P2WPKH address from `keys.btc`; `null` until keys arrive. */
+  btc_address: string | null;
   evm_address: string | null;
   paths: Record<ChainTag, string>;
   /** Last 16 holders, oldest first. */
@@ -55,7 +57,7 @@ export interface EvmWithdrawParams {
   max_priority_fee_per_gas: string;
 }
 
-/** Brief 4.6. Mirrors `withdraw_btc` once it lands in the contract. */
+/** Brief 4.6. Mirrors `withdraw_btc` (contracts/bearer/src/bitcoin.rs). Change goes back to the vault. */
 export interface BtcWithdrawParams {
   inputs: { txid: string; vout: number; value_sat: string }[];
   to_address: string;
@@ -70,7 +72,7 @@ export interface SolWithdrawParams {
   lamports: string;
 }
 
-/** Internally tagged by `chain`. Only `evm` exists in the contract today; btc and sol follow the build order. */
+/** Internally tagged by `chain`. `evm` and `btc` exist in the contract; `sol` follows. */
 export type WithdrawalParams =
   | ({ chain: "evm" } & EvmWithdrawParams)
   | ({ chain: "btc" } & BtcWithdrawParams)

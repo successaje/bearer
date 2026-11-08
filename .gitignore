@@ -19,3 +19,4 @@ brief-build/brief.pdf
 
 # Rust build output
 contracts/target/
+contracts/out/

@@ -3,9 +3,17 @@ name = "mock-signer"
 version = "0.1.0"
 edition = "2021"
 publish = false
+description = "Sandbox-only stand-in for v1.signer-prod.testnet with the same JSON shapes"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 near-sdk = { workspace = true }
+k256 = { version = "0.13", default-features = false, features = ["ecdsa"] }
+ed25519-dalek = { version = "2", default-features = false }
+sha2 = { version = "0.10", default-features = false }
+bs58 = { version = "0.5", default-features = false, features = ["alloc"] }
+
+[dev-dependencies]
+near-sdk = { workspace = true, features = ["unit-testing"] }

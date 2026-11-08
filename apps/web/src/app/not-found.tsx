@@ -14,7 +14,7 @@ export default function NotFound() {
               Go home
             </Link>
             <Link href="/verify" className={buttonVariants({ size: "lg" })}>
-              Verify a card
+              Verify a vault
             </Link>
           </>
         }

@@ -1,7 +1,7 @@
 "use client";
 
 import type { AttackKind, ChainTag, Finish, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getVaultClient } from "./client";
 
@@ -50,6 +50,26 @@ export function useObservation(vault: VaultView | null | undefined) {
     enabled: Boolean(vault),
     refetchInterval: (q) => (q.state.data?.some((o) => o.pending !== "0") ? 3_000 : POLL_MS),
   });
+}
+
+/** Observations and withdrawals for a list of vaults, sharing the per-vault cache entries. */
+export function useVaultSummaries(vaults: VaultView[] | undefined) {
+  const list = vaults ?? [];
+  const observations = useQueries({
+    queries: list.map((v) => ({
+      queryKey: keys.observe(v.token_id),
+      queryFn: async () => (await getVaultClient()).observe(v),
+      refetchInterval: POLL_MS,
+    })),
+  });
+  const withdrawals = useQueries({
+    queries: list.map((v) => ({
+      queryKey: keys.withdrawals(v.token_id),
+      queryFn: async () => (await getVaultClient()).getWithdrawals(v.token_id),
+      refetchInterval: POLL_MS,
+    })),
+  });
+  return list.map((v, i) => ({ vault: v, observations: observations[i]?.data, withdrawals: withdrawals[i]?.data }));
 }
 
 const DONE: WithdrawalStage[] = ["confirmed", "failed"];

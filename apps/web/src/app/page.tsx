@@ -7,7 +7,7 @@ import { HeroArt } from "@/components/landing/hero-art";
 import { VerifyForm } from "@/components/landing/verify-form";
 import { buttonVariants } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/primitives";
-import { CHAIN_META } from "@/lib/format";
+import { CHAIN_META } from "@/lib/vault/format";
 import { cn } from "@/lib/utils";
 
 const SEAL_CHECKS = [

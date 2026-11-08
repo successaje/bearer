@@ -1,4 +1,4 @@
-import type { ChainTag } from "@/lib/bearer/types";
+import type { ChainTag } from "@bearer/sdk";
 
 export type Network = "mock" | "testnet";
 
@@ -34,6 +34,10 @@ export const USD_PRICES: Record<ChainTag, number> = {
 };
 
 export const NEAR_ACCOUNT_SUFFIX = ".testnet";
+
+/** Mirror the contract's `create_deposit` and `withdraw_deposit` (contracts/bearer/src/lib.rs Config). */
+export const CREATE_DEPOSIT_NEAR = "0.05";
+export const WITHDRAW_DEPOSIT_NEAR = "0.01";
 
 export const explorer = {
   nearTx: (hash: string) => `https://testnet.nearblocks.io/txns/${hash}`,

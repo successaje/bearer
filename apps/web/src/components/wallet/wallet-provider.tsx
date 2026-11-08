@@ -5,7 +5,7 @@ import { ArrowRight, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { SimulatedTag } from "@/components/ui/primitives";
-import { DEMO_ACCOUNTS } from "@/lib/bearer/mock-data";
+import { DEMO_ACCOUNTS } from "@/lib/vault/mock-data";
 import { IS_SIMULATED } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
@@ -103,7 +103,7 @@ function ConnectDialog({
             <div>
               <Dialog.Title className="text-[21px] font-semibold tracking-[-0.02em]">Connect a wallet</Dialog.Title>
               <Dialog.Description className="mt-1 text-[14px] leading-relaxed text-fg-2">
-                {reason ?? "Bearer runs on NEAR testnet. Your wallet signs every change to your cards."}
+                {reason ?? "Bearer runs on NEAR testnet. Your wallet signs every change to your vaults."}
               </Dialog.Description>
             </div>
             <Dialog.Close

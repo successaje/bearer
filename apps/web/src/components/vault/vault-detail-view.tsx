@@ -133,14 +133,14 @@ export function VaultDetailView() {
 
           <div className="mt-6">
             <p className="text-[13px] text-fg-3">Observed value</p>
-            <p className="mt-1.5 flex items-baseline gap-2.5">
+            <div className="mt-1.5 flex items-baseline gap-2.5">
               {observations ? (
                 <span className="tabular text-[clamp(40px,5vw,52px)] font-semibold leading-none tracking-[-0.04em]">{formatUsd(value)}</span>
               ) : (
                 <Skeleton className="h-[52px] w-48" />
               )}
               <span className="text-[15px] text-fg-3">est.</span>
-            </p>
+            </div>
             <p className="mt-2 text-[13.5px] text-fg-2">
               Across Bitcoin, Base and Solana, from public data.{pending ? <span className="text-info"> A deposit is pending.</span> : null}
             </p>

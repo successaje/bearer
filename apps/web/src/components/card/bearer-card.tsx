@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
 import { Seal, type SealVariant } from "@/components/brand/seal";
 import { ChainStack } from "@/components/brand/chain-icon";
-import type { ChainTag, Finish } from "@/lib/bearer/types";
-import { cardNumber, formatUsd } from "@/lib/format";
+import type { ChainTag, Finish } from "@bearer/sdk";
+import { formatUsd, vaultNumber } from "@/lib/vault/format";
 import { cn } from "@/lib/utils";
 
 interface FinishStyle {
@@ -96,6 +96,7 @@ export function BearerCard({
   className,
   style,
   shadow = true,
+  valueLabel = "Observed value",
 }: {
   name: string;
   id?: string;
@@ -106,6 +107,7 @@ export function BearerCard({
   className?: string;
   style?: CSSProperties;
   shadow?: boolean;
+  valueLabel?: string;
 }) {
   const f = FINISHES[finish];
   return (
@@ -128,7 +130,7 @@ export function BearerCard({
           <div className="truncate text-[5.4cqw] font-medium tracking-[-0.02em]">{name}</div>
           {id ? (
             <div className="mt-[0.8cqw] font-mono text-[3cqw]" style={{ color: f.muted }}>
-              {cardNumber(id)}
+              {vaultNumber(id)}
             </div>
           ) : null}
         </div>
@@ -141,7 +143,7 @@ export function BearerCard({
           {valueUsd !== undefined && valueUsd !== null ? (
             <div className="text-right">
               <div className="text-[2.8cqw]" style={{ color: f.muted }}>
-                Sealed value
+                {valueLabel}
               </div>
               <div className="tabular text-[4.8cqw] font-semibold">
                 {formatUsd(valueUsd)}{" "}

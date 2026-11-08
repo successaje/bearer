@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { CreateView } from "@/components/card/create-view";
+import { CreateView } from "@/components/vault/create-view";
 
 export const metadata: Metadata = {
-  title: "Create a card",
-  description: "Mint a Bearer card with its own Bitcoin, Base and Solana addresses.",
+  title: "Create a vault",
+  description: "Create a sealed Bearer vault with its own Bitcoin, Base and Solana addresses.",
 };
 
 export default function CreatePage() {

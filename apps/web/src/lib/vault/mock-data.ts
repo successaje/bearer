@@ -36,7 +36,7 @@ export interface MockState {
 export const DEMO_ACCOUNTS = [
   { id: "ada.testnet", role: "Sender", note: "Holds 4 vaults" },
   { id: "mira.testnet", role: "Recipient", note: "Received a vault from tunde" },
-  { id: "tunde.testnet", role: "Former owner", note: "Handed his vault to mira" },
+  { id: "tunde.testnet", role: "Former owner", note: "Handed a vault to mira" },
 ] as const;
 
 /** The account the attack lab "plays" when no former owner exists. */

@@ -45,9 +45,9 @@ export function WalletButton() {
         >
           <DropdownMenu.Label className="px-2.5 pb-1.5 pt-2 text-[12px] text-fg-3">Signed in to NEAR testnet</DropdownMenu.Label>
           <DropdownMenu.Item asChild className={itemClass}>
-            <Link href="/cards">
+            <Link href="/vaults">
               <Layers className="size-4" />
-              My cards
+              My vaults
             </Link>
           </DropdownMenu.Item>
           <DropdownMenu.Item

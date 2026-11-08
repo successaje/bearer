@@ -12,7 +12,7 @@ import { IS_SIMULATED } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
 export const NAV_LINKS = [
-  { href: "/cards", label: "My cards" },
+  { href: "/vaults", label: "My vaults" },
   { href: "/verify", label: "Verify" },
   { href: "/how", label: "How it works" },
 ] as const;

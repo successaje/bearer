@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useId, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { FieldMessage, Input, Label } from "@/components/ui/primitives";
-import { parseCardRef } from "@/lib/validation";
+import { parseVaultRef } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 
 export function VerifyForm({
-  label = "Check any card",
-  hint = "The report link works for anyone. Paste it into an OTC chat.",
+  label = "Check any vault",
+  hint = "A vault page works for anyone, no wallet needed. Paste the link into an OTC chat.",
   size = "md",
   autoFocus,
   className,
@@ -28,13 +28,13 @@ export function VerifyForm({
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const ref = parseCardRef(value);
+    const ref = parseVaultRef(value);
     if (!ref) {
-      setError("Enter a card number like 42, or paste a Bearer card link.");
+      setError("Enter a vault number like 42, or paste a Bearer vault link.");
       return;
     }
     setError(null);
-    router.push(`/c/${ref}`);
+    router.push(`/v/${ref}`);
   }
 
   return (
@@ -48,7 +48,7 @@ export function VerifyForm({
             setValue(e.target.value);
             if (error) setError(null);
           }}
-          placeholder="Card number or link"
+          placeholder="Vault number or link"
           inputMode="text"
           autoComplete="off"
           spellCheck={false}

@@ -10,9 +10,9 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
     title: "Product",
     links: [
-      { label: "Create a card", href: "/create" },
-      { label: "My cards", href: "/cards" },
-      { label: "Verify a card", href: "/verify" },
+      { label: "Create a vault", href: "/create" },
+      { label: "My vaults", href: "/vaults" },
+      { label: "Verify a vault", href: "/verify" },
       { label: "How it works", href: "/how" },
     ],
   },
@@ -20,7 +20,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
     title: "Learn",
     links: [
       { label: "The seal", href: "/how#seal" },
-      { label: "Handing over", href: "/how#hand-over" },
+      { label: "Breaking the seal", href: "/how#open" },
       { label: "What you're trusting", href: "/how#trust" },
       { label: "FAQ", href: "/how#faq" },
     ],
@@ -76,16 +76,16 @@ export function SiteFooter() {
         <div className="mx-auto max-w-[1200px] px-5 pt-12 md:px-8 md:pt-16">
           <div className="grid grid-cols-2 gap-x-6 gap-y-11 sm:gap-x-8 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1fr]">
             <div className="col-span-2 max-w-sm lg:col-span-1">
-              <p className="text-[26px] font-semibold leading-tight tracking-[-0.03em]">The card is the wallet.</p>
+              <p className="text-[26px] font-semibold leading-tight tracking-[-0.03em]">Sealed until opened.</p>
               <p className="mt-3 text-[15px] leading-relaxed text-ink/75">
-                Native Bitcoin, Base and Solana in one NEAR card. Hand over the card, hand over the money,
-                verifiably sealed.
+                A sealed vault of native Bitcoin, Base and Solana you can hand to anyone. Whoever holds it can
+                break the seal. Nobody before them can.
               </p>
               <Link
                 href="/create"
                 className="mt-6 inline-flex h-11 items-center gap-2 rounded-control bg-ink px-4 text-[15px] font-semibold text-gold transition-opacity hover:opacity-90"
               >
-                Create a card
+                Create a vault
                 <ArrowUpRight className="size-4" />
               </Link>
             </div>

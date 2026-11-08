@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
-import type { ChainTag } from "@/lib/bearer/types";
-import { CHAIN_META } from "@/lib/format";
+import type { ChainTag } from "@bearer/sdk";
+import { CHAIN_META } from "@/lib/vault/format";
 import { cn } from "@/lib/utils";
 
 export function ChainIcon({

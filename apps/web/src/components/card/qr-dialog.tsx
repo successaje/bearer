@@ -4,8 +4,8 @@ import { Dialog } from "radix-ui";
 import { QrCode, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { CopyButton } from "@/components/ui/copy-button";
-import type { ChainTag } from "@/lib/bearer/types";
-import { CHAIN_META, chunkAddress } from "@/lib/format";
+import type { ChainTag } from "@bearer/sdk";
+import { CHAIN_META, chunkAddress } from "@/lib/vault/format";
 
 export function QrCodeBlock({ value, label, size = 196 }: { value: string; label: string; size?: number }) {
   return (

@@ -7,23 +7,24 @@ import { Eyebrow, SimulatedTag } from "@/components/ui/primitives";
 import { IS_SIMULATED } from "@/lib/config";
 
 export const metadata: Metadata = {
-  title: "Verify a card",
-  description: "Check any Bearer card's seal: what's inside, what's sealed, and the evidence. No wallet needed.",
+  title: "Verify a vault",
+  description: "Check any Bearer vault: whether it's sealed, who can withdraw, what's inside and the evidence. No wallet needed.",
 };
 
 const EXAMPLES = [
-  { id: "42", name: "Theo's birthday", verdict: "Sealed", seal: "check" as const },
-  { id: "17", name: "OTC · Desk 7", verdict: "Sealed, with exclusions · listed", seal: "check" as const },
-  { id: "29", name: "Savings jar", verdict: "Not transferable yet", seal: "cracked" as const },
+  { id: "42", name: "Theo's birthday", verdict: "Sealed · 0 signatures", seal: "monogram" as const },
+  { id: "17", name: "OTC · Desk 7", verdict: "Sealed · changed hands once", seal: "monogram" as const },
+  { id: "29", name: "Savings jar", verdict: "Opened · can't change hands", seal: "opened" as const },
 ];
 
 const CHECKS = [
-  ["No signature in flight", "No signing request is still running that could produce a signature after the card changes hands."],
-  ["Base slot settled", "Every Base transaction the card ever signed is proven used on-chain, checked on NEAR by MPC Read RPC."],
-  ["Solana slot settled", "The last Solana signature is older than its blockhash-expiry window, so it can't land any more."],
-  ["Bitcoin slot accounted", "Coins referenced by any issued signature are listed and excluded from the sealed value."],
-  ["Contract locked", "The Bearer contract has no full-access keys, so nobody can change it."],
-  ["Code identity", "The deployed code hash matches the reproducible build."],
+  ["Seal", "Whether anyone has ever broken it. A sealed vault has never had a withdrawal signature requested, on any chain."],
+  ["Signatures ever requested", "Always 0 while sealed. The contract can't ask for one until the owner breaks the seal."],
+  ["Transfers possible", "Yes while sealed, never once opened. Every transfer path goes through one gate."],
+  ["Contract locked", "No full-access keys and no upgrade method, so nobody can change the rules."],
+  ["Code identity", "The deployed code hash matches the build anyone can reproduce."],
+  ["Addresses", "Derived from this contract and the vault's paths. Derive them yourself to check."],
+  ["Balances", "Observed from public sources, each with its source and time."],
 ] as const;
 
 export default function VerifyPage() {
@@ -33,13 +34,13 @@ export default function VerifyPage() {
         <div className="min-w-0">
           <Eyebrow>Verify</Eyebrow>
           <h1 className="text-balance mt-3 text-[clamp(36px,5vw,58px)] font-semibold leading-[1.02] tracking-[-0.045em]">
-            Check any card&apos;s seal.
+            Check any vault before you take it.
           </h1>
           <p className="text-pretty mt-5 max-w-[540px] text-[17px] leading-relaxed text-fg-2">
-            Paste a card number or link. You&apos;ll see what&apos;s inside, what&apos;s sealed, and the evidence behind
-            each check. No wallet needed.
+            Paste a vault number or link. You&apos;ll see whether it&apos;s sealed, who can withdraw, what&apos;s
+            inside, and the evidence behind each answer. No wallet needed.
           </p>
-          <VerifyForm className="mt-10 max-w-[560px]" size="lg" label="Card number or link" />
+          <VerifyForm className="mt-10 max-w-[560px]" size="lg" label="Vault number or link" />
 
           {IS_SIMULATED ? (
             <div className="mt-14 max-w-[560px]">
@@ -51,7 +52,7 @@ export default function VerifyPage() {
                 {EXAMPLES.map((ex) => (
                   <li key={ex.id}>
                     <Link
-                      href={`/c/${ex.id}`}
+                      href={`/v/${ex.id}`}
                       className="group flex items-center gap-3.5 rounded-[14px] border border-line bg-surface px-4 py-3 transition-colors hover:border-line-strong hover:bg-surface-2"
                     >
                       <Seal variant={ex.seal} className="size-9 shrink-0" />
@@ -71,7 +72,7 @@ export default function VerifyPage() {
         </div>
 
         <aside className="rounded-[20px] border border-line bg-surface p-6 sm:p-7">
-          <h2 className="text-[17px] font-semibold tracking-[-0.015em]">What the report checks</h2>
+          <h2 className="text-[17px] font-semibold tracking-[-0.015em]">What a vault page shows</h2>
           <ol className="mt-5 flex flex-col gap-5">
             {CHECKS.map(([title, body], i) => (
               <li key={title} className="flex gap-3.5">

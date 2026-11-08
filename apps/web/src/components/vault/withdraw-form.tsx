@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FieldMessage, Input, Label } from "@/components/ui/primitives";
 import { SegmentedList, SegmentedRoot, SegmentedTrigger } from "@/components/ui/segmented";
 import { CHAIN_META, formatAmount, formatUsd, fromDecimal, toDecimalString, toUsd } from "@/lib/vault/format";
+import { WITHDRAW_DEPOSIT_NEAR } from "@/lib/config";
 import { validateAddress } from "@/lib/validation";
 
 export function toRequest(chain: ChainTag, to: string, amount: bigint): WithdrawRequest {
@@ -143,7 +144,7 @@ export function WithdrawForm({
           {formatAmount(chain, fee)} {meta.unit}
         </dd>
         <dt className="text-fg-3">NEAR cost</dt>
-        <dd className="tabular m-0 text-right">0.01 NEAR</dd>
+        <dd className="tabular m-0 text-right">{WITHDRAW_DEPOSIT_NEAR} NEAR</dd>
         <dd className="col-span-2 m-0 text-[12px] leading-relaxed text-fg-3">
           Pays for the withdrawal record and NEAR&apos;s MPC fee. The contract builds the transaction; NEAR&apos;s MPC
           network signs it.

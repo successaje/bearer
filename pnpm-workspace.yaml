@@ -1,7 +1,11 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "contracts/tests"
 
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+
+onlyBuiltDependencies:
+  - near-sandbox

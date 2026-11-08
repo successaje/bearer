@@ -40,7 +40,7 @@ export default function ProofPage() {
       <dl className="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line lg:grid-cols-4 [&>div]:bg-surface">
         <Stat label="Chains signed by NEAR's MPC" value="3 of 3" note="Bitcoin, Base and Solana on testnet" />
         <Stat label="Signatures measured" value={String(signatures)} note={`against ${PROOF_SIGNER}, ${MEASURED_ON}`} />
-        <Stat label="Landed on another chain" value={String(landed)} note="confirmed on Base Sepolia; Bitcoin is next" />
+        <Stat label="Landed on another chain" value={String(landed)} note="confirmed on Base Sepolia and Bitcoin testnet4" />
         <Stat label="Threats proven by tests" value={`${proven} of ${THREATS.length}`} note="the rest are partly done, by design, or not yet" />
       </dl>
 

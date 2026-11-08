@@ -123,10 +123,10 @@ export const LANDED: Landed[] = [
   {
     chain: "btc",
     title: "Bitcoin testnet4",
-    status: "waiting",
-    detail: "Vault No. 0004 is funded; it is broadcast once the deposit confirms",
-    href: "https://mempool.space/testnet4/address/tb1qf6fqncrezc8qu8lpg5pqqssv3jaxkxkpjkxqjp",
-    linkLabel: "tb1qf6fq…kxqjp",
+    status: "confirmed",
+    detail: "Vault No. 0004, handed from alice to bob, opened and withdrawn in one NEAR transaction · signed in 6.5 s · block 159,948",
+    href: "https://mempool.space/testnet4/tx/ce01f9fffdf0f362641a4f6882257295ae63de6146c5a3478704ef809bf958b6",
+    linkLabel: "ce01f9ff…58b6",
   },
   {
     chain: "sol",

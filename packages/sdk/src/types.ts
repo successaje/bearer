@@ -226,8 +226,10 @@ export interface BearerClient {
   breakSeal(tokenId: string, signer: string): Promise<VaultView>;
   withdraw(tokenId: string, request: WithdrawRequest, signer: string): Promise<Withdrawal>;
 
-  /** Follows a signed withdrawal through broadcast and confirmation. */
+  /** Where a withdrawal stands: signing on NEAR, then on its own chain. Read-only. */
   trackWithdrawal(tokenId: string, index: number): Promise<WithdrawalProgress>;
+  /** Live adapter only: sends a signed withdrawal to its chain. Anyone may; it pays where the owner chose. */
+  broadcast?(tokenId: string, index: number): Promise<WithdrawalProgress>;
 
   runAttack(kind: AttackKind, tokenId: string): Promise<AttackResult>;
   accountExists(accountId: string): Promise<boolean>;

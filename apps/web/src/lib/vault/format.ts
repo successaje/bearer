@@ -44,10 +44,11 @@ export function fromDecimal(chain: ChainTag, value: string): bigint | null {
 }
 
 export function formatAmount(chain: ChainTag, base: string | bigint) {
-  return toDecimal(chain, base).toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: DISPLAY_DECIMALS[chain],
-  });
+  const value = toDecimal(chain, base);
+  const smallest = 10 ** -DISPLAY_DECIMALS[chain];
+  // Real fees can be far below display precision; never round a non-zero amount to 0.
+  if (value > 0 && value < smallest) return `< ${smallest.toFixed(DISPLAY_DECIMALS[chain])}`;
+  return value.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: DISPLAY_DECIMALS[chain] });
 }
 
 export function toUsd(chain: ChainTag, base: string | bigint) {

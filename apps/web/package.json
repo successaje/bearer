@@ -11,6 +11,8 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@bearer/sdk": "workspace:*",
+    "@hot-labs/near-connect": "0.11.4",
     "@tanstack/react-query": "^5.107.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -21,8 +23,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "sonner": "^2.0.8",
-    "tailwind-merge": "^3.7.0",
-    "@bearer/sdk": "workspace:*"
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",

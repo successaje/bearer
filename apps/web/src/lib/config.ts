@@ -9,6 +9,12 @@ export const NETWORK: Network =
 export const IS_SIMULATED = NETWORK === "mock";
 
 export const BEARER_CONTRACT = process.env.NEXT_PUBLIC_BEARER_CONTRACT || "bearer-v1.testnet";
+
+/** Public, keyless endpoints the testnet adapter reads (defaults live in @bearer/sdk). */
+export const NEAR_RPC = process.env.NEXT_PUBLIC_NEAR_RPC || "https://test.rpc.fastnear.com";
+export const ESPLORA_API = process.env.NEXT_PUBLIC_ESPLORA_API || "https://blockstream.info/testnet4/api";
+export const BASE_RPC = process.env.NEXT_PUBLIC_BASE_RPC || "https://sepolia.base.org";
+export const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC || "https://api.devnet.solana.com";
 export const SIGNER_CONTRACT = process.env.NEXT_PUBLIC_SIGNER_CONTRACT || "v1.signer-prod.testnet";
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 export const REPO_URL = process.env.NEXT_PUBLIC_REPO_URL || null;

@@ -1,6 +1,7 @@
 import type { AttackKind, ChainObservation, ChainTag, VaultView, Withdrawal } from "@bearer/sdk";
 import { CHAIN_TAGS } from "@bearer/sdk";
-import { BEARER_CONTRACT, CODE_HASH, SIGNER_CONTRACT } from "@/lib/config";
+import { BEARER_CONTRACT, SIGNER_CONTRACT } from "@/lib/config";
+import { SIMULATED_FACTS, type ContractFacts } from "./contract-facts";
 import { ATTACK_TESTS } from "./errors";
 import { CHAIN_META, formatAmount, formatDate, nsToMs, toUsd, vaultNumber } from "./format";
 
@@ -48,7 +49,7 @@ export interface VaultReport {
   checks: SealCheck[];
 }
 
-export function vaultReport(v: VaultView, obs?: ChainObservation[]): VaultReport {
+export function vaultReport(v: VaultView, obs?: ChainObservation[], facts: ContractFacts = SIMULATED_FACTS): VaultReport {
   const sealed = isSealed(v);
   const opened = v.state.kind === "opened" ? v.state : null;
   const keys = v.keys;
@@ -88,22 +89,38 @@ export function vaultReport(v: VaultView, obs?: ChainObservation[]): VaultReport
       why: "Every transfer path goes through one gate that refuses opened vaults: nft_transfer, nft_transfer_call and their return leg.",
       evidence: ["transfer.rs: one owner-changing path"],
     },
-    {
-      id: "locked",
-      title: "Contract locked",
-      summary: "No full-access keys, no upgrade method",
-      state: "pass",
-      why: "Nobody, including Bearer's authors, can change the contract or ask it to sign anything outside its typed withdrawal methods.",
-      evidence: [`${BEARER_CONTRACT}: view_access_key_list`],
-    },
-    {
-      id: "code",
-      title: "Code identity",
-      summary: "Hash matches the reproducible build",
-      state: "pass",
-      why: "The deployed code hash matches the build anyone can reproduce from the open-source repository.",
-      evidence: [`code_hash ${CODE_HASH.slice(0, 12)}…`],
-    },
+    // Read from the chain on testnet; never assumed. A spike deployment says so.
+    facts.locked === null
+      ? { id: "locked", title: "Contract locked", summary: "Checking…", state: "pending", why: "Reading the contract's access keys from NEAR.", evidence: [] }
+      : facts.locked
+        ? {
+            id: "locked",
+            title: "Contract locked",
+            summary: "No full-access keys, no upgrade method",
+            state: "pass",
+            why: "Nobody, including Bearer's authors, can change the contract or ask it to sign anything outside its typed withdrawal methods.",
+            evidence: [`${BEARER_CONTRACT}: view_access_key_list`, "0 full-access keys"],
+          }
+        : {
+            id: "locked",
+            title: "Not locked yet",
+            summary: `${facts.fullAccessKeys} full-access key${facts.fullAccessKeys === 1 ? "" : "s"}: a test deployment`,
+            state: "info",
+            why: "Whoever holds a full-access key could redeploy this contract. The locked deployment deletes every one before submission; until then, treat this as a test.",
+            evidence: [`${BEARER_CONTRACT}: view_access_key_list`],
+          },
+    facts.codeHash === null
+      ? { id: "code", title: "Code identity", summary: "Checking…", state: "pending", why: "Reading the deployed code hash from NEAR.", evidence: [] }
+      : {
+          id: "code",
+          title: "Code identity",
+          summary: facts.simulated ? "Hash matches the reproducible build" : "Code hash read from the chain",
+          state: facts.simulated ? "pass" : "info",
+          why: facts.simulated
+            ? "The deployed code hash matches the build anyone can reproduce from the open-source repository."
+            : "This is the hash of the code running now. The locked deployment publishes the reproducible build that produces it, so anyone can compare.",
+          evidence: [`code_hash ${facts.codeHash.slice(0, 12)}…`],
+        },
     {
       id: "addresses",
       title: "Addresses",
@@ -169,7 +186,7 @@ export function fiveQuestions(v: VaultView, obs: ChainObservation[] | undefined,
     },
     {
       q: "What are the risks?",
-      a: "Testnet prototype, not audited. Balances are observed data. You trust NEAR's MPC network and this locked contract.",
+      a: "Testnet prototype, not audited. Balances are observed data. You trust NEAR's MPC network and this contract, which has no admin methods.",
     },
   ];
 }

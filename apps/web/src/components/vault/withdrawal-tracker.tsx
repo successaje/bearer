@@ -1,11 +1,12 @@
 "use client";
 
 import type { Withdrawal, WithdrawalStage } from "@bearer/sdk";
-import { Check, Loader2, Lock, TriangleAlert, X } from "lucide-react";
+import { ArrowUpRight, Check, Loader2, Lock, TriangleAlert, X } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { ChainIcon } from "@/components/brand/chain-icon";
 import { Callout, SimulatedTag } from "@/components/ui/primitives";
 import { withdrawalAmount } from "@/lib/vault/report";
-import { useWithdrawalProgress } from "@/lib/vault/hooks";
+import { useBroadcast, useWithdrawalProgress } from "@/lib/vault/hooks";
 import { CHAIN_META, formatAmount, truncateMiddle } from "@/lib/vault/format";
 import { IS_SIMULATED } from "@/lib/config";
 import { cn } from "@/lib/utils";
@@ -15,10 +16,19 @@ const ORDER: WithdrawalStage[] = ["signing", "broadcasting", "confirming", "conf
 /** Live steps for one withdrawal: NEAR → MPC signature → broadcast → confirmation. */
 export function WithdrawalTracker({ tokenId, withdrawal }: { tokenId: string; withdrawal: Withdrawal }) {
   const { data: progress } = useWithdrawalProgress(tokenId, withdrawal.index);
+  const broadcast = useBroadcast();
+  const sent = useRef(false);
   const { chain, amount, to } = withdrawalAmount(withdrawal);
   const meta = CHAIN_META[chain];
   const stage: WithdrawalStage = progress?.stage ?? "signing";
   const current = stage === "failed" ? -1 : ORDER.indexOf(stage);
+
+  // Live adapter: the owner who just withdrew sends the signed transaction once it exists.
+  useEffect(() => {
+    if (IS_SIMULATED || stage !== "broadcasting" || sent.current) return;
+    sent.current = true;
+    broadcast.mutate({ id: tokenId, index: withdrawal.index });
+  }, [stage, broadcast, tokenId, withdrawal.index]);
 
   const steps = [
     { label: "Confirmed on NEAR", hint: "Request recorded on the vault." },
@@ -43,8 +53,17 @@ export function WithdrawalTracker({ tokenId, withdrawal }: { tokenId: string; wi
 
       {stage === "failed" ? (
         <Callout tone="danger" icon={<TriangleAlert />}>
-          <p className="font-medium text-fg">NEAR&apos;s signing network didn&apos;t answer in time.</p>
-          <p className="mt-0.5 text-fg-2">Nothing was sent. The vault stays opened; you can try again.</p>
+          {withdrawal.status === "failed" || !progress?.chainTxHash ? (
+            <>
+              <p className="font-medium text-fg">NEAR&apos;s signing network didn&apos;t answer in time.</p>
+              <p className="mt-0.5 text-fg-2">Nothing was sent. The vault stays opened; you can try again.</p>
+            </>
+          ) : (
+            <>
+              <p className="font-medium text-fg">{meta.name} didn&apos;t accept it.</p>
+              <p className="mt-0.5 text-fg-2">{progress.error ?? "The vault stays opened; you can withdraw again."}</p>
+            </>
+          )}
         </Callout>
       ) : (
         <ol aria-live="polite" className="flex flex-col">
@@ -91,6 +110,22 @@ export function WithdrawalTracker({ tokenId, withdrawal }: { tokenId: string; wi
         <p className="flex items-center justify-center gap-2 text-[12.5px] text-fg-3">
           <SimulatedTag /> No explorer links for simulated transactions.
         </p>
+      ) : progress?.explorerUrl ? (
+        <a
+          href={progress.explorerUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center justify-center gap-1 text-[13.5px] font-medium text-accent hover:underline"
+        >
+          {meta.name} transaction <span className="font-mono">{truncateMiddle(progress.chainTxHash ?? "", 8, 6)}</span>
+          <ArrowUpRight className="size-3.5" />
+        </a>
+      ) : null}
+      {broadcast.isError ? (
+        <Callout tone="warn" icon={<TriangleAlert />}>
+          Couldn&apos;t broadcast yet: {String(broadcast.error).slice(0, 160)}. It&apos;s stored on NEAR, so you can retry from
+          the vault page.
+        </Callout>
       ) : null}
     </div>
   );

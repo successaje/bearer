@@ -13,6 +13,9 @@ importers:
       '@bearer/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
+      '@hot-labs/near-connect':
+        specifier: 0.11.4
+        version: 0.11.4
       '@tanstack/react-query':
         specifier: ^5.107.1
         version: 5.107.1(@types/react@19.3.0)(react@19.3.0)
@@ -109,6 +112,13 @@ importers:
         version: 5.1.0(@types/node@20.19.43)(vite@8.3.6(@types/node@20.19.43)(jiti@2.7.0))
 
   packages/sdk:
+    dependencies:
+      '@noble/hashes':
+        specifier: 2.4.0
+        version: 2.4.0
+      '@scure/base':
+        specifier: 2.2.0
+        version: 2.2.0
     devDependencies:
       typescript:
         specifier: ^5
@@ -255,6 +265,9 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+
+  '@hot-labs/near-connect@0.11.4':
+    resolution: {integrity: sha512-exAL1gqysyCHewcMO334YJ3ddTPg3j9EyVM9novz5Jx4fLbG/YSYBlkYMjMNB8E9K/4I7BiemjOw9bQ+h80hEA==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -3953,6 +3966,8 @@ snapshots:
       react-dom: 19.3.0(react@19.3.0)
 
   '@floating-ui/utils@0.2.12': {}
+
+  '@hot-labs/near-connect@0.11.4': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

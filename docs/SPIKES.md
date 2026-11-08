@@ -3,6 +3,27 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-08 · First Base withdrawal broadcast from an opened vault
+
+Vault No. 0002 on `v3a.bearer-1108-ffb3.testnet` was opened by `bob.bearer-1108-ffb3.testnet`, and
+its withdrawal #0 was signed by NEAR's MPC network (section below). After the human funded the
+vault's Base address with 0.0001 ETH, the stored transaction was read from the contract's public
+`withdrawals` view, checked to recover to the vault's address, and broadcast:
+
+| | |
+|---|---|
+| Transaction | [`0xb347…20e3`](https://sepolia.basescan.org/tx/0xb347d755df6105ef2deb58158533f31fa5687586992308ee2fed0e4622ee20e3) on Base Sepolia, block 56,270,095 |
+| From → to | `0xc1ABcBdD132e2D965772351FA1193688Db162939` (the vault) → itself, 0.000001 ETH |
+| Result | Success, 21,000 gas, nonce 0 → the vault's nonce is now 1 |
+| Receipt | 2.0 s after `eth_sendRawTransaction` (N = 1) |
+
+```bash
+cd contracts/tests && pnpm spike:testnet broadcast 2 0
+```
+
+This meets D2's acceptance in brief 7.2: one real Base withdrawal from an opened vault. The vault
+still holds signed transactions for nonces 1–4, which anyone can broadcast in order.
+
 ## 2026-11-08 · Signing on testnet (brief 7.3, spikes 1, 4 and 5)
 
 **Setup.** Contract `v3a.bearer-1108-ffb3.testnet` (spike account, not locked), the real MPC signer
@@ -53,7 +74,5 @@ step before that endpoint rate-limited it (HTTP 429); no report was saved from i
 - **Spike 3** through real wallets (near-connect).
 - **Spike 5** against chainsig.js: compared with the signer's view here; the chainsig.js check
   comes with the SDK's `deriveAddresses`.
-- **Spike 6, faucets (needs the human):** Base Sepolia ETH, testnet4 BTC, Solana devnet SOL.
-  Vault No. 0002 (`0xc1ABcBdD132e2D965772351FA1193688Db162939` on Base Sepolia) already holds a
-  signed nonce-0 transaction: a self-transfer of 0.000001 ETH. Sending 0.0001 ETH there lets us
-  broadcast it as the first real Base withdrawal from an opened vault.
+- **Spike 6, faucets (needs the human):** Base Sepolia ETH is done (see above). Still needed:
+  testnet4 BTC (≥ 0.002 tBTC) and Solana devnet SOL.

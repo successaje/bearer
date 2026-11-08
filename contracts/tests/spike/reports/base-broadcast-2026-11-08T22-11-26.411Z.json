@@ -1,0 +1,17 @@
+{
+  "broadcast_at": "2026-11-08T22:11:26.411Z",
+  "contract": "v3a.bearer-1108-ffb3.testnet",
+  "token_id": "2",
+  "withdrawal_index": 0,
+  "from": "0xc1ABcBdD132e2D965772351FA1193688Db162939",
+  "to": "0xc1abcbdd132e2d965772351fa1193688db162939",
+  "value_wei": "1000000000000",
+  "nonce": 0,
+  "hash": "0xb347d755df6105ef2deb58158533f31fa5687586992308ee2fed0e4622ee20e3",
+  "explorer": "https://sepolia.basescan.org/tx/0xb347d755df6105ef2deb58158533f31fa5687586992308ee2fed0e4622ee20e3",
+  "status": "success",
+  "block": 56270095,
+  "gas_used": 21000,
+  "fee_wei": "126000000000",
+  "receipt_after_ms": 2014
+}

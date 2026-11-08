@@ -4,6 +4,7 @@
  *   node spike/testnet-sign.ts setup   # subaccounts, deploy, init (skips what exists)
  *   node spike/testnet-sign.ts run     # measure; writes a JSON report
  *   node spike/testnet-sign.ts gas-floor   # create_vault refuses 40 Tgas, works at 44
+ *   node spike/testnet-sign.ts broadcast <token> <index>   # send a stored withdrawal to Base Sepolia
  *
  * Needs BEARER_TESTNET_PARENT: a faucet-created testnet account whose key is in
  * ~/.near-credentials/testnet. Subaccount keys are written there too, never to the repo.
@@ -395,12 +396,69 @@ async function gasFloor() {
   }
 }
 
+async function baseRpc<T>(method: string, params: unknown[]): Promise<T> {
+  const res = await fetch(BASE_RPC, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+  });
+  const body = await res.json();
+  if (body.error) throw new Error(`${method}: ${JSON.stringify(body.error)}`);
+  return body.result as T;
+}
+
+/**
+ * Broadcasts a stored withdrawal to Base Sepolia and waits for its receipt. It reads the signed
+ * transaction from the contract's public view, as anyone could (brief 4.11: stored_tx_is_public).
+ */
+async function broadcast(tokenId: string, index: number) {
+  const vault = await view<VaultView>(CONTRACT, "vault", { token_id: tokenId });
+  const [w] = await view<Withdrawal[]>(CONTRACT, "withdrawals", { token_id: tokenId, from_index: index, limit: 1 });
+  if (!w?.signed_raw_tx || !vault.evm_address) throw new Error(`no signed transaction at vault ${tokenId} #${index}`);
+  const raw = `0x${w.signed_raw_tx.replace(/^0x/, "")}` as TransactionSerializedEIP1559;
+  const from = await recoverTransactionAddress({ serializedTransaction: raw });
+  if (from !== getAddress(vault.evm_address)) throw new Error(`signed by ${from}, not the vault`);
+
+  const sent = Date.now();
+  const hash = await baseRpc<string>("eth_sendRawTransaction", [raw]);
+  let receipt: { status: string; blockNumber: string; gasUsed: string; effectiveGasPrice: string } | null = null;
+  while (!receipt) {
+    await sleep(1000);
+    receipt = await baseRpc("eth_getTransactionReceipt", [hash]);
+  }
+  const tx = parseTransaction(raw);
+  const result = {
+    broadcast_at: new Date(sent).toISOString(),
+    contract: CONTRACT,
+    token_id: tokenId,
+    withdrawal_index: index,
+    from,
+    to: tx.to,
+    value_wei: tx.value?.toString(),
+    nonce: tx.nonce,
+    hash,
+    explorer: `https://sepolia.basescan.org/tx/${hash}`,
+    status: receipt.status === "0x1" ? "success" : "reverted",
+    block: Number(BigInt(receipt.blockNumber)),
+    gas_used: Number(BigInt(receipt.gasUsed)),
+    fee_wei: (BigInt(receipt.gasUsed) * BigInt(receipt.effectiveGasPrice)).toString(),
+    receipt_after_ms: Date.now() - sent,
+  };
+  const dir = join(import.meta.dirname, "reports");
+  mkdirSync(dir, { recursive: true });
+  const file = join(dir, `base-broadcast-${result.broadcast_at}.json`.replace(/:/g, "-"));
+  writeFileSync(file, `${JSON.stringify(result, null, 2)}\n`);
+  console.log(JSON.stringify(result, null, 2));
+  console.log(`report: ${file}`);
+}
+
 const cmd = process.argv[2];
 if (cmd === "setup") await setup();
 else if (cmd === "run") await run();
 else if (cmd === "redeploy") await redeploy();
 else if (cmd === "gas-floor") await gasFloor();
+else if (cmd === "broadcast") await broadcast(process.argv[3] ?? "", Number(process.argv[4] ?? 0));
 else {
-  console.log("usage: node spike/testnet-sign.ts setup|run|redeploy|gas-floor");
+  console.log("usage: node spike/testnet-sign.ts setup|run|redeploy|gas-floor|broadcast <token> <index>");
   process.exitCode = 1;
 }

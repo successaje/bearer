@@ -3,6 +3,29 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-08 · First Bitcoin withdrawal from an opened vault
+
+The full Bitcoin story on testnet4, run by `pnpm spike:testnet btc-withdraw 4` as soon as the
+human's deposit confirmed:
+
+1. Vault No. 0004, sealed and held by `alice.`, received 0.00265715 tBTC
+   ([funding tx](https://mempool.space/testnet4/tx/408c696c0f5b892b03500e08905fca15657fa12d457aa157108212331a2994aa),
+   confirmed in block 159,945).
+2. `alice.` transferred the vault to `bob.`
+   ([NEAR tx](https://testnet.nearblocks.io/txns/BdKaeEoa14LRBG2W9YXAPEZVwVihUTMiQSUHusWTiHjk)). Nothing
+   moved on Bitcoin.
+3. `bob.` broke the seal and withdrew in **one NEAR transaction**
+   ([NEAR tx](https://testnet.nearblocks.io/txns/hVm36gP4mzWCETMMtuXEg33hGCnuj1aAdrzxeF9iW9F)): one coin in,
+   132,716 sats to the destination (the vault's own address, for this test) and 132,717 sats change
+   back to the vault, fee 282 sats (2 sat/vB, 141 vB). NEAR's MPC signed it 6.5 s after submitting
+   (N = 1); 17.4 Tgas for the whole transaction.
+4. bitcoinjs-lib verified the spend; Blockstream's Esplora accepted the broadcast:
+   **[`ce01f9ff…58b6`](https://mempool.space/testnet4/tx/ce01f9fffdf0f362641a4f6882257295ae63de6146c5a3478704ef809bf958b6)**
+   ([alt](https://blockstream.info/testnet4/tx/ce01f9fffdf0f362641a4f6882257295ae63de6146c5a3478704ef809bf958b6)).
+
+This meets D3's checkpoint in brief 7.2: a real Bitcoin withdrawal signed and broadcast. Raw
+numbers: [`testnet-btc-withdraw-2026-11-08T23-32-00.077Z.json`](../contracts/tests/spike/reports/testnet-btc-withdraw-2026-11-08T23-32-00.077Z.json).
+
 ## 2026-11-08 · Solana: a withdrawal signed through the contract
 
 `withdraw_sol` on vault No. 0002 (opened, held by `bob.`), with a fresh devnet blockhash: a
@@ -48,7 +71,7 @@ share). Four inputs use 42.6 of the 300 Tgas a transaction may carry, so `max_bt
 4 with plenty of room; `GAS_FOR_BTC_CALLBACK` (30 Tgas) covers the measured 4.4 several times over.
 Raw numbers: [`testnet-btc-joined-2026-11-08T22-26-24.540Z.json`](../contracts/tests/spike/reports/testnet-btc-joined-2026-11-08T22-26-24.540Z.json).
 
-**Waiting on funds.** Vault No. 0004 is sealed and held by `alice.`; its Bitcoin address,
+**Funded and done** (see "First Bitcoin withdrawal" above). Vault No. 0004 was sealed and held by `alice.`; its Bitcoin address,
 `tb1qf6fqncrezc8qu8lpg5pqqssv3jaxkxkpjkxqjp`, was checked three ways (contract, signer's derived
 key, bitcoinjs-lib). Once it holds confirmed testnet4 coins:
 

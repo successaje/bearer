@@ -52,15 +52,21 @@ Everything below was measured on testnet against NEAR's real MPC signer (`v1.sig
 | Solana devnet | 8.3 s (N = 1); devnet's simulation passes signature checks | Waiting for devnet SOL to broadcast |
 
 Not done yet: the locked, reproducible deployment (the spike contract still has a full-access
-key), `pnpm demo:dry`, and the hosted demo.
+key) and the hosted demo.
 
 ## Try it
 
 ```bash
 pnpm install
+pnpm demo:dry            # the whole story in ~15 s, no funds needed: ends "✓ 22/22 checks passed"
 pnpm dev                 # the web app at localhost:3000, in mock mode (everything labelled SIMULATED)
 pnpm test:contracts      # unit tests, then sandbox tests against a mock MPC signer
 ```
+
+`demo:dry` runs a real NEAR sandbox with the committed contract (`contracts/res/`) and a mock MPC
+signer. The three chains are simulated ledgers that apply each signed transaction (checking the
+signature, spending coins or nonces, refusing anything spent twice); their lines start with
+`SIMULATED`. Needs only Node 20.11+ and pnpm.
 
 The sandbox tests check every signed transaction independently: viem for Base, bitcoinjs-lib and
 noble for Bitcoin, `@solana/web3.js` for Solana. To repeat the testnet runs:

@@ -1,0 +1,95 @@
+import type { ChainTag } from "@bearer/sdk";
+import { USD_PRICES } from "@/lib/config";
+
+/** Base-unit decimals: sats, wei, lamports. */
+const DECIMALS: Record<ChainTag, number> = { btc: 8, evm: 18, sol: 9 };
+const DISPLAY_DECIMALS: Record<ChainTag, number> = { btc: 8, evm: 6, sol: 4 };
+
+export const CHAIN_META: Record<
+  ChainTag,
+  { name: string; network: string; unit: string; asset: string; detail: string; source: string }
+> = {
+  btc: {
+    name: "Bitcoin",
+    network: "testnet4",
+    unit: "tBTC",
+    asset: "Bitcoin",
+    detail: "testnet4 · Native SegWit",
+    source: "mempool.space testnet4",
+  },
+  evm: { name: "Base", network: "Sepolia", unit: "ETH", asset: "ETH on Base", detail: "Sepolia · ETH", source: "Base Sepolia RPC" },
+  sol: { name: "Solana", network: "devnet", unit: "SOL", asset: "SOL", detail: "devnet · SOL", source: "Solana devnet RPC" },
+};
+
+export function toDecimal(chain: ChainTag, base: string | bigint): number {
+  return Number(BigInt(base)) / 10 ** DECIMALS[chain];
+}
+
+/** Exact decimal string, e.g. for prefilling "Max". */
+export function toDecimalString(chain: ChainTag, base: string | bigint): string {
+  const d = DECIMALS[chain];
+  const v = BigInt(base);
+  const whole = v / 10n ** BigInt(d);
+  const frac = (v % 10n ** BigInt(d)).toString().padStart(d, "0").replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : whole.toString();
+}
+
+/** Parses a user-typed decimal into base units, or null if it isn't valid. */
+export function fromDecimal(chain: ChainTag, value: string): bigint | null {
+  const v = value.trim();
+  if (!/^\d*\.?\d*$/.test(v) || v === "" || v === ".") return null;
+  const [whole, frac = ""] = v.split(".");
+  if (frac.length > DECIMALS[chain]) return null;
+  return BigInt(whole || "0") * 10n ** BigInt(DECIMALS[chain]) + BigInt(frac.padEnd(DECIMALS[chain], "0") || "0");
+}
+
+export function formatAmount(chain: ChainTag, base: string | bigint) {
+  return toDecimal(chain, base).toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: DISPLAY_DECIMALS[chain],
+  });
+}
+
+export function toUsd(chain: ChainTag, base: string | bigint) {
+  return toDecimal(chain, base) * USD_PRICES[chain];
+}
+
+export function formatUsd(value: number) {
+  return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+/** Groups an address in fours, keeping `0x` attached. */
+export function chunkAddress(address: string) {
+  const prefix = address.startsWith("0x") ? "0x" : "";
+  const groups = address.slice(prefix.length).match(/.{1,4}/g) ?? [];
+  return prefix ? `${prefix}${groups[0] ?? ""} ${groups.slice(1).join(" ")}`.trim() : groups.join(" ");
+}
+
+export function truncateMiddle(value: string, head = 6, tail = 4) {
+  return value.length <= head + tail + 1 ? value : `${value.slice(0, head)}…${value.slice(-tail)}`;
+}
+
+/** Contract timestamps are nanosecond strings. */
+export function nsToMs(ns: string) {
+  return Number(BigInt(ns) / 1_000_000n);
+}
+
+export function relativeTime(at: number, now: number) {
+  const s = Math.floor(Math.max(0, now - at) / 1000);
+  if (s < 5) return "just now";
+  if (s < 60) return `${s} s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} h ago`;
+  const d = Math.floor(h / 24);
+  return d < 30 ? `${d} d ago` : formatDate(at);
+}
+
+export function formatDate(at: number) {
+  return new Date(at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+export function vaultNumber(id: string) {
+  return `No. ${id.padStart(4, "0")}`;
+}

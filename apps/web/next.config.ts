@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  transpilePackages: ["@bearer/sdk"],
   turbopack: {
     rules: {
       "*.css": {
@@ -11,6 +11,13 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  async redirects() {
+    // v2 used "cards"; v3 calls them vaults.
+    return [
+      { source: "/cards", destination: "/vaults", permanent: true },
+      { source: "/c/:id", destination: "/v/:id", permanent: true },
+    ];
   },
 };
 

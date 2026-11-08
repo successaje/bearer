@@ -55,8 +55,26 @@ export interface EvmWithdrawParams {
   max_priority_fee_per_gas: string;
 }
 
-/** Internally tagged by `chain`. Bitcoin and Solana variants arrive with their `withdraw_*`. */
-export type WithdrawalParams = { chain: "evm" } & EvmWithdrawParams;
+/** Brief 4.6. Mirrors `withdraw_btc` once it lands in the contract. */
+export interface BtcWithdrawParams {
+  inputs: { txid: string; vout: number; value_sat: string }[];
+  to_address: string;
+  amount_sat: string;
+  fee_sat: string;
+}
+
+/** Brief 4.6. Mirrors `withdraw_sol` once it lands in the contract. */
+export interface SolWithdrawParams {
+  recent_blockhash: string;
+  to: string;
+  lamports: string;
+}
+
+/** Internally tagged by `chain`. Only `evm` exists in the contract today; btc and sol follow the build order. */
+export type WithdrawalParams =
+  | ({ chain: "evm" } & EvmWithdrawParams)
+  | ({ chain: "btc" } & BtcWithdrawParams)
+  | ({ chain: "sol" } & SolWithdrawParams);
 
 export type WithdrawalStatus = "pending" | "signed" | "failed";
 
@@ -102,6 +120,10 @@ export const ERROR_CODES = [
   "ERR_PRIORITY_FEE_ABOVE_MAX_FEE",
   "ERR_CREATE_DEPOSIT_BELOW_STORAGE",
   "ERR_WITHDRAW_DEPOSIT_BELOW_STORAGE",
+  "ERR_SAME_OWNER",
+  "ERR_ACCOUNT_MISSING",
+  "ERR_INSUFFICIENT_FUNDS",
+  "MethodNotFound",
 ] as const;
 export type BearerErrorCode = (typeof ERROR_CODES)[number];
 
@@ -130,8 +152,33 @@ export interface ChainObservation {
   /** ms since epoch. */
   observedAt: number;
   explorerUrl: string;
+  /** Recent deposits seen at the address, newest first. */
+  deposits: ObservedDeposit[];
+  /** Network fee estimate for one withdrawal, in base units. */
+  feeEstimate: string;
   /** True when this came from the simulated adapter. */
   simulated: boolean;
+}
+
+export interface ObservedDeposit {
+  txHash: string;
+  amount: string;
+  confirmed: boolean;
+  /** ms since epoch. */
+  at: number;
+  explorerUrl: string | null;
+}
+
+/** Off-chain life of a withdrawal after the contract signs it. */
+export type WithdrawalStage = "signing" | "broadcasting" | "confirming" | "confirmed" | "failed";
+
+export interface WithdrawalProgress {
+  tokenId: string;
+  index: number;
+  stage: WithdrawalStage;
+  chainTxHash: string | null;
+  explorerUrl: string | null;
+  error: string | null;
 }
 
 /* ---------- the web app's client seam ---------- */
@@ -175,6 +222,14 @@ export interface BearerClient {
   breakSeal(tokenId: string, signer: string): Promise<VaultView>;
   withdraw(tokenId: string, request: WithdrawRequest, signer: string): Promise<Withdrawal>;
 
+  /** Follows a signed withdrawal through broadcast and confirmation. */
+  trackWithdrawal(tokenId: string, index: number): Promise<WithdrawalProgress>;
+
   runAttack(kind: AttackKind, tokenId: string): Promise<AttackResult>;
   accountExists(accountId: string): Promise<boolean>;
+
+  /** Simulated adapter only: pretend a deposit arrived. */
+  simulateDeposit?(tokenId: string, chain: ChainTag): Promise<void>;
+  /** Simulated adapter only: restore the seeded demo vaults. */
+  reset?(): void;
 }

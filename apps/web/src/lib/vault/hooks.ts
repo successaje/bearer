@@ -1,0 +1,149 @@
+"use client";
+
+import type { AttackKind, ChainTag, Finish, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { getVaultClient } from "./client";
+
+export const keys = {
+  vaults: (owner: string) => ["vaults", owner] as const,
+  vault: (id: string) => ["vault", id] as const,
+  withdrawals: (id: string) => ["withdrawals", id] as const,
+  observe: (id: string) => ["observe", id] as const,
+  progress: (id: string, index: number) => ["progress", id, index] as const,
+  account: (id: string) => ["account", id] as const,
+};
+
+/** Brief 3.4: deposits appear automatically, polled every 10 s. */
+const POLL_MS = 10_000;
+
+export function useVaults(owner: string | null) {
+  return useQuery({
+    queryKey: keys.vaults(owner ?? ""),
+    queryFn: async () => (await getVaultClient()).listVaults(owner as string),
+    enabled: Boolean(owner),
+    refetchInterval: POLL_MS,
+  });
+}
+
+export function useVault(id: string) {
+  return useQuery({
+    queryKey: keys.vault(id),
+    queryFn: async () => (await getVaultClient()).getVault(id),
+    // Keys arrive a block or two after creation; poll faster until they do.
+    refetchInterval: (q) => (q.state.data && !q.state.data.keys ? 1_000 : POLL_MS),
+  });
+}
+
+export function useWithdrawals(id: string) {
+  return useQuery({
+    queryKey: keys.withdrawals(id),
+    queryFn: async () => (await getVaultClient()).getWithdrawals(id),
+    refetchInterval: (q) => (q.state.data?.some((w) => w.status === "pending") ? 1_500 : POLL_MS),
+  });
+}
+
+export function useObservation(vault: VaultView | null | undefined) {
+  return useQuery({
+    queryKey: keys.observe(vault?.token_id ?? ""),
+    queryFn: async () => (await getVaultClient()).observe(vault as VaultView),
+    enabled: Boolean(vault),
+    refetchInterval: (q) => (q.state.data?.some((o) => o.pending !== "0") ? 3_000 : POLL_MS),
+  });
+}
+
+const DONE: WithdrawalStage[] = ["confirmed", "failed"];
+
+export function useWithdrawalProgress(id: string, index: number | null) {
+  return useQuery({
+    queryKey: keys.progress(id, index ?? -1),
+    queryFn: async () => (await getVaultClient()).trackWithdrawal(id, index as number),
+    enabled: index !== null,
+    refetchInterval: (q) => (q.state.data && DONE.includes(q.state.data.stage) ? false : 700),
+  });
+}
+
+export function useAccountExists(accountId: string | null) {
+  return useQuery({
+    queryKey: keys.account(accountId ?? ""),
+    queryFn: async () => (await getVaultClient()).accountExists(accountId as string),
+    enabled: Boolean(accountId),
+    staleTime: 30_000,
+  });
+}
+
+function useRefresh() {
+  const qc = useQueryClient();
+  return (id: string) => {
+    void qc.invalidateQueries({ queryKey: ["vaults"] });
+    void qc.invalidateQueries({ queryKey: keys.vault(id) });
+    void qc.invalidateQueries({ queryKey: keys.withdrawals(id) });
+    void qc.invalidateQueries({ queryKey: keys.observe(id) });
+  };
+}
+
+export function useCreateVault() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { name?: string; finish: Finish; signer: string }) =>
+      (await getVaultClient()).createVault({ name: v.name, finish: v.finish }, v.signer),
+    onSuccess: (vault) => refresh(vault.token_id),
+  });
+}
+
+export function useTransfer() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; receiver: string; signer: string }) =>
+      (await getVaultClient()).transfer(v.id, v.receiver, v.signer),
+    onSuccess: (vault) => refresh(vault.token_id),
+  });
+}
+
+export function useBreakSealAndWithdraw() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; request: WithdrawRequest; signer: string }) =>
+      (await getVaultClient()).breakSealAndWithdraw(v.id, v.request, v.signer),
+    onSuccess: (_w, v) => refresh(v.id),
+  });
+}
+
+export function useWithdraw() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; request: WithdrawRequest; signer: string }) =>
+      (await getVaultClient()).withdraw(v.id, v.request, v.signer),
+    onSuccess: (_w, v) => refresh(v.id),
+  });
+}
+
+export function useRunAttack() {
+  return useMutation({
+    mutationFn: async (v: { id: string; kind: AttackKind }) => (await getVaultClient()).runAttack(v.kind, v.id),
+  });
+}
+
+export function useSimulateDeposit() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; chain: ChainTag }) => {
+      const client = await getVaultClient();
+      if (!client.simulateDeposit) throw new Error("Deposits can only be simulated in mock mode.");
+      await client.simulateDeposit(v.id, v.chain);
+    },
+    onSuccess: (_r, v) => refresh(v.id),
+  });
+}
+
+/** Current time, ticking. Starts at 0 so server and client render alike. */
+export function useNow(intervalMs = 1000) {
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(t);
+  }, [intervalMs]);
+  return now;
+}

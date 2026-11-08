@@ -122,7 +122,9 @@ pub struct VaultView {
 impl Contract {
     /// No owner, admin or upgrade methods exist (T11). `signer_id` and `config` are fixed here.
     #[init]
-    pub fn new(signer_id: AccountId, config: Config) -> Self {
+    /// `base_uri`: where wallets fetch each token's `media` (`{base_uri}/{token_id}.svg`), a page
+    /// that draws the vault's current seal. Optional; without it tokens carry no media.
+    pub fn new(signer_id: AccountId, config: Config, base_uri: Option<String>) -> Self {
         require!(config.max_btc_inputs > 0, "ERR_CONFIG");
         Self {
             tokens: NonFungibleToken::new(
@@ -139,7 +141,7 @@ impl Contract {
                     name: "Bearer vaults".to_string(),
                     symbol: "BEARER".to_string(),
                     icon: None,
-                    base_uri: None,
+                    base_uri,
                     reference: None,
                     reference_hash: None,
                 }),
@@ -182,9 +184,13 @@ impl Contract {
         self.next_token_id += 1;
 
         let before = env::storage_usage();
+        // The media is a live image of the seal (brief 3.3 #9): wallets show it intact, then
+        // broken once opened, with no further writes here.
+        let has_media = self.metadata.get().is_some_and(|m| m.base_uri.is_some());
         let metadata = TokenMetadata {
             title: Some(format!("Bearer vault No. {:0>4}", token_id)),
             description: name.clone(),
+            media: has_media.then(|| format!("{token_id}.svg")),
             extra: Some(json!({ "state": "sealed" }).to_string()),
             ..empty_metadata()
         };

@@ -6,12 +6,14 @@
 //! See docs/THREAT_MODEL.md for the invariants (I1–I5) and threats (T1–T17).
 #![allow(deprecated)] // near-contract-standards still uses near_sdk::collections
 
+mod bitcoin;
 mod events;
 mod evm;
 mod mpc;
 mod seal;
 mod transfer;
 mod vault;
+mod withdraw_btc;
 mod withdraw_evm;
 
 pub use evm::EvmWithdrawParams;
@@ -101,6 +103,8 @@ pub struct VaultView {
     pub signatures_requested: u32,
     pub withdrawal_count: u32,
     pub keys: Option<DerivedKeys>,
+    /// `tb1q…` P2WPKH address derived from `keys.btc`, once keys are known.
+    pub btc_address: Option<String>,
     /// `0x…` address derived from `keys.evm`, once keys are known.
     pub evm_address: Option<String>,
     pub paths: Paths,
@@ -257,6 +261,11 @@ impl Contract {
     pub fn vault(&self, token_id: TokenId) -> Option<VaultView> {
         let vault = self.vaults.get(&token_id)?;
         let owner_id = self.tokens.owner_by_id.get(&token_id)?;
+        let btc_address = vault
+            .keys
+            .as_ref()
+            .and_then(|k| bitcoin::vault_pubkey(&k.btc).ok())
+            .map(|key| bitcoin::p2wpkh_address(&key));
         let evm_address = vault
             .keys
             .as_ref()
@@ -274,6 +283,7 @@ impl Contract {
             signatures_requested: vault.signatures_requested,
             withdrawal_count: vault.withdrawal_count,
             keys: vault.keys,
+            btc_address,
             evm_address,
             custody: vault.custody,
             created_at_ns: vault.created_at_ns,

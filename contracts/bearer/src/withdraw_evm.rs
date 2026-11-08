@@ -3,6 +3,7 @@ use near_sdk::json_types::U64;
 use near_sdk::serde_json::{self, json};
 use near_sdk::{env, near, require, Gas, NearToken, Promise};
 
+use crate::bitcoin::BtcWithdrawParams;
 use crate::evm::EvmWithdrawParams;
 use crate::mpc::{encode_hex, parse_response, verify_ecdsa, Payload, SignArgs, SignRequest};
 use crate::vault::{vault_path, ChainTag};
@@ -13,10 +14,10 @@ pub const GAS_FOR_SIGN: Gas = Gas::from_tgas(15);
 /// Gas reserved for the EVM callback (verify, assemble, store). Static, so it can't run out.
 pub const GAS_FOR_EVM_CALLBACK: Gas = Gas::from_tgas(20);
 /// Head-room for the withdrawal call itself.
-const GAS_MARGIN: Gas = Gas::from_tgas(15);
+pub(crate) const GAS_MARGIN: Gas = Gas::from_tgas(15);
 
 /// Upper bound on what a signer response can be.
-const MAX_SIGNATURE_RESPONSE: usize = 512;
+pub(crate) const MAX_SIGNATURE_RESPONSE: usize = 512;
 
 #[near(serializers = [borsh, json])]
 #[derive(Clone, Debug, PartialEq)]
@@ -31,7 +32,9 @@ pub enum WithdrawalStatus {
 #[derive(Clone, Debug, PartialEq)]
 #[serde(tag = "chain", rename_all = "snake_case")]
 pub enum WithdrawalParams {
+    // Borsh tags by position: append new chains, never reorder.
     Evm(EvmWithdrawParams),
+    Btc(BtcWithdrawParams),
 }
 
 #[near(serializers = [borsh, json])]
@@ -137,8 +140,7 @@ impl Contract {
     /// Never panics: every failure ends as `Failed` with a reason (T9). The vault stays opened.
     #[private]
     pub fn on_evm_signed(&mut self, token_id: TokenId, index: u32) {
-        let key = withdrawal_key(&token_id, index);
-        let Some(mut record) = self.withdrawals.get(&key) else {
+        let Some(record) = self.withdrawals.get(&withdrawal_key(&token_id, index)) else {
             return;
         };
         let Some(vault) = self.vaults.get(&token_id) else {
@@ -149,13 +151,28 @@ impl Contract {
             let bytes = env::promise_result_checked(0, MAX_SIGNATURE_RESPONSE)
                 .map_err(|_| "ERR_SIGNER_FAILED".to_string())?;
             let response = parse_response(&bytes)?;
-            let WithdrawalParams::Evm(params) = &record.params;
+            let WithdrawalParams::Evm(params) = &record.params else {
+                return Err("ERR_WRONG_CHAIN".to_string());
+            };
             let hash = params.signing_hash();
             let keys = vault.keys.as_ref().ok_or("ERR_KEYS_PENDING")?;
             let sig = verify_ecdsa(&hash, response, keys.get(ChainTag::Evm))?;
             Ok(encode_hex(&params.signed_raw(&sig)))
         })();
 
+        self.settle_withdrawal(&token_id, index, record, outcome);
+    }
+}
+
+impl Contract {
+    /// Stores a callback's result: the signed transaction, or the reason it failed (T9).
+    pub(crate) fn settle_withdrawal(
+        &mut self,
+        token_id: &TokenId,
+        index: u32,
+        mut record: Withdrawal,
+        outcome: Result<String, String>,
+    ) {
         match outcome {
             Ok(raw) => {
                 record.status = WithdrawalStatus::Signed;
@@ -174,6 +191,7 @@ impl Contract {
                 record.error = Some(error);
             }
         }
-        self.withdrawals.insert(&key, &record);
+        self.withdrawals
+            .insert(&withdrawal_key(token_id, index), &record);
     }
 }

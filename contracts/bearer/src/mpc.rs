@@ -127,7 +127,9 @@ pub fn verify_ecdsa(
     }
     let mut r = [0u8; 32];
     r.copy_from_slice(&big_r[1..]);
-    let s = hex32(&s.scalar)?;
+    // Bitcoin (BIP146) and Ethereum (EIP-2) both require low S; flip a high one rather than fail.
+    let (s, flipped) = low_s(hex32(&s.scalar)?);
+    let recovery_id = if flipped { recovery_id ^ 1 } else { recovery_id };
     let mut sig = [0u8; 64];
     sig[..32].copy_from_slice(&r);
     sig[32..].copy_from_slice(&s);
@@ -139,9 +141,51 @@ pub fn verify_ecdsa(
     Ok(EcdsaSignature { r, s, recovery_id })
 }
 
+/// secp256k1 group order n, and n / 2, big-endian.
+const CURVE_N: [u8; 32] = [
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe,
+    0xba, 0xae, 0xdc, 0xe6, 0xaf, 0x48, 0xa0, 0x3b, 0xbf, 0xd2, 0x5e, 0x8c, 0xd0, 0x36, 0x41, 0x41,
+];
+const HALF_N: [u8; 32] = [
+    0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0x5d, 0x57, 0x6e, 0x73, 0x57, 0xa4, 0x50, 0x1d, 0xdf, 0xe9, 0x2f, 0x46, 0x68, 0x1b, 0x20, 0xa0,
+];
+
+/// Returns `(s, false)` if `s ≤ n/2`, else `(n − s, true)`.
+fn low_s(s: [u8; 32]) -> ([u8; 32], bool) {
+    if s <= HALF_N {
+        return (s, false);
+    }
+    let mut out = [0u8; 32];
+    let mut borrow = 0i16;
+    for i in (0..32).rev() {
+        let mut d = CURVE_N[i] as i16 - s[i] as i16 - borrow;
+        borrow = if d < 0 { 1 } else { 0 };
+        if d < 0 {
+            d += 256;
+        }
+        out[i] = d as u8;
+    }
+    (out, true)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn high_s_is_flipped() {
+        assert_eq!(low_s(HALF_N), (HALF_N, false));
+        let mut above = HALF_N;
+        above[31] += 1;
+        // n = 2·(n/2) + 1, so n − (n/2 + 1) = n/2.
+        assert_eq!(low_s(above), (HALF_N, true));
+        let mut one = [0u8; 32];
+        one[31] = 1;
+        let mut n_minus_one = CURVE_N;
+        n_minus_one[31] -= 1;
+        assert_eq!(low_s(n_minus_one), (one, true));
+    }
 
     #[test]
     fn hex_roundtrip() {

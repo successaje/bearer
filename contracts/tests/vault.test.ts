@@ -4,7 +4,9 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Account, actions } from "near-api-js";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
+import * as bitcoin from "bitcoinjs-lib";
+import { Account, PublicKey, actions } from "near-api-js";
 import { DEFAULT_PRIVATE_KEY, DEFAULT_PUBLIC_KEY, Sandbox } from "near-sandbox";
 import {
   getAddress,
@@ -44,6 +46,7 @@ type VaultView = {
   signatures_requested: number;
   withdrawal_count: number;
   keys: { btc: string; evm: string; sol: string } | null;
+  btc_address: string | null;
   evm_address: string | null;
   custody: { account_id: string; since_ns: string }[];
 };
@@ -132,6 +135,64 @@ const withdrawEvm = (who: Account, id: string, params = evmParams()) =>
     deposit: WITHDRAW_DEPOSIT + ONE_YOCTO,
     gas: 150n * TGAS,
   });
+
+const BTC_TO = "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx";
+const fakeTxid = (n: number) => n.toString(16).padStart(64, "0");
+
+/** One input per `[value_sat, vout]`, each from a different (made-up) transaction. */
+function btcParams(inputs: [number, number][], amount: number, fee: number, to = BTC_TO) {
+  return {
+    inputs: inputs.map(([value, vout], i) => ({ txid: fakeTxid(i + 1), vout, value_sat: String(value) })),
+    to_address: to,
+    amount_sat: String(amount),
+    fee_sat: String(fee),
+  };
+}
+
+const withdrawBtc = (
+  who: Account,
+  id: string,
+  params: ReturnType<typeof btcParams>,
+  { deposit = (WITHDRAW_DEPOSIT + ONE_YOCTO) * BigInt(params.inputs.length), gas = 150n * TGAS } = {},
+) =>
+  who.callFunction({
+    contractId: bearer.accountId,
+    methodName: "withdraw_btc",
+    args: { token_id: id, params },
+    deposit,
+    gas,
+  });
+
+/** Compressed SEC1 key from a NEAR `secp256k1:` key (64 bytes, x ‖ y). */
+function compressedKey(nearKey: string) {
+  const raw = PublicKey.fromString(nearKey).data;
+  const out = new Uint8Array(33);
+  out[0] = raw[63] & 1 ? 3 : 2;
+  out.set(raw.slice(0, 32), 1);
+  return out;
+}
+
+/** Checks a signed spend with bitcoinjs-lib and noble: sighashes, witnesses and signatures. */
+function checkSignedSpend(w: Withdrawal, params: ReturnType<typeof btcParams>, pubkey: Uint8Array) {
+  const tx = bitcoin.Transaction.fromHex(w.signed_raw_tx as string);
+  expect(tx.version).toBe(2);
+  expect(tx.locktime).toBe(0);
+  expect(tx.ins.map((i) => [Buffer.from(i.hash).reverse().toString("hex"), i.index])).toEqual(
+    params.inputs.map((i) => [i.txid, i.vout]),
+  );
+  const pkh = bitcoin.payments.p2wpkh({ pubkey, network: bitcoin.networks.testnet });
+  const scriptCode = bitcoin.payments.p2pkh({ hash: pkh.hash }).output as Uint8Array;
+  params.inputs.forEach((input, i) => {
+    const hash = tx.hashForWitnessV0(i, scriptCode, BigInt(input.value_sat), bitcoin.Transaction.SIGHASH_ALL);
+    // The contract's BIP143 digest is bitcoinjs-lib's.
+    expect(Buffer.from(hash).toString("hex")).toBe(w.payload_hashes[i]);
+    const [sig, key] = tx.ins[i].witness;
+    expect(sig[sig.length - 1]).toBe(bitcoin.Transaction.SIGHASH_ALL);
+    expect(Buffer.from(key).equals(Buffer.from(pubkey))).toBe(true);
+    expect(secp256k1.verify(sig.subarray(0, -1), hash, pubkey, { prehash: false, format: "der", lowS: true })).toBe(true);
+  });
+  return { tx, vaultScript: pkh.output as Uint8Array };
+}
 
 const setSignerMode = (mode: "ok" | "error" | "wrong_key") =>
   root.callFunction({ contractId: signer.accountId, methodName: "set_mode", args: { mode } });
@@ -425,6 +486,100 @@ describe("withdrawals from an opened vault", () => {
   });
 });
 
+describe("bitcoin withdrawals", () => {
+  it("signs a P2WPKH spend: payment out, change back to the vault (T7)", async () => {
+    const id = await createVault(alice);
+    await breakSeal(alice, id);
+    const v = await vault(id);
+    const pubkey = compressedKey(v.keys!.btc);
+    // The contract's address is bitcoinjs-lib's P2WPKH address for the derived key.
+    expect(v.btc_address).toBe(bitcoin.payments.p2wpkh({ pubkey, network: bitcoin.networks.testnet }).address);
+
+    const params = btcParams([[60_000, 0], [25_000, 3]], 70_000, 1_500);
+    await withdrawBtc(alice, id, params);
+    const [w] = await withdrawals(id);
+    expect(w.status).toBe("signed");
+    const { tx, vaultScript } = checkSignedSpend(w, params, pubkey);
+    expect(tx.outs).toHaveLength(2);
+    expect(tx.outs[0].value).toBe(70_000n);
+    expect(Buffer.from(tx.outs[0].script).equals(Buffer.from(bitcoin.address.toOutputScript(BTC_TO, bitcoin.networks.testnet)))).toBe(true);
+    expect(tx.outs[1].value).toBe(13_500n);
+    expect(Buffer.from(tx.outs[1].script).equals(Buffer.from(vaultScript))).toBe(true);
+    expect((await vault(id)).signatures_requested).toBe(2);
+  });
+
+  it("joins max_btc_inputs signatures into one callback; no change when spending it all", async () => {
+    const id = await createVault(alice);
+    await breakSeal(alice, id);
+    const pubkey = compressedKey((await vault(id)).keys!.btc);
+    const params = btcParams([[10_000, 0], [10_000, 1], [10_000, 2], [10_000, 3]], 39_000, 1_000);
+    await withdrawBtc(alice, id, params);
+    const [w] = await withdrawals(id);
+    expect(w.status).toBe("signed");
+    expect(w.payload_hashes).toHaveLength(4);
+    const { tx } = checkSignedSpend(w, params, pubkey);
+    expect(tx.outs).toHaveLength(1);
+    expect((await vault(id)).signatures_requested).toBe(4);
+  });
+
+  it("sealed_vault_cannot_request_btc_signature (T3) and alice_cannot_withdraw_btc_after_transfer (T1)", async () => {
+    const id = await createVault(alice);
+    const params = btcParams([[50_000, 0]], 40_000, 1_000);
+    await expectPanic(withdrawBtc(alice, id, params), "ERR_VAULT_SEALED");
+    await transfer(alice, id, bob);
+    await breakSeal(bob, id);
+    await expectPanic(withdrawBtc(alice, id, params), "ERR_NOT_OWNER");
+    expect((await vault(id)).signatures_requested).toBe(0);
+  });
+
+  it("rejects bad Bitcoin spends before asking for a signature (T7)", async () => {
+    const id = await createVault(alice);
+    await breakSeal(alice, id);
+    const ok = btcParams([[50_000, 0]], 40_000, 1_000);
+    await expectPanic(withdrawBtc(alice, id, btcParams([], 1_000, 100)), "ERR_NO_INPUTS");
+    await expectPanic(
+      withdrawBtc(alice, id, btcParams([[1_000, 0], [1_000, 0], [1_000, 0], [1_000, 0], [1_000, 0]], 3_000, 100)),
+      "ERR_TOO_MANY_INPUTS",
+    );
+    await expectPanic(withdrawBtc(alice, id, { ...ok, to_address: "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4" }), "ERR_WRONG_NETWORK");
+    await expectPanic(withdrawBtc(alice, id, { ...ok, to_address: "mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn" }), "ERR_BAD_ADDRESS");
+    await expectPanic(withdrawBtc(alice, id, btcParams([[50_000, 0]], 200, 1_000)), "ERR_AMOUNT_BELOW_DUST");
+    await expectPanic(withdrawBtc(alice, id, btcParams([[50_000, 0]], 49_500, 1_000)), "ERR_INSUFFICIENT_INPUTS");
+    await expectPanic(withdrawBtc(alice, id, btcParams([[50_000, 0]], 48_900, 1_000)), "ERR_CHANGE_BELOW_DUST");
+    await expectPanic(
+      withdrawBtc(alice, id, { ...ok, inputs: [ok.inputs[0], ok.inputs[0]] }, { deposit: (WITHDRAW_DEPOSIT + ONE_YOCTO) * 2n }),
+      "ERR_DUPLICATE_INPUT",
+    );
+    const two = btcParams([[30_000, 0], [30_000, 1]], 40_000, 1_000);
+    await expectPanic(withdrawBtc(alice, id, two, { deposit: WITHDRAW_DEPOSIT + ONE_YOCTO }), "ERR_DEPOSIT");
+    await expectPanic(withdrawBtc(alice, id, two, { gas: 60n * TGAS }), "ERR_GAS");
+    expect((await vault(id)).signatures_requested).toBe(0);
+  });
+
+  it("a failed Bitcoin signature fails the whole withdrawal, which can be retried (T9, T17)", async () => {
+    const id = await createVault(alice);
+    await breakSeal(alice, id);
+    const params = btcParams([[30_000, 0], [30_000, 1]], 50_000, 1_000);
+    for (const mode of ["error", "wrong_key"] as const) {
+      await setSignerMode(mode);
+      try {
+        await withdrawBtc(alice, id, params).catch(() => undefined);
+      } finally {
+        await setSignerMode("ok");
+      }
+    }
+    const [failed, wrong] = await withdrawals(id);
+    expect([failed.status, failed.error]).toEqual(["failed", "ERR_SIGNER_FAILED: input 0"]);
+    expect([wrong.status, wrong.error]).toEqual(["failed", "ERR_SIGNATURE_WRONG_KEY"]);
+    expect(wrong.signed_raw_tx).toBeNull();
+    expect((await vault(id)).state.kind).toBe("opened");
+
+    await withdrawBtc(alice, id, params);
+    const [, , retried] = await withdrawals(id);
+    expect(retried.status).toBe("signed");
+  });
+});
+
 describe("custody and privileges", () => {
   it("records every holder in the custody log", async () => {
     const id = await createVault(alice);
@@ -456,10 +611,12 @@ describe("custody and privileges", () => {
         "nft_total_supply",
         "nft_transfer",
         "nft_transfer_call",
+        "on_btc_signed",
         "on_derived_keys",
         "on_evm_signed",
         "signer_id",
         "vault",
+        "withdraw_btc",
         "withdraw_evm",
         "withdrawals",
       ].sort(),

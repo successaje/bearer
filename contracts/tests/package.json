@@ -9,7 +9,9 @@
     "spike:testnet": "node --env-file-if-exists=../../.env spike/testnet-sign.ts"
   },
   "devDependencies": {
+    "@noble/curves": "2.4.0",
     "@types/node": "^20",
+    "bitcoinjs-lib": "7.0.4",
     "near-api-js": "7.4.0",
     "near-sandbox": "0.3.5",
     "typescript": "^5",

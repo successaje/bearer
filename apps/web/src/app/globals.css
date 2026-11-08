@@ -137,6 +137,31 @@
   }
 }
 
+@keyframes seal-split {
+  0% {
+    transform: scale(1);
+    filter: none;
+  }
+  40% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(0.94);
+    filter: saturate(0.8);
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes confetti-fall {
   0% {
     opacity: 1;

@@ -1,4 +1,4 @@
-import type { AttackKind, ChainObservation, VaultView, Withdrawal } from "@bearer/sdk";
+import type { AttackKind, ChainObservation, ChainTag, VaultView, Withdrawal } from "@bearer/sdk";
 import { CHAIN_TAGS } from "@bearer/sdk";
 import { BEARER_CONTRACT, CODE_HASH, SIGNER_CONTRACT } from "@/lib/config";
 import { ATTACK_TESTS } from "./errors";
@@ -228,4 +228,11 @@ export function attackScenarios(v: VaultView): AttackScenario[] {
       test: ATTACK_TESTS.sign_arbitrary_bytes,
     },
   ];
+}
+
+export function withdrawalAmount(w: Withdrawal): { chain: ChainTag; amount: string; to: string } {
+  const p = w.params;
+  if (p.chain === "evm") return { chain: "evm", amount: p.amount_wei, to: p.to };
+  if (p.chain === "btc") return { chain: "btc", amount: p.amount_sat, to: p.to_address };
+  return { chain: "sol", amount: p.lamports, to: p.to };
 }

@@ -25,6 +25,7 @@ import {
   type MockVault,
 } from "./mock-data";
 import { ATTACK_TESTS, VaultError } from "./errors";
+import { withdrawalAmount } from "./report";
 
 const STORAGE_KEY = "bearer:mock:v3";
 const CUSTODY_CAP = 16;
@@ -49,12 +50,6 @@ function amountOf(req: WithdrawRequest): bigint {
   return BigInt(req.chain === "evm" ? req.amountWei : req.chain === "btc" ? req.amountSats : req.lamports);
 }
 
-export function withdrawalAmount(w: Withdrawal): { chain: ChainTag; amount: string; to: string } {
-  const p = w.params;
-  if (p.chain === "evm") return { chain: "evm", amount: p.amount_wei, to: p.to };
-  if (p.chain === "btc") return { chain: "btc", amount: p.amount_sat, to: p.to_address };
-  return { chain: "sol", amount: p.lamports, to: p.to };
-}
 
 export class MockBearerClient implements BearerClient {
   private state: MockState | null = null;

@@ -22,6 +22,7 @@ human's deposit confirmed:
 4. bitcoinjs-lib verified the spend; Blockstream's Esplora accepted the broadcast:
    **[`ce01f9ff…58b6`](https://mempool.space/testnet4/tx/ce01f9fffdf0f362641a4f6882257295ae63de6146c5a3478704ef809bf958b6)**
    ([alt](https://blockstream.info/testnet4/tx/ce01f9fffdf0f362641a4f6882257295ae63de6146c5a3478704ef809bf958b6)).
+5. **Confirmed** in testnet4 block 159,948 (2026-11-08 23:49 UTC).
 
 This meets D3's checkpoint in brief 7.2: a real Bitcoin withdrawal signed and broadcast. Raw
 numbers: [`testnet-btc-withdraw-2026-11-08T23-32-00.077Z.json`](../contracts/tests/spike/reports/testnet-btc-withdraw-2026-11-08T23-32-00.077Z.json).

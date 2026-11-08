@@ -3,6 +3,40 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-08 · Bitcoin: joined signatures on the real signer (spike 1, Bitcoin part)
+
+`withdraw_btc` asks for one signature per input and joins the requests with `Promise::and` into a
+single callback, which checks every signature against the vault's key before assembling the
+transaction. Run on vault No. 0002 (opened, held by `bob.`) against `v1.signer-prod.testnet`
+3.18.0, one request per input count (N = 1 each). The inputs were made up: the contract can't see
+UTXOs, so the signer is exercised exactly as for real coins, and these transactions are never
+broadcast. Each signed spend was checked with bitcoinjs-lib (every BIP143 sighash) and noble
+(every DER signature, low S).
+
+| Inputs | Signed after | Whole transaction | Callback | Spend size | NEAR tx |
+|---|---|---|---|---|---|
+| 1 | 8.4 s | 15.1 Tgas | 2.8 Tgas | 141 vB | [6sgH…DfBUg](https://testnet.nearblocks.io/txns/6sgHQHE1ZF7oyANs12vo51ZjBKAwbft4ZLdSod8DfBUg) |
+| 2 | 6.6 s | 24.2 Tgas | 3.3 Tgas | 209 vB | [ERyC…ivbsDp](https://testnet.nearblocks.io/txns/ERyCn7csjhWSHAFGW4e7R1628K9SkQxPCSsa6PivbsDp) |
+| 3 | 7.8 s | 33.4 Tgas | 3.9 Tgas | 277 vB | [CcfM…AhHWJ](https://testnet.nearblocks.io/txns/CcfMaWKDeUKCw2HYQ9Ku7yFU8gw5KHuSNkgTkidAhHWJ) |
+| 4 | 7.1 s | 42.6 Tgas | 4.4 Tgas | 345 vB | [36qY…dkE3g](https://testnet.nearblocks.io/txns/36qY45goGQa5ugznPh9ixF2ENVLshfY9ZnYcG23dkE3g) |
+
+Each extra input adds about 9.2 Tgas (the signer's `sign` 4.2 + 3.4 on resume, plus the contract's
+share). Four inputs use 42.6 of the 300 Tgas a transaction may carry, so `max_btc_inputs` stays at
+4 with plenty of room; `GAS_FOR_BTC_CALLBACK` (30 Tgas) covers the measured 4.4 several times over.
+Raw numbers: [`testnet-btc-joined-2026-11-08T22-26-24.540Z.json`](../contracts/tests/spike/reports/testnet-btc-joined-2026-11-08T22-26-24.540Z.json).
+
+**Waiting on funds.** Vault No. 0004 is sealed and held by `alice.`; its Bitcoin address,
+`tb1qf6fqncrezc8qu8lpg5pqqssv3jaxkxkpjkxqjp`, was checked three ways (contract, signer's derived
+key, bitcoinjs-lib). Once it holds confirmed testnet4 coins:
+
+```bash
+cd contracts/tests && pnpm spike:testnet btc-withdraw 4
+```
+
+transfers it to `bob.`, has bob break the seal and withdraw in one NEAR transaction, verifies the
+spend and broadcasts it. `mempool.space` didn't answer from this machine, so the script uses
+Blockstream's testnet4 Esplora API (`ESPLORA_API` to change it).
+
 ## 2026-11-08 · First Base withdrawal broadcast from an opened vault
 
 Vault No. 0002 on `v3a.bearer-1108-ffb3.testnet` was opened by `bob.bearer-1108-ffb3.testnet`, and
@@ -68,11 +102,10 @@ step before that endpoint rate-limited it (HTTP 429); no report was saved from i
 
 ### Still open from 7.3
 
-- **Spike 1, Bitcoin part:** 2–4 payloads joined with `Promise::and` into one callback, its gas,
-  and `max_btc_inputs`. Lands with `withdraw_btc`.
-- **Spike 2:** omni-transaction in wasm for Bitcoin P2WPKH. EVM is hand-rolled and proven above.
+- ~~**Spike 1, Bitcoin part**~~: done (joined signatures, above).
+- ~~**Spike 2**~~: decided against omni-transaction; Bitcoin is hand-rolled like EVM (docs/DECISIONS.md).
 - **Spike 3** through real wallets (near-connect).
 - **Spike 5** against chainsig.js: compared with the signer's view here; the chainsig.js check
   comes with the SDK's `deriveAddresses`.
 - **Spike 6, faucets (needs the human):** Base Sepolia ETH is done (see above). Still needed:
-  testnet4 BTC (≥ 0.002 tBTC) and Solana devnet SOL.
+  testnet4 BTC for vault No. 0004 (above) and Solana devnet SOL.

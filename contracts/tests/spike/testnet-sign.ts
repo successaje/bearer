@@ -5,15 +5,20 @@
  *   node spike/testnet-sign.ts run     # measure; writes a JSON report
  *   node spike/testnet-sign.ts gas-floor   # create_vault refuses 40 Tgas, works at 44
  *   node spike/testnet-sign.ts broadcast <token> <index>   # send a stored withdrawal to Base Sepolia
+ *   node spike/testnet-sign.ts btc-joined <token>   # 1–4 joined Bitcoin signatures (made-up inputs, never broadcast)
+ *   node spike/testnet-sign.ts btc-vault            # alice creates a vault to fund with testnet4 BTC
+ *   node spike/testnet-sign.ts btc-withdraw <token> # transfer to bob, break the seal, withdraw, broadcast
  *
  * Needs BEARER_TESTNET_PARENT: a faucet-created testnet account whose key is in
  * ~/.near-credentials/testnet. Subaccount keys are written there too, never to the repo.
  * Every number in the report is measured on testnet; nothing is estimated.
  */
-import { createPublicKey, randomBytes, verify } from "node:crypto";
+import { createHash, createPublicKey, randomBytes, verify } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
+import * as bitcoin from "bitcoinjs-lib";
 import { Account, KeyPair, PublicKey, actions } from "near-api-js";
 import { getAddress, parseTransaction, recoverTransactionAddress, type TransactionSerializedEIP1559 } from "viem";
 import { publicKeyToAddress } from "viem/accounts";
@@ -21,6 +26,9 @@ import { publicKeyToAddress } from "viem/accounts";
 // rpc.testnet.near.org is deprecated and rate-limits (HTTP 429) part-way through a run.
 const RPC = process.env.NEAR_RPC ?? "https://test.rpc.fastnear.com";
 const BASE_RPC = process.env.BASE_SEPOLIA_RPC ?? "https://sepolia.base.org";
+// Esplora API for testnet4. mempool.space/testnet4 is the brief's pointer but didn't answer from
+// this machine on 2026-11-08; Blockstream's and mempool.emzy.de's agreed on the tip.
+const ESPLORA = process.env.ESPLORA_API ?? "https://blockstream.info/testnet4/api";
 const SIGNER = "v1.signer-prod.testnet";
 const PARENT = process.env.BEARER_TESTNET_PARENT;
 if (!PARENT) throw new Error("Set BEARER_TESTNET_PARENT to a faucet-created testnet account.");
@@ -192,11 +200,19 @@ type VaultView = {
   owner_id: string;
   state: { kind: string };
   signatures_requested: number;
+  withdrawal_count: number;
   keys: { btc: string; evm: string; sol: string } | null;
+  btc_address: string | null;
   evm_address: string | null;
   paths: { btc: string; evm: string; sol: string };
 };
-type Withdrawal = { index: number; status: "pending" | "signed" | "failed"; signed_raw_tx: string | null; error: string | null };
+type Withdrawal = {
+  index: number;
+  status: "pending" | "signed" | "failed";
+  payload_hashes: string[];
+  signed_raw_tx: string | null;
+  error: string | null;
+};
 
 async function run() {
   const report: Record<string, unknown> = {};
@@ -452,13 +468,172 @@ async function broadcast(tokenId: string, index: number) {
   console.log(`report: ${file}`);
 }
 
+/* ---------- Bitcoin ---------- */
+
+type BtcInput = { txid: string; vout: number; value_sat: string };
+
+function compressedKey(nearKey: string) {
+  const raw = PublicKey.fromString(nearKey).data;
+  const out = new Uint8Array(33);
+  out[0] = raw[63] & 1 ? 3 : 2;
+  out.set(raw.slice(0, 32), 1);
+  return out;
+}
+
+/** Checks every sighash and signature of a signed spend with bitcoinjs-lib and noble. */
+function checkBtcSpend(w: Withdrawal, inputs: BtcInput[], pubkey: Uint8Array) {
+  const tx = bitcoin.Transaction.fromHex(w.signed_raw_tx as string);
+  const p2wpkh = bitcoin.payments.p2wpkh({ pubkey, network: bitcoin.networks.testnet });
+  const scriptCode = bitcoin.payments.p2pkh({ hash: p2wpkh.hash }).output as Uint8Array;
+  const ok = inputs.every((input, i) => {
+    const hash = tx.hashForWitnessV0(i, scriptCode, BigInt(input.value_sat), bitcoin.Transaction.SIGHASH_ALL);
+    const [sig] = tx.ins[i].witness;
+    return (
+      Buffer.from(hash).toString("hex") === w.payload_hashes[i] &&
+      secp256k1.verify(sig.subarray(0, -1), hash, pubkey, { prehash: false, format: "der", lowS: true })
+    );
+  });
+  return { ok, vsize: tx.virtualSize(), txid: tx.getId() };
+}
+
+/** Sends withdraw_btc (optionally after break_seal in the same transaction) and waits for the record. */
+async function withdrawBtc(owner: Account, tokenId: string, params: { inputs: BtcInput[]; to_address: string; amount_sat: string; fee_sat: string }, withBreak: boolean) {
+  const n = params.inputs.length;
+  const acts = [
+    actions.functionCall("withdraw_btc", { token_id: tokenId, params }, BigInt(15 * n + 60) * TGAS, (WITHDRAW_DEPOSIT + ONE_YOCTO) * BigInt(n)),
+  ];
+  if (withBreak) acts.unshift(actions.functionCall("break_seal", { token_id: tokenId }, 30n * TGAS, ONE_YOCTO));
+  const index = (await view<VaultView>(CONTRACT, "vault", { token_id: tokenId })).withdrawal_count;
+  const sent = await submit(owner, CONTRACT, acts);
+  let w: Withdrawal | undefined;
+  for (let i = 0; i < 240; i++) {
+    [w] = await view<Withdrawal[]>(CONTRACT, "withdrawals", { token_id: tokenId, from_index: index, limit: 1 });
+    if (w && w.status !== "pending") break;
+    await sleep(500);
+  }
+  const signedMs = Date.now() - sent.sent;
+  const outcome = await finalOutcome(sent.hash, owner.accountId);
+  return { w: w as Withdrawal, signedMs, tx: explorer(sent.hash), gas: gasReport(outcome) };
+}
+
+function saveReport(name: string, report: object) {
+  const dir = join(import.meta.dirname, "reports");
+  mkdirSync(dir, { recursive: true });
+  const file = join(dir, `${name}-${new Date().toISOString()}.json`.replace(/:/g, "-"));
+  writeFileSync(file, `${JSON.stringify(report, null, 2)}\n`);
+  console.log(`report: ${file}`);
+}
+
+/**
+ * Spike 1, Bitcoin part: 1–4 sign requests joined with Promise::and into one callback, on the
+ * real signer. The inputs are made up (the contract can't see UTXOs), so nothing is broadcast.
+ */
+async function btcJoined(tokenId: string) {
+  const vault = await view<VaultView>(CONTRACT, "vault", { token_id: tokenId });
+  if (vault.state.kind !== "opened" || !vault.keys || !vault.btc_address) throw new Error(`vault ${tokenId} must be opened, with keys`);
+  const owner = account(vault.owner_id);
+  const pubkey = compressedKey(vault.keys.btc);
+  const runs = [];
+  for (let n = 1; n <= 4; n++) {
+    const inputs = Array.from({ length: n }, (_, i) => ({
+      txid: createHash("sha256").update(`bearer-spike:${tokenId}:${n}:${i}`).digest("hex"),
+      vout: i,
+      value_sat: "20000",
+    }));
+    const params = { inputs, to_address: vault.btc_address, amount_sat: "10000", fee_sat: "500" };
+    const r = await withdrawBtc(owner, tokenId, params, false);
+    const check = r.w.signed_raw_tx ? checkBtcSpend(r.w, inputs, pubkey) : null;
+    const callback = r.gas.receipts.filter((x) => x.executor === CONTRACT).at(-1);
+    runs.push({ inputs: n, status: r.w.status, error: r.w.error, signed_visible_after_ms: r.signedMs, verified_with_bitcoinjs: check?.ok ?? false, vsize: check?.vsize, tx: r.tx, gas_total_tgas: r.gas.total_tgas, callback_tgas: callback?.tgas, receipts: r.gas.receipts });
+    console.log(`${n} input(s): ${r.w.status} in ${r.signedMs} ms, ${r.gas.total_tgas} Tgas, callback ${callback?.tgas} Tgas, verified ${check?.ok}`);
+  }
+  saveReport("testnet-btc-joined", { measured_at: new Date().toISOString(), contract: CONTRACT, token_id: tokenId, signer_version: await view<string>(SIGNER, "version", {}), runs });
+}
+
+/** Alice creates a vault to fund with testnet4 BTC; prints its address. */
+async function btcVault() {
+  const alice = account(ALICE);
+  const sent = await submit(alice, CONTRACT, [
+    actions.functionCall("create_vault", { name: "Bitcoin spike", finish: "champagne" }, 60n * TGAS, CREATE_DEPOSIT),
+  ]);
+  const o = await finalOutcome(sent.hash, ALICE);
+  const id = JSON.parse(Buffer.from(o.status.SuccessValue ?? "", "base64").toString());
+  let v = await view<VaultView>(CONTRACT, "vault", { token_id: id });
+  for (let i = 0; !v.btc_address && i < 40; i++) {
+    await sleep(500);
+    v = await view<VaultView>(CONTRACT, "vault", { token_id: id });
+  }
+  console.log(JSON.stringify({ token_id: id, owner: v.owner_id, btc_address: v.btc_address, tx: explorer(sent.hash) }, null, 2));
+}
+
+/**
+ * The full Bitcoin story on testnet4: alice hands the funded vault to bob, bob breaks the seal
+ * and withdraws in one NEAR transaction, then the signed spend is broadcast via mempool.space.
+ * BTC_TO sets the destination (default: the vault's own address, a self-transfer).
+ */
+async function btcWithdraw(tokenId: string) {
+  let vault = await view<VaultView>(CONTRACT, "vault", { token_id: tokenId });
+  if (!vault.keys || !vault.btc_address) throw new Error("keys pending");
+  const address = vault.btc_address;
+  const pubkey = compressedKey(vault.keys.btc);
+  const report: Record<string, unknown> = { measured_at: new Date().toISOString(), contract: CONTRACT, token_id: tokenId, btc_address: address };
+  if (vault.owner_id === ALICE && vault.state.kind === "sealed") {
+    const moved = await submit(account(ALICE), CONTRACT, [
+      actions.functionCall("nft_transfer", { receiver_id: BOB, token_id: tokenId }, 30n * TGAS, ONE_YOCTO),
+    ]);
+    await finalOutcome(moved.hash, ALICE);
+    report.nft_transfer = explorer(moved.hash);
+    vault = await view<VaultView>(CONTRACT, "vault", { token_id: tokenId });
+  }
+  const utxos = (await (await fetch(`${ESPLORA}/address/${address}/utxo`)).json()) as {
+    txid: string;
+    vout: number;
+    value: number;
+    status: { confirmed: boolean };
+  }[];
+  const max = (await view<{ max_btc_inputs: number }>(CONTRACT, "get_config", {})).max_btc_inputs;
+  const spendable = utxos.filter((u) => u.status.confirmed).slice(0, max);
+  if (!spendable.length) throw new Error(`no confirmed coins at ${address} yet (${utxos.length} unconfirmed)`);
+  const total = spendable.reduce((s, u) => s + u.value, 0);
+  // Esplora fee estimates: target blocks → sat/vB. Take the fastest target offered, at least 2.
+  const estimates = (await (await fetch(`${ESPLORA}/fee-estimates`)).json()) as Record<string, number>;
+  const fastest = Object.entries(estimates).sort(([a], [b]) => Number(a) - Number(b))[0]?.[1] ?? 0;
+  const rate = Math.max(2, Math.ceil(fastest));
+  const vbytes = 11 + 68 * spendable.length + 31 * 2;
+  const fee = Math.ceil(rate * vbytes);
+  const amount = Math.floor((total - fee) / 2);
+  const inputs = spendable.map((u) => ({ txid: u.txid, vout: u.vout, value_sat: String(u.value) }));
+  const params = { inputs, to_address: process.env.BTC_TO ?? address, amount_sat: String(amount), fee_sat: String(fee) };
+  Object.assign(report, { params, fee_rate_sat_vb: rate });
+
+  const r = await withdrawBtc(account(vault.owner_id), tokenId, params, vault.state.kind === "sealed");
+  const check = r.w.signed_raw_tx ? checkBtcSpend(r.w, inputs, pubkey) : null;
+  Object.assign(report, { status: r.w.status, error: r.w.error, near_tx: r.tx, signed_visible_after_ms: r.signedMs, gas: r.gas, verified_with_bitcoinjs: check?.ok, vsize: check?.vsize });
+  if (r.w.signed_raw_tx && check?.ok) {
+    const res = await fetch(`${ESPLORA}/tx`, { method: "POST", body: r.w.signed_raw_tx });
+    const body = await res.text();
+    Object.assign(report, {
+      broadcast_status: res.status,
+      broadcast_response: body,
+      txid: check.txid,
+      explorer: `https://mempool.space/testnet4/tx/${check.txid}`,
+      explorer_alt: `https://blockstream.info/testnet4/tx/${check.txid}`,
+    });
+  }
+  console.log(JSON.stringify(report, null, 2));
+  saveReport("testnet-btc-withdraw", report);
+}
+
 const cmd = process.argv[2];
 if (cmd === "setup") await setup();
 else if (cmd === "run") await run();
 else if (cmd === "redeploy") await redeploy();
 else if (cmd === "gas-floor") await gasFloor();
 else if (cmd === "broadcast") await broadcast(process.argv[3] ?? "", Number(process.argv[4] ?? 0));
+else if (cmd === "btc-joined") await btcJoined(process.argv[3] ?? "");
+else if (cmd === "btc-vault") await btcVault();
+else if (cmd === "btc-withdraw") await btcWithdraw(process.argv[3] ?? "");
 else {
-  console.log("usage: node spike/testnet-sign.ts setup|run|redeploy|gas-floor|broadcast <token> <index>");
+  console.log("usage: node spike/testnet-sign.ts setup|run|redeploy|gas-floor|broadcast|btc-joined|btc-vault|btc-withdraw");
   process.exitCode = 1;
 }

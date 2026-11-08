@@ -65,6 +65,10 @@
   --color-gold-light: #e8cd7a;
   --color-gold-deep: #7a5e10;
   --color-ink: #0b0b0f;
+  /* Landing chapter grounds (brief 10.3). Fixed in both themes. */
+  --color-ivory: #f2ede0;
+  --color-forest: #0e2a1e;
+  --color-mint: #9fd9b6;
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
@@ -250,5 +254,191 @@
 
   .motion-hide {
     display: none !important;
+  }
+}
+
+/* ---------- Landing chapters (brief 10.3) ---------- */
+
+/* Reveal on enter. Blocks hide only once the observer runs, and never ones already on screen. */
+[data-reveal] {
+  transition:
+    opacity 250ms ease-out,
+    transform 250ms ease-out;
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal-ready [data-reveal]:not([data-shown]) {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.bar-fill {
+  transform-origin: left;
+  transition: transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: var(--bar-delay, 0ms);
+}
+
+.reveal-ready [data-reveal]:not([data-shown]) .bar-fill {
+  transform: scaleX(0);
+}
+
+/* Slow textures, paused off-screen. */
+[data-inview="false"] .texture-anim {
+  animation-play-state: paused;
+}
+
+.halftone {
+  background-image: radial-gradient(circle at center, currentColor 1.15px, transparent 1.7px);
+  background-size: 12px 12px;
+  -webkit-mask-image: radial-gradient(closest-side, #000 15%, transparent);
+  mask-image: radial-gradient(closest-side, #000 15%, transparent);
+}
+
+.halftone.texture-anim {
+  animation: halftone-drift 50s linear infinite;
+}
+
+@keyframes halftone-drift {
+  to {
+    background-position: 120px 60px;
+  }
+}
+
+.hatch {
+  background-image: repeating-linear-gradient(-45deg, currentColor 0 1.5px, transparent 1.5px 7px);
+}
+
+@keyframes glint {
+  0%,
+  62% {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(260%) skewX(-18deg);
+  }
+}
+
+@keyframes bounce-off {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  46% {
+    transform: translateX(calc(100cqw - 100%));
+  }
+  72%,
+  86% {
+    transform: translateX(58cqw);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(58cqw);
+    opacity: 0;
+  }
+}
+
+@keyframes impact {
+  0%,
+  44% {
+    box-shadow: 0 0 0 0 rgb(201 162 39 / 0);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgb(201 162 39 / 0.45);
+  }
+  75%,
+  100% {
+    box-shadow: 0 0 0 18px rgb(201 162 39 / 0);
+  }
+}
+
+/*
+ * Transfer: the vault travels from sender to recipient as the chapter scrolls, using
+ * scroll-driven animations where the browser has them. Elsewhere it rests at the end.
+ */
+.transfer-card {
+  transform: translateX(calc(100cqw - 100%)) rotate(2deg);
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .transfer-scope {
+      view-timeline-name: --transfer;
+    }
+
+    .transfer-card {
+      animation: transfer-card linear both;
+      animation-timeline: --transfer;
+      animation-range: cover 28% cover 52%;
+    }
+
+    .transfer-after {
+      animation: transfer-after linear both;
+      animation-timeline: --transfer;
+      animation-range: cover 50% cover 56%;
+    }
+
+    .transfer-sender {
+      animation: transfer-sender linear both;
+      animation-timeline: --transfer;
+      animation-range: cover 28% cover 52%;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) and (min-width: 1024px) {
+    .transfer-card,
+    .transfer-sender {
+      animation-range: contain 6% contain 60%;
+    }
+
+    .transfer-after {
+      animation-range: contain 58% contain 70%;
+    }
+  }
+}
+
+@keyframes transfer-card {
+  from {
+    transform: translateX(0) rotate(-3deg);
+  }
+  to {
+    transform: translateX(calc(100cqw - 100%)) rotate(2deg);
+  }
+}
+
+@keyframes transfer-after {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes transfer-sender {
+  to {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal],
+  .bar-fill {
+    transition: none;
+  }
+
+  .reveal-ready [data-reveal]:not([data-shown]),
+  .reveal-ready [data-reveal]:not([data-shown]) .bar-fill {
+    opacity: 1;
+    transform: none;
+  }
+
+  .texture-anim,
+  .motion-anim {
+    animation: none !important;
   }
 }

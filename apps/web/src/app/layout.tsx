@@ -12,20 +12,20 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 const description =
-  "Bearer cards hold native BTC, ETH on Base and SOL. Give one to anyone, even without a wallet, and prove it's sealed.";
+  "A sealed vault of native Bitcoin, Base and Solana that you can hand to anyone. Whoever holds it can break the seal. Nobody before them can.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: "Bearer · The card is the wallet", template: "%s · Bearer" },
+  title: { default: "Bearer · Sealed until opened", template: "%s · Bearer" },
   description,
   applicationName: "Bearer",
   openGraph: {
     type: "website",
     siteName: "Bearer",
-    title: "Bearer · The card is the wallet",
+    title: "Bearer · Sealed until opened",
     description,
   },
-  twitter: { card: "summary_large_image", title: "Bearer · The card is the wallet", description },
+  twitter: { card: "summary_large_image", title: "Bearer · Sealed until opened", description },
 };
 
 export const viewport: Viewport = {

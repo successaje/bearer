@@ -2,7 +2,7 @@
 
 import type { AttackKind, VaultView } from "@bearer/sdk";
 import { FlaskConical, Play, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SimulatedTag } from "@/components/ui/primitives";
 import { useRunAttack } from "@/lib/vault/hooks";
@@ -22,6 +22,7 @@ interface LogLine {
  * (brief 3.4 Flow F, 10.2). Every line names the test that proves it.
  */
 export function AttackLab({ vault, compact = false }: { vault: VaultView; compact?: boolean }) {
+  const headingId = useId();
   const scenarios = attackScenarios(vault);
   const run = useRunAttack();
   const [log, setLog] = useState<LogLine[]>([]);
@@ -56,10 +57,10 @@ export function AttackLab({ vault, compact = false }: { vault: VaultView; compac
   const shown = compact ? scenarios.slice(0, 3) : scenarios;
 
   return (
-    <section aria-labelledby="attack-lab" className="overflow-hidden rounded-panel border border-line bg-surface">
+    <section aria-labelledby={headingId} className="overflow-hidden rounded-panel border border-line bg-surface">
       <div className="flex items-start justify-between gap-3 border-b border-line p-5">
         <div>
-          <h2 id="attack-lab" className="flex items-center gap-2 text-[15px] font-semibold">
+          <h2 id={headingId} className="flex items-center gap-2 text-[15px] font-semibold">
             <FlaskConical className="size-4 text-accent" aria-hidden />
             Attack lab
           </h2>

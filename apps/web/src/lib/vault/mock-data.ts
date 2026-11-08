@@ -107,6 +107,7 @@ export function mockView(
     },
     btc_address: addresses.btc,
     evm_address: addresses.evm,
+    sol_address: addresses.sol,
     paths: { btc: vaultPath(tokenId, "btc"), evm: vaultPath(tokenId, "evm"), sol: vaultPath(tokenId, "sol") },
     custody: [{ account_id: owner, since_ns: ns(createdAt) }],
     created_at_ns: ns(createdAt),

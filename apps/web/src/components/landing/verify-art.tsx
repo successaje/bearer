@@ -16,6 +16,7 @@ const DEMO: VaultView = {
   keys: { btc: "secp256k1:demo", evm: "secp256k1:demo", sol: "ed25519:demo" },
   btc_address: null,
   evm_address: null,
+  sol_address: null,
   paths: Object.fromEntries(CHAIN_TAGS.map((c) => [c, vaultPath("42", c)])) as VaultView["paths"],
   custody: [
     { account_id: "alice.testnet", since_ns: "0" },

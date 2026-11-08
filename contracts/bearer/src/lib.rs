@@ -11,10 +11,12 @@ mod events;
 mod evm;
 mod mpc;
 mod seal;
+mod solana;
 mod transfer;
 mod vault;
 mod withdraw_btc;
 mod withdraw_evm;
+mod withdraw_sol;
 
 pub use evm::EvmWithdrawParams;
 pub use vault::{ChainTag, Custody, DerivedKeys, Finish, Vault, VaultState};
@@ -107,6 +109,8 @@ pub struct VaultView {
     pub btc_address: Option<String>,
     /// `0x…` address derived from `keys.evm`, once keys are known.
     pub evm_address: Option<String>,
+    /// Base58 Solana address (the Ed25519 key itself), once keys are known.
+    pub sol_address: Option<String>,
     pub paths: Paths,
     pub custody: Vec<Custody>,
     pub created_at_ns: U64,
@@ -271,6 +275,11 @@ impl Contract {
             .as_ref()
             .and_then(|k| secp256k1_key_bytes(&k.evm).ok())
             .map(|key| format!("0x{}", mpc::encode_hex(&evm::address_of(&key))));
+        let sol_address = vault
+            .keys
+            .as_ref()
+            .and_then(|k| solana::vault_key(&k.sol).ok())
+            .map(|key| solana::address(&key));
         Some(VaultView {
             paths: Paths {
                 btc: vault_path(&token_id, ChainTag::Btc),
@@ -285,6 +294,7 @@ impl Contract {
             keys: vault.keys,
             btc_address,
             evm_address,
+            sol_address,
             custody: vault.custody,
             created_at_ns: vault.created_at_ns,
             name: vault.name,

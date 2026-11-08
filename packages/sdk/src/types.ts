@@ -39,6 +39,8 @@ export interface VaultView {
   /** `tb1q…` P2WPKH address from `keys.btc`; `null` until keys arrive. */
   btc_address: string | null;
   evm_address: string | null;
+  /** Base58 Solana address (the Ed25519 key itself); `null` until keys arrive. */
+  sol_address: string | null;
   paths: Record<ChainTag, string>;
   /** Last 16 holders, oldest first. */
   custody: Custody[];
@@ -65,14 +67,14 @@ export interface BtcWithdrawParams {
   fee_sat: string;
 }
 
-/** Brief 4.6. Mirrors `withdraw_sol` once it lands in the contract. */
+/** Brief 4.6. Mirrors `withdraw_sol` (contracts/bearer/src/solana.rs): one SystemProgram transfer, the vault pays the fee. */
 export interface SolWithdrawParams {
   recent_blockhash: string;
   to: string;
   lamports: string;
 }
 
-/** Internally tagged by `chain`. `evm` and `btc` exist in the contract; `sol` follows. */
+/** Internally tagged by `chain`. Mirrors the contract's `WithdrawalParams` for all three chains. */
 export type WithdrawalParams =
   | ({ chain: "evm" } & EvmWithdrawParams)
   | ({ chain: "btc" } & BtcWithdrawParams)

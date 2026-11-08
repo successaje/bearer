@@ -5,6 +5,7 @@ use near_sdk::{env, near, require, Gas, NearToken, Promise};
 
 use crate::bitcoin::BtcWithdrawParams;
 use crate::evm::EvmWithdrawParams;
+use crate::solana::SolWithdrawParams;
 use crate::mpc::{encode_hex, parse_response, verify_ecdsa, Payload, SignArgs, SignRequest};
 use crate::vault::{vault_path, ChainTag};
 use crate::{events, withdrawal_key, Contract, ContractExt};
@@ -35,6 +36,7 @@ pub enum WithdrawalParams {
     // Borsh tags by position: append new chains, never reorder.
     Evm(EvmWithdrawParams),
     Btc(BtcWithdrawParams),
+    Sol(SolWithdrawParams),
 }
 
 #[near(serializers = [borsh, json])]

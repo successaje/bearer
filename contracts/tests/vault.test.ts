@@ -5,7 +5,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
+import { PublicKey as SolKey, SystemInstruction, SystemProgram, Transaction as SolTransaction } from "@solana/web3.js";
 import * as bitcoin from "bitcoinjs-lib";
+import { createHash } from "node:crypto";
 import { Account, PublicKey, actions } from "near-api-js";
 import { DEFAULT_PRIVATE_KEY, DEFAULT_PUBLIC_KEY, Sandbox } from "near-sandbox";
 import {
@@ -48,6 +50,7 @@ type VaultView = {
   keys: { btc: string; evm: string; sol: string } | null;
   btc_address: string | null;
   evm_address: string | null;
+  sol_address: string | null;
   custody: { account_id: string; since_ns: string }[];
 };
 
@@ -192,6 +195,38 @@ function checkSignedSpend(w: Withdrawal, params: ReturnType<typeof btcParams>, p
     expect(secp256k1.verify(sig.subarray(0, -1), hash, pubkey, { prehash: false, format: "der", lowS: true })).toBe(true);
   });
   return { tx, vaultScript: pkh.output as Uint8Array };
+}
+
+const SOL_TO = "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM";
+const SOL_BLOCKHASH = "3SPUWvuNQALMPKUaABs4CjQ3X8H8TfRWcb8gcXd7nUoE";
+const solParams = (o: Partial<{ recent_blockhash: string; to: string; lamports: string }> = {}) => ({
+  recent_blockhash: SOL_BLOCKHASH,
+  to: SOL_TO,
+  lamports: "1500000",
+  ...o,
+});
+const withdrawSol = (who: Account, id: string, params = solParams()) =>
+  who.callFunction({
+    contractId: bearer.accountId,
+    methodName: "withdraw_sol",
+    args: { token_id: id, params },
+    deposit: WITHDRAW_DEPOSIT + ONE_YOCTO,
+    gas: 100n * TGAS,
+  });
+
+/** Parses a signed Solana transfer with @solana/web3.js and checks it end to end. */
+function checkSolTransfer(w: Withdrawal, vaultAddress: string, params: ReturnType<typeof solParams>) {
+  const tx = SolTransaction.from(Buffer.from(w.signed_raw_tx as string, "hex"));
+  expect(tx.verifySignatures()).toBe(true);
+  expect(tx.feePayer?.toBase58()).toBe(vaultAddress);
+  expect(tx.recentBlockhash).toBe(params.recent_blockhash);
+  expect(tx.instructions).toHaveLength(1);
+  const [ix] = tx.instructions;
+  expect(ix.programId.equals(SystemProgram.programId)).toBe(true);
+  expect(SystemInstruction.decodeInstructionType(ix)).toBe("Transfer");
+  const t = SystemInstruction.decodeTransfer(ix);
+  expect([t.fromPubkey.toBase58(), t.toPubkey.toBase58(), String(t.lamports)]).toEqual([vaultAddress, params.to, params.lamports]);
+  expect(createHash("sha256").update(tx.serializeMessage()).digest("hex")).toBe(w.payload_hashes[0]);
 }
 
 const setSignerMode = (mode: "ok" | "error" | "wrong_key") =>
@@ -580,6 +615,66 @@ describe("bitcoin withdrawals", () => {
   });
 });
 
+describe("solana withdrawals", () => {
+  it("signs one SystemProgram transfer from the vault (sol_single_transfer_only, T7)", async () => {
+    const id = await createVault(alice);
+    await breakSeal(alice, id);
+    const v = await vault(id);
+    // The Solana address is the Ed25519 key itself.
+    expect(v.sol_address).toBe(new SolKey(PublicKey.fromString(v.keys!.sol).data).toBase58());
+
+    await withdrawSol(alice, id);
+    const [w] = await withdrawals(id);
+    expect(w.status).toBe("signed");
+    checkSolTransfer(w, v.sol_address!, solParams());
+
+    // Sending to itself lists the vault once and still verifies.
+    const self = solParams({ to: v.sol_address!, lamports: "5" });
+    await withdrawSol(alice, id, self);
+    const [, w2] = await withdrawals(id);
+    checkSolTransfer(w2, v.sol_address!, self);
+    expect((await vault(id)).signatures_requested).toBe(2);
+  });
+
+  it("sealed_vault_cannot_request_sol_signature (T3) and alice_cannot_withdraw_sol_after_transfer (T1)", async () => {
+    const id = await createVault(alice);
+    await expectPanic(withdrawSol(alice, id), "ERR_VAULT_SEALED");
+    await transfer(alice, id, bob);
+    await breakSeal(bob, id);
+    await expectPanic(withdrawSol(alice, id), "ERR_NOT_OWNER");
+    expect((await vault(id)).signatures_requested).toBe(0);
+  });
+
+  it("rejects bad Solana params before asking for a signature (T7)", async () => {
+    const id = await createVault(alice);
+    await breakSeal(alice, id);
+    await expectPanic(withdrawSol(alice, id, solParams({ to: SystemProgram.programId.toBase58() })), "ERR_BAD_ADDRESS");
+    await expectPanic(withdrawSol(alice, id, solParams({ to: "0x3fa2b1c47d9e0f5a6b8c2d4e6f80a1b3c519cd00" })), "ERR_BAD_ADDRESS");
+    await expectPanic(withdrawSol(alice, id, solParams({ lamports: "0" })), "ERR_AMOUNT_ZERO");
+    await expectPanic(withdrawSol(alice, id, solParams({ recent_blockhash: "not-a-blockhash" })), "ERR_BAD_BLOCKHASH");
+    expect((await vault(id)).signatures_requested).toBe(0);
+  });
+
+  it("a failed or wrong-key Ed25519 signature fails the withdrawal (T9, T17)", async () => {
+    const id = await createVault(alice);
+    await breakSeal(alice, id);
+    for (const mode of ["error", "wrong_key"] as const) {
+      await setSignerMode(mode);
+      try {
+        await withdrawSol(alice, id).catch(() => undefined);
+      } finally {
+        await setSignerMode("ok");
+      }
+    }
+    const [failed, wrong] = await withdrawals(id);
+    expect([failed.status, failed.error]).toEqual(["failed", "ERR_SIGNER_FAILED"]);
+    expect([wrong.status, wrong.error]).toEqual(["failed", "ERR_SIGNATURE_WRONG_KEY"]);
+    expect((await vault(id)).state.kind).toBe("opened");
+    await withdrawSol(alice, id);
+    expect((await withdrawals(id))[2].status).toBe("signed");
+  });
+});
+
 describe("custody and privileges", () => {
   it("records every holder in the custody log", async () => {
     const id = await createVault(alice);
@@ -614,10 +709,12 @@ describe("custody and privileges", () => {
         "on_btc_signed",
         "on_derived_keys",
         "on_evm_signed",
+        "on_sol_signed",
         "signer_id",
         "vault",
         "withdraw_btc",
         "withdraw_evm",
+        "withdraw_sol",
         "withdrawals",
       ].sort(),
     );

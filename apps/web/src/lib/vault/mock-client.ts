@@ -137,10 +137,12 @@ export class MockBearerClient implements BearerClient {
     const view = clone(v.view);
     // Saved mock states from before btc_address existed.
     view.btc_address ??= v.addresses.btc;
+    view.sol_address ??= v.addresses.sol;
     if (Date.now() < v.keysAt) {
       view.keys = null;
       view.btc_address = null;
       view.evm_address = null;
+      view.sol_address = null;
     }
     return view;
   }

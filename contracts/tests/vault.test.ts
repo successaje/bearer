@@ -6,7 +6,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Account, actions } from "near-api-js";
 import { DEFAULT_PRIVATE_KEY, DEFAULT_PUBLIC_KEY, Sandbox } from "near-sandbox";
-import { getAddress, keccak256, recoverTransactionAddress, serializeTransaction, type Hex } from "viem";
+import {
+  getAddress,
+  keccak256,
+  recoverTransactionAddress,
+  serializeTransaction,
+  type Hex,
+  type TransactionSerializedEIP1559,
+} from "viem";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const OUT = join(import.meta.dirname, "..", "out");
@@ -198,6 +205,30 @@ describe("create_vault", () => {
       "ERR_NAME_TOO_LONG",
     );
   });
+
+  it("create_vault_requires_gas_for_keys", async () => {
+    // The signer's derived_public_key burns ~5.4 Tgas each on testnet; three of them plus the
+    // callback must fit, or the vault would be minted without keys.
+    await expectPanic(
+      alice.callFunction({
+        contractId: bearer.accountId,
+        methodName: "create_vault",
+        args: { name: null, finish: "sage" },
+        deposit: CREATE_DEPOSIT,
+        gas: 40n * TGAS,
+      }),
+      "ERR_GAS",
+    );
+    const id = await alice.callFunction<string>({
+      contractId: bearer.accountId,
+      methodName: "create_vault",
+      args: { name: null, finish: "sage" },
+      deposit: CREATE_DEPOSIT,
+      gas: 44n * TGAS,
+    });
+    for (let i = 0; i < 20 && !(await vault(id)).keys; i++) await new Promise((r) => setTimeout(r, 500));
+    expect((await vault(id)).keys).not.toBeNull();
+  });
 });
 
 describe("the one rule", () => {
@@ -347,7 +378,7 @@ describe("withdrawals from an opened vault", () => {
     // The contract's hand-rolled EIP-1559 hash matches viem's.
     expect(`0x${w.payload_hashes[0]}`).toBe(keccak256(serializeTransaction(unsigned)));
     // The stored signed transaction is valid and was signed by the vault's address.
-    const from = await recoverTransactionAddress({ serializedTransaction: `0x${w.signed_raw_tx}` as Hex });
+    const from = await recoverTransactionAddress({ serializedTransaction: `0x${w.signed_raw_tx}` as TransactionSerializedEIP1559 });
     expect(from.toLowerCase()).toBe((await vault(id)).evm_address);
   });
 

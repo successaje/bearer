@@ -35,10 +35,13 @@ use near_sdk::{
 use crate::mpc::{secp256k1_key_bytes, DerivedKeyArgs};
 use crate::vault::{vault_path, MAX_NAME_LEN};
 
-/// Gas for one `derived_public_key` call to the signer (a cheap view).
-const GAS_FOR_DERIVED_KEY: Gas = Gas::from_tgas(5);
-/// Gas reserved for `on_derived_keys`.
+/// Gas for one `derived_public_key` call to the signer. Measured 5.29–5.37 Tgas on
+/// `v1.signer-prod.testnet` 3.18.0 (2026-11-08, contracts/tests/spike), so 5 was too tight.
+const GAS_FOR_DERIVED_KEY: Gas = Gas::from_tgas(8);
+/// Gas reserved for `on_derived_keys` (measured 2.03 Tgas).
 const GAS_FOR_KEYS_CALLBACK: Gas = Gas::from_tgas(10);
+/// `create_vault`'s own work (measured 4.69 Tgas) plus margin.
+const GAS_FOR_CREATE: Gas = Gas::from_tgas(10);
 
 /// Storage reserved at creation for state that grows later without a deposit:
 /// 15 more custody entries (≤ 64-byte account + 8 + 4 each), three derived keys,
@@ -144,12 +147,21 @@ impl Contract {
     /// Mints a sealed vault to the caller and asks the signer for its three derived keys.
     ///
     /// Deposit: exactly what `config.create_deposit` says (more is kept as storage reserve).
-    /// Fails: `ERR_DEPOSIT`, `ERR_NAME_TOO_LONG`.
+    /// Gas: at least 44 Tgas, so the three key requests and their callback can't run short.
+    /// Fails: `ERR_DEPOSIT`, `ERR_GAS`, `ERR_NAME_TOO_LONG`.
     #[payable]
     pub fn create_vault(&mut self, name: Option<String>, finish: Finish) -> TokenId {
         require!(
             env::attached_deposit() >= self.config.create_deposit,
             "ERR_DEPOSIT"
+        );
+        require!(
+            env::prepaid_gas()
+                >= GAS_FOR_DERIVED_KEY
+                    .saturating_mul(3)
+                    .saturating_add(GAS_FOR_KEYS_CALLBACK)
+                    .saturating_add(GAS_FOR_CREATE),
+            "ERR_GAS"
         );
         let name = name.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
         if let Some(n) = &name {

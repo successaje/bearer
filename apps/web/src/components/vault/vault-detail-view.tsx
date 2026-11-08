@@ -19,6 +19,7 @@ import { AttackLab } from "./attack-lab";
 import { BreakSealSheet } from "./break-seal-sheet";
 import { FiveQuestions } from "./five-questions";
 import { FundSheet } from "./fund-sheet";
+import { ReceivedMoment, useJustReceived } from "./received-moment";
 import { SealPanel } from "./seal-panel";
 import { SlotCard, SlotCardSkeleton } from "./slot-card";
 import { TechnicalDetails } from "./technical-details";
@@ -39,6 +40,7 @@ export function VaultDetailView() {
   const now = useNow(1000);
   const { accountId, ready, openConnect } = useWallet();
   const [sheet, setSheet] = useState<SheetName | null>(null);
+  const received = useJustReceived(query.data, ready ? accountId : null);
 
   if (query.isPending || !now) return <VaultDetailSkeleton />;
   if (query.isError) return <Shell><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Shell>;
@@ -246,6 +248,17 @@ export function VaultDetailView() {
           to manage it.
         </p>
       ) : null}
+
+      <ReceivedMoment
+        vault={vault}
+        observations={observations}
+        open={received.show}
+        onDone={received.dismiss}
+        onHandOn={() => {
+          received.dismiss();
+          setSheet("transfer");
+        }}
+      />
 
       {accountId && (isOwner || sheet === "transfer") ? (
         // Stays mounted after a transfer so its success screen survives the owner change.

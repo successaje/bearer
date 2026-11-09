@@ -9,7 +9,7 @@ import { LiveChecks } from "@/components/proof/live-checks";
 import { ThreatTable } from "@/components/proof/threat-table";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Eyebrow } from "@/components/ui/primitives";
-import { LANDED, LATENCY, MEASURED_ON, PROOF_SIGNER, RUN_IT, THREATS } from "@/lib/proof/data";
+import { LANDED, LATENCY, MEASURED_ON, PROOF_SIGNER, RUN_IT, SPIKE_CONTRACT, THREATS } from "@/lib/proof/data";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -52,12 +52,12 @@ export default function ProofPage() {
         id="signing"
         n="02"
         title="Signed by NEAR's MPC network"
-        sub="Every bar is one real request on testnet, timed from submitting the NEAR transaction. Click a time to see its transaction."
+        sub={`Every bar is one real request on testnet, timed from submitting the NEAR transaction, on the spike contract (${SPIKE_CONTRACT}). Click a time to see its transaction.`}
       >
         <LatencyChart />
       </Section>
 
-      <Section id="landed" n="03" title="Where the withdrawals landed" sub="A signature only matters once the other chain accepts it.">
+      <Section id="landed" n="03" title="Where the withdrawals landed" sub={`A signature only matters once the other chain accepts it. Vault numbers are the spike contract's (${SPIKE_CONTRACT}).`}>
         <div className="grid gap-4 md:grid-cols-3">
           {LANDED.map((l) => (
             <div key={l.chain} className="flex flex-col rounded-panel border border-line bg-surface p-5">

@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Skeleton } from "@/components/ui/primitives";
-import { explorer } from "@/lib/config";
+import { CODE_HASH, explorer } from "@/lib/config";
 import { PROOF_CONTRACT, PROOF_RPC, PROOF_SIGNER } from "@/lib/proof/data";
 import { curlFor, useLiveChecks } from "@/lib/proof/live";
 import { useNow } from "@/lib/vault/hooks";
@@ -100,8 +100,15 @@ export function LiveChecks() {
                 ? "No full-access keys: nobody can change or redeploy the contract."
                 : `${d.fullAccessKeys} full-access key${d.fullAccessKeys > 1 ? "s" : ""}, so whoever holds ${d.fullAccessKeys > 1 ? "them" : "it"} could still replace the code. Locking deletes every full-access key, for good.`}
             </Check>
-            <Check label="Code identity" tone="info" value={<span className="font-mono text-[15px]">{d.codeHash.slice(0, 22)}…</span>} curl={curlFor("view_account")}>
-              The deployed code hash. The locked deploy publishes the build that reproduces it.{" "}
+            <Check
+              label="Code identity"
+              tone={d.codeHash === CODE_HASH ? "ok" : "warn"}
+              value={<span className="font-mono text-[15px]">{d.codeHash.slice(0, 22)}…</span>}
+              curl={curlFor("view_account")}
+            >
+              {d.codeHash === CODE_HASH
+                ? "Matches the reproducible build in the repository (contracts/res), which anyone can rebuild byte for byte."
+                : "Not the published reproducible build, so treat this deployment as a test."}{" "}
               <a href={explorer.nearAccount(PROOF_CONTRACT)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 font-medium text-accent hover:underline">
                 {PROOF_CONTRACT}
                 <ArrowUpRight className="size-3" />

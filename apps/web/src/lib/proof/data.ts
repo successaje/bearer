@@ -4,7 +4,10 @@
  * Update both together; never round a number into something it wasn't.
  */
 
-export const PROOF_CONTRACT = process.env.NEXT_PUBLIC_PROOF_CONTRACT || "v3a.bearer-1108-ffb3.testnet";
+/** The locked, reproducibly built contract the live checks read. */
+export const PROOF_CONTRACT = process.env.NEXT_PUBLIC_PROOF_CONTRACT || "bearer.testnet";
+/** Where the measured runs and landed withdrawals happened (8–9 Nov), before the final contract was locked. */
+export const SPIKE_CONTRACT = "v3a.bearer-1108-ffb3.testnet";
 export const PROOF_SIGNER = "v1.signer-prod.testnet";
 export const PROOF_RPC = process.env.NEXT_PUBLIC_NEAR_RPC || "https://test.rpc.fastnear.com";
 export const MEASURED_ON = "8–9 Nov 2026";
@@ -229,8 +232,8 @@ export const THREATS: Threat[] = [
     id: "T11",
     attack: "Admin or upgrade powers",
     defence: "No admin, upgrade or raw-sign methods; full-access keys deleted; code hash published",
-    tests: ["no_privileged_methods", "lock-contract.sh (at the locked deploy)"],
-    status: "partly",
+    tests: ["no_privileged_methods", "spike:testnet lock (bearer.testnet: 0 keys, 9 Nov)"],
+    status: "proven",
   },
   {
     id: "T12",

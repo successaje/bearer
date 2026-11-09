@@ -56,6 +56,35 @@ export function AttackLab({ vault, compact = false }: { vault: VaultView; compac
 
   const shown = compact ? scenarios.slice(0, 3) : scenarios;
 
+  // Against the real contract the attacks need accounts this site doesn't hold, so it lists them
+  // with the test that proves each one instead of offering a Run button that can only fail.
+  if (!IS_SIMULATED) {
+    return (
+      <section aria-labelledby={headingId} className="overflow-hidden rounded-panel border border-line bg-surface">
+        <div className="border-b border-line p-5">
+          <h2 id={headingId} className="flex items-center gap-2 text-[15px] font-semibold">
+            <FlaskConical className="size-4 text-accent" aria-hidden />
+            What the contract refuses
+          </h2>
+          <p className="mt-1 text-[13px] leading-relaxed text-fg-3">
+            Each attack is a sandbox test in the repository (<span className="font-mono">pnpm test:contracts</span>). The
+            interactive lab runs in the simulated demo.
+          </p>
+        </div>
+        <ul className="divide-y divide-line">
+          {shown.map((s) => (
+            <li key={s.kind} className="px-5 py-3">
+              <p className="text-[13.5px] font-medium">{s.title}</p>
+              <p className="mt-0.5 break-words font-mono text-[11.5px] text-fg-3">
+                expects {s.expected} · {s.test}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
   return (
     <section aria-labelledby={headingId} className="overflow-hidden rounded-panel border border-line bg-surface">
       <div className="flex items-start justify-between gap-3 border-b border-line p-5">

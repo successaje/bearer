@@ -1,6 +1,6 @@
 import type { AttackKind, ChainObservation, ChainTag, VaultView, Withdrawal } from "@bearer/sdk";
 import { CHAIN_TAGS } from "@bearer/sdk";
-import { BEARER_CONTRACT, SIGNER_CONTRACT } from "@/lib/config";
+import { BEARER_CONTRACT, CODE_HASH, SIGNER_CONTRACT } from "@/lib/config";
 import { SIMULATED_FACTS, type ContractFacts } from "./contract-facts";
 import { ATTACK_TESTS } from "./errors";
 import { CHAIN_META, formatAmount, formatDate, nsToMs, toUsd, vaultNumber } from "./format";
@@ -114,11 +114,12 @@ export function vaultReport(v: VaultView, obs?: ChainObservation[], facts: Contr
       : {
           id: "code",
           title: "Code identity",
-          summary: facts.simulated ? "Hash matches the reproducible build" : "Code hash read from the chain",
-          state: facts.simulated ? "pass" : "info",
-          why: facts.simulated
-            ? "The deployed code hash matches the build anyone can reproduce from the open-source repository."
-            : "This is the hash of the code running now. The locked deployment publishes the reproducible build that produces it, so anyone can compare.",
+          summary: facts.codeHash === CODE_HASH ? "Hash matches the reproducible build" : "Not the published build",
+          state: facts.codeHash === CODE_HASH ? "pass" : "info",
+          why:
+            facts.codeHash === CODE_HASH
+              ? "The deployed code hash matches the build anyone can reproduce from the open-source repository."
+              : "This is the hash of the code running now, and it isn't the published reproducible build: treat this deployment as a test.",
           evidence: [`code_hash ${facts.codeHash.slice(0, 12)}…`],
         },
     {

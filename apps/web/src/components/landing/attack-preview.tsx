@@ -22,17 +22,35 @@ export function AttackPreview() {
           >
             Try to cheat. <span className="text-fg-3">The contract refuses.</span>
           </h2>
-          <p className="text-pretty mt-5 max-w-[460px] text-[16px] leading-relaxed text-fg-2">
-            Play the former owner of vault No. 0017, or anyone else. Each attack from the threat model runs against
-            the same rules as the sandbox tests, and the log names the test that proves it.
-          </p>
-          <Link
-            href={`/v/${DEMO_VAULT}#attack-lab`}
-            className="mt-7 inline-flex items-center gap-2 text-[15px] font-medium text-accent hover:underline"
-          >
-            Open vault No. 0017
-            <ArrowRight className="size-4" />
-          </Link>
+          {IS_SIMULATED ? (
+            <>
+              <p className="text-pretty mt-5 max-w-[460px] text-[16px] leading-relaxed text-fg-2">
+                Play the former owner of vault No. 0017, or anyone else. Each attack from the threat model runs against
+                the same rules as the sandbox tests, and the log names the test that proves it.
+              </p>
+              <Link
+                href={`/v/${DEMO_VAULT}#attack-lab`}
+                className="mt-7 inline-flex items-center gap-2 text-[15px] font-medium text-accent hover:underline"
+              >
+                Open vault No. 0017
+                <ArrowRight className="size-4" />
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="text-pretty mt-5 max-w-[460px] text-[16px] leading-relaxed text-fg-2">
+                Every attack in the threat model is a sandbox test that sends it to the real contract code and checks
+                the refusal. The table on the proof page names each test.
+              </p>
+              <Link
+                href="/proof#threats"
+                className="mt-7 inline-flex items-center gap-2 text-[15px] font-medium text-accent hover:underline"
+              >
+                See every attack and its test
+                <ArrowRight className="size-4" />
+              </Link>
+            </>
+          )}
         </div>
         <div data-reveal style={{ "--reveal-delay": "80ms" } as React.CSSProperties}>
           {IS_SIMULATED ? <LiveLab /> : <TestnetNote />}
@@ -51,7 +69,9 @@ function LiveLab() {
 function TestnetNote() {
   return (
     <div className="rounded-panel border border-line bg-surface p-6 text-[15px] leading-relaxed text-fg-2">
-      On testnet the lab sends real transactions from a demo attacker account. Open a demo vault to run it.
+      This site runs against the locked testnet contract, where the attacks would need accounts it doesn&apos;t hold,
+      so the interactive lab isn&apos;t live here. Run it in the simulated demo (<span className="font-mono">pnpm dev</span>)
+      or run the tests yourself: <span className="font-mono">pnpm test:contracts</span>.
     </div>
   );
 }

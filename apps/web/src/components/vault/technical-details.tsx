@@ -49,12 +49,18 @@ for (const [chain, path] of Object.entries(${JSON.stringify(vault.paths)})) {
                 </span>
               </span>
             ) : facts?.codeHash ? (
-              // The chain's answer only: there is no published reproducible build to compare with yet.
               <span className="flex flex-col gap-1">
                 <span className="break-all font-mono">{facts.codeHash}</span>
-                <span className="text-[12.5px] text-fg-3">
-                  Read from NEAR testnet. The reproducible build to compare it with comes with the locked deployment.
-                </span>
+                {facts.codeHash === CODE_HASH ? (
+                  <span className="inline-flex items-center gap-1 text-[12.5px] text-ok">
+                    <Check aria-hidden className="size-3.5" strokeWidth={2.5} />
+                    Read from NEAR testnet: matches the reproducible build
+                  </span>
+                ) : (
+                  <span className="text-[12.5px] text-fg-3">
+                    Read from NEAR testnet. This isn&apos;t the published reproducible build, so it&apos;s a test deployment.
+                  </span>
+                )}
               </span>
             ) : (
               <span className="text-fg-3">Reading from NEAR testnet…</span>

@@ -19,9 +19,11 @@ export const SIGNER_CONTRACT = process.env.NEXT_PUBLIC_SIGNER_CONTRACT || "v1.si
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 export const REPO_URL = process.env.NEXT_PUBLIC_REPO_URL || null;
 
-/** Code hash of the deployed contract. Placeholder until the reproducible build exists. */
-export const CODE_HASH =
-  process.env.NEXT_PUBLIC_CODE_HASH || "8f3c1d0a77be4e2b9d61c0f5a3e7b284a6c052c4a91e";
+/**
+ * NEAR code hash (base58 of the sha256) of the reproducible build in contracts/res, which is what
+ * bearer.testnet runs, locked. Pages compare the chain's answer with it.
+ */
+export const CODE_HASH = process.env.NEXT_PUBLIC_CODE_HASH || "PEsHBVDKpZ3fdpmfsJekrt52amLARnwRLWNXLQDVq1S";
 
 /** Solana blockhashes expire after ~150 blocks; the contract waits 300 s after the last signature. */
 export const SOLANA_WINDOW_MS = 300_000;

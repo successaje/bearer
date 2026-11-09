@@ -11,6 +11,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Callout, Skeleton } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
+import { IS_SIMULATED } from "@/lib/config";
 import { useContractFacts, useNow, useObservation, useVault, useWithdrawals } from "@/lib/vault/hooks";
 import { formatDate, formatUsd, nsToMs, vaultNumber } from "@/lib/vault/format";
 import { fiveQuestions, isSealed, observedUsd, vaultReport, vaultStatus } from "@/lib/vault/report";
@@ -78,7 +79,7 @@ export function VaultDetailView() {
           <p className="mt-0.5 text-fg-2">
             Want to see what happens if you try?{" "}
             <a href="#attack-lab" className="font-medium text-accent hover:underline">
-              Run it in the attack lab
+              {IS_SIMULATED ? "Run it in the attack lab" : "See what the contract refuses"}
             </a>
             .
           </p>

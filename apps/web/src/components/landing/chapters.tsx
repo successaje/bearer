@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { IS_SIMULATED } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import { VerifyForm } from "./verify-form";
 import { ChapterIndex } from "./chapter-index";
@@ -255,7 +256,7 @@ export function Chapters() {
               [<FileCheck2 key="i" />, "Each refusal is a sandbox test in the repository."],
               [<KeyRound key="i" />, "No admin key, no upgrade path, no override."],
             ]}
-            cta={{ href: "#attack-lab", label: "Run the attack lab" }}
+            cta={{ href: "#attack-lab", label: IS_SIMULATED ? "Run the attack lab" : "See what it refuses" }}
           />
           <div className="relative flex justify-center" data-reveal style={{ "--reveal-delay": "80ms" } as React.CSSProperties}>
             <Halftone className="-inset-16 text-ink/15" />

@@ -3,6 +3,7 @@
 import { RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Seal } from "@/components/brand/seal";
+import { IS_SIMULATED } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import { useInView, useReducedMotion } from "./motion";
 
@@ -74,7 +75,7 @@ export function RejectArt() {
             <span className="size-2.5 rounded-full bg-[#2a2a31]" />
           </div>
           <span className="truncate font-mono text-[11px] text-[#8b8b94]">
-            example<span className="hidden sm:inline"> · run it live in the attack lab</span>
+            example<span className="hidden sm:inline"> · {IS_SIMULATED ? "run it live in the attack lab" : "each refusal is a sandbox test"}</span>
           </span>
           <button
             type="button"

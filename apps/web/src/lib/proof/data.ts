@@ -34,6 +34,22 @@ export interface Series {
 
 export const LATENCY: Series[] = [
   {
+    id: "handover",
+    title: "Sealed handover",
+    detail: "nft_transfer of vault No. 0007 on bearer.testnet, alice ↔ bob · nothing moves on Bitcoin, Base or Solana · 0.0004 NEAR in gas each",
+    measures: "Send → final (wait_until FINAL), timed from a laptop",
+    kind: "repeats",
+    runs: [
+      { ms: 5845, tgas: 3.971, tx: "https://testnet.nearblocks.io/txns/2piakyBUWQwxevp1FZZQDTAKDv9ZKxCkZTMdYSoq9pqo" },
+      { ms: 4312, tgas: 3.989, tx: "https://testnet.nearblocks.io/txns/DnmMTCaQzhx8cqSg2rKXFnM4QHxwPTTnTq6E46AxkphU" },
+      { ms: 4532, tgas: 3.998, tx: "https://testnet.nearblocks.io/txns/F3i6DXbvhqoTeKncyNRTnsQGewViiyTnfM7z2nPswEAq" },
+      { ms: 4664, tgas: 4.016, tx: "https://testnet.nearblocks.io/txns/8gyVGvx2c1XVajB2hygmvJUu7sJZuCmWutvzetKVH9cx" },
+      { ms: 4648, tgas: 4.024, tx: "https://testnet.nearblocks.io/txns/BanKpQMg7kkH7reVNHWT26JHx3kob1Un2PELFrYwQ8Af" },
+      { ms: 3998, tgas: 4.042, tx: "https://testnet.nearblocks.io/txns/8YwoLMCDcjP3X4uEAsKinquhnsr45hZoTd2oH1mJ39v5" },
+    ],
+    source: `${REPORTS}/testnet-handover-2026-11-09T18-05-40.934Z.json`,
+  },
+  {
     id: "evm",
     title: "Base withdrawal",
     detail: "withdraw_evm through the contract · secp256k1 (domain 0)",

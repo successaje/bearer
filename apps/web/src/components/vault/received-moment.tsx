@@ -5,6 +5,7 @@ import { Dialog } from "radix-ui";
 import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { MARKET_CONTRACT } from "@/lib/config";
 import { formatDate, formatUsd, nsToMs, vaultNumber } from "@/lib/vault/format";
 import { isSealed, observedUsd } from "@/lib/vault/report";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,8 @@ export function ReceivedMoment({
 }) {
   const [phase, setPhase] = useState<"arrive" | "endorse" | "rest">("arrive");
   const from = vault.custody[vault.custody.length - 2];
+  // Bought through the market: name the seller, not the escrow account in between.
+  const seller = MARKET_CONTRACT && from?.account_id === MARKET_CONTRACT ? vault.custody[vault.custody.length - 3] : undefined;
   const since = vault.custody[vault.custody.length - 1];
   const sealed = isSealed(vault);
   const value = observations ? observedUsd(observations) : null;
@@ -103,7 +106,9 @@ export function ReceivedMoment({
             <Dialog.Description className="mt-3 max-w-[420px] text-[15px] leading-relaxed text-white/70">
               {from ? (
                 <>
-                  From <span className="font-mono text-white/90">{from.account_id}</span> on {formatDate(nsToMs(since.since_ns))}.{" "}
+                  {seller ? "Bought from " : "From "}
+                  <span className="font-mono text-white/90">{(seller ?? from).account_id}</span>
+                  {seller ? " through the market" : null} on {formatDate(nsToMs(since.since_ns))}.{" "}
                 </>
               ) : null}
               {sealed

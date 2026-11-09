@@ -3,7 +3,7 @@
 import type { AttackKind, ChainTag, Finish, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { IS_SIMULATED } from "@/lib/config";
+import { IS_SIMULATED, MARKET_CONTRACT } from "@/lib/config";
 import { getVaultClient } from "./client";
 import { fetchContractFacts } from "./contract-facts";
 
@@ -14,6 +14,8 @@ export const keys = {
   observe: (id: string) => ["observe", id] as const,
   progress: (id: string, index: number) => ["progress", id, index] as const,
   account: (id: string) => ["account", id] as const,
+  listings: ["listings"] as const,
+  listing: (id: string) => ["listing", id] as const,
 };
 
 /** Brief 3.4: deposits appear automatically, polled every 10 s. */
@@ -88,7 +90,7 @@ export function useWithdrawalProgress(id: string, index: number | null) {
 
 /** The contract's lock state and code hash, from the chain on testnet. */
 export function useContractFacts() {
-  return useQuery({ queryKey: ["contract-facts"], queryFn: fetchContractFacts, staleTime: 60_000 });
+  return useQuery({ queryKey: ["contract-facts"], queryFn: () => fetchContractFacts(), staleTime: 60_000 });
 }
 
 /** Live adapter only: sends a signed withdrawal to its chain (anyone may). */
@@ -120,6 +122,8 @@ function useRefresh() {
     void qc.invalidateQueries({ queryKey: keys.vault(id) });
     void qc.invalidateQueries({ queryKey: keys.withdrawals(id) });
     void qc.invalidateQueries({ queryKey: keys.observe(id) });
+    void qc.invalidateQueries({ queryKey: keys.listings });
+    void qc.invalidateQueries({ queryKey: keys.listing(id) });
   };
 }
 
@@ -156,6 +160,56 @@ export function useWithdraw() {
     mutationFn: async (v: { id: string; request: WithdrawRequest; signer: string }) =>
       (await getVaultClient()).withdraw(v.id, v.request, v.signer),
     onSuccess: (_w, v) => refresh(v.id),
+  });
+}
+
+/* ---------- the market ---------- */
+
+export function useListings() {
+  return useQuery({ queryKey: keys.listings, queryFn: async () => (await getVaultClient()).listings(), refetchInterval: POLL_MS });
+}
+
+export function useListing(id: string) {
+  return useQuery({ queryKey: keys.listing(id), queryFn: async () => (await getVaultClient()).getListing(id), refetchInterval: POLL_MS });
+}
+
+/** The market account's lock state: until it has no full-access keys, its key holder could act as the owner of every listed vault. */
+export function useMarketFacts() {
+  return useQuery({
+    queryKey: ["market-facts", MARKET_CONTRACT],
+    queryFn: () => fetchContractFacts(MARKET_CONTRACT as string),
+    enabled: Boolean(MARKET_CONTRACT),
+    staleTime: 60_000,
+  });
+}
+
+export function useMarketConfig() {
+  return useQuery({ queryKey: ["market-config"], queryFn: async () => (await getVaultClient()).marketConfig(), staleTime: Infinity });
+}
+
+export function useListVault() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; priceYocto: string; signer: string }) =>
+      (await getVaultClient()).listVault(v.id, v.priceYocto, v.signer),
+    onSuccess: (_l, v) => refresh(v.id),
+  });
+}
+
+export function useBuyVault() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; priceYocto: string; signer: string }) =>
+      (await getVaultClient()).buyVault(v.id, v.priceYocto, v.signer),
+    onSuccess: (_v, v) => refresh(v.id),
+  });
+}
+
+export function useDelistVault() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).delistVault(v.id, v.signer),
+    onSuccess: (_v, v) => refresh(v.id),
   });
 }
 

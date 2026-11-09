@@ -209,6 +209,28 @@ export interface AttackResult {
   simulated: boolean;
 }
 
+/* ---------- the market (contracts/market) ---------- */
+
+export type ListingState = { kind: "listed" } | { kind: "selling"; buyer: string } | { kind: "returning" };
+
+/** A vault for sale, held in escrow by the market contract. Amounts in yoctoNEAR. */
+export interface MarketListing {
+  token_id: string;
+  seller: string;
+  /** Exactly what a buyer attaches. */
+  price: string;
+  /** Held from the seller's listing balance; paid back with the sale or the delisting. */
+  deposit: string;
+  listed_at_ns: string;
+  state: ListingState;
+}
+
+export interface MarketConfig {
+  nft_contract: string;
+  listing_deposit: string;
+  min_price: string;
+}
+
 /**
  * What the web app needs from Bearer. Mock (in-browser) and testnet (this SDK)
  * implementations both satisfy it. `signer` is the connected NEAR account.
@@ -233,6 +255,18 @@ export interface BearerClient {
 
   runAttack(kind: AttackKind, tokenId: string): Promise<AttackResult>;
   accountExists(accountId: string): Promise<boolean>;
+
+  /** The market contract's account, or null where this deployment has none. */
+  readonly marketId: string | null;
+  listings(): Promise<MarketListing[]>;
+  getListing(tokenId: string): Promise<MarketListing | null>;
+  marketConfig(): Promise<MarketConfig>;
+  /** Sends a sealed vault to the market at this price, paying the listing deposit first if needed. */
+  listVault(tokenId: string, priceYocto: string, signer: string): Promise<MarketListing>;
+  /** Pays exactly the price; resolves once the vault is the signer's. */
+  buyVault(tokenId: string, priceYocto: string, signer: string): Promise<VaultView>;
+  /** The seller takes the vault back, with the listing deposit. */
+  delistVault(tokenId: string, signer: string): Promise<VaultView>;
 
   /** Simulated adapter only: pretend a deposit arrived. */
   simulateDeposit?(tokenId: string, chain: ChainTag): Promise<void>;

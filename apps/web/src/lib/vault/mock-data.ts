@@ -1,4 +1,4 @@
-import type { ChainTag, Finish, ObservedDeposit, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
+import type { ChainTag, Finish, MarketListing, ObservedDeposit, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
 import { vaultPath } from "@bearer/sdk";
 
 /** Simulated chain state for one vault: what an explorer would show at its addresses. */
@@ -27,11 +27,18 @@ export interface MockVault {
 }
 
 export interface MockState {
-  version: 3;
+  version: 4;
   nextId: number;
   vaults: Record<string, MockVault>;
   accounts: string[];
+  /** The simulated market's listings, by token. Their vaults are held by MOCK_MARKET. */
+  listings: Record<string, MarketListing>;
 }
+
+/** The simulated market contract (MARKET_CONTRACT in mock mode). */
+export const MOCK_MARKET = "market.testnet";
+/** 0.01 NEAR, as on the testnet market. */
+export const MOCK_LISTING_DEPOSIT = (10n ** 22n).toString();
 
 export const DEMO_ACCOUNTS = [
   { id: "ada.testnet", role: "Sender", note: "Holds 4 vaults" },
@@ -315,10 +322,45 @@ export function seedState(now: number): MockState {
     };
   }
 
+  // 8: theo listed it on the market for 12 NEAR. Sealed and funded; the market holds it.
+  const listings: Record<string, MarketListing> = {};
+  {
+    const id = "8";
+    const created = now - 6 * DAY;
+    const listed = now - 7 * HOUR;
+    const addresses = mockAddresses(id);
+    const view = mockView(id, MOCK_MARKET, created, addresses, { name: "Prize · Round 3", finish: "champagne" });
+    view.custody = [
+      { account_id: "theo.testnet", since_ns: ns(created) },
+      { account_id: MOCK_MARKET, since_ns: ns(listed) },
+    ];
+    vaults[id] = {
+      view,
+      addresses,
+      ledger: {
+        btc: ledger([sats(0.0012), [deposit("8b", sats(0.0012), now - 5 * DAY)]]),
+        evm: ledger([0n, []]),
+        sol: ledger([lamports(0.25), [deposit("8s", lamports(0.25), now - 5 * DAY + 3 * HOUR)]]),
+      },
+      withdrawals: [],
+      progress: {},
+      keysAt: created,
+    };
+    listings[id] = {
+      token_id: id,
+      seller: "theo.testnet",
+      price: (12n * 10n ** 24n).toString(),
+      deposit: MOCK_LISTING_DEPOSIT,
+      listed_at_ns: ns(listed),
+      state: { kind: "listed" },
+    };
+  }
+
   return {
-    version: 3,
+    version: 4,
     nextId: 64,
     vaults,
-    accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", ATTACKER, "near.testnet"],
+    accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", ATTACKER, "near.testnet", MOCK_MARKET],
+    listings,
   };
 }

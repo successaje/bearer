@@ -1,18 +1,22 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, Eye, History, Link2, PackageOpen, Presentation, ScrollText, Send } from "lucide-react";
+import type { MarketListing } from "@bearer/sdk";
+import { ArrowDownLeft, ArrowUpRight, Eye, History, Link2, PackageOpen, Presentation, ScrollText, Send, Store } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, ErrorState } from "@/components/layout/page-states";
 import { VerifyForm } from "@/components/landing/verify-form";
+import { BuySheet } from "@/components/market/buy-sheet";
+import { ListSheet } from "@/components/market/list-sheet";
+import { ListingPanel } from "@/components/market/listing-panel";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Callout, Skeleton } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
-import { IS_SIMULATED } from "@/lib/config";
-import { useContractFacts, useNow, useObservation, useVault, useWithdrawals } from "@/lib/vault/hooks";
+import { IS_SIMULATED, MARKET_CONTRACT } from "@/lib/config";
+import { useContractFacts, useListing, useNow, useObservation, useVault, useWithdrawals } from "@/lib/vault/hooks";
 import { formatDate, formatUsd, nsToMs, vaultNumber } from "@/lib/vault/format";
 import { fiveQuestions, isSealed, observedUsd, vaultReport, vaultStatus } from "@/lib/vault/report";
 import { Activity } from "./activity";
@@ -31,7 +35,7 @@ import { VaultStatusBadge } from "./vault-status-badge";
 import { WithdrawSheet } from "./withdraw-sheet";
 import { WithdrawalsList } from "./withdrawals-list";
 
-type SheetName = "transfer" | "break" | "withdraw" | "fund";
+type SheetName = "transfer" | "break" | "withdraw" | "fund" | "list" | "buy";
 
 export function VaultDetailView() {
   const { id } = useParams<{ id: string }>();
@@ -40,10 +44,13 @@ export function VaultDetailView() {
   const vault = query.data;
   const obs = useObservation(vault);
   const withdrawals = useWithdrawals(id);
+  const listingQuery = useListing(id);
   const facts = useContractFacts();
   const now = useNow(1000);
   const { accountId, ready, openConnect } = useWallet();
   const [sheet, setSheet] = useState<SheetName | null>(null);
+  // The listing being bought, kept so the success screen survives the listing's removal.
+  const [buying, setBuying] = useState<MarketListing | null>(null);
   const received = useJustReceived(query.data, ready ? accountId : null);
 
   if (query.isPending || !now) return <VaultDetailSkeleton />;
@@ -68,10 +75,12 @@ export function VaultDetailView() {
   const value = observedUsd(observations);
   const pending = observations?.some((o) => o.pending !== "0");
   const handedAt = vault.custody.at(-1);
+  const listing = listingQuery.data ?? null;
+  const inEscrow = !!listing && vault.owner_id === MARKET_CONTRACT;
 
   return (
     <Shell>
-      {wasOwner && handedAt ? (
+      {wasOwner && handedAt && !(inEscrow && listing.seller === accountId) ? (
         <Callout tone="warn" icon={<History />} className="mb-8">
           <p className="font-medium text-fg">
             You handed this vault to {vault.owner_id} on {formatDate(nsToMs(handedAt.since_ns))}. You can&apos;t withdraw from it.
@@ -130,10 +139,16 @@ export function VaultDetailView() {
             {vault.name ?? `Vault ${vault.token_id}`}
           </h1>
           <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[13.5px] text-fg-3">
-            <span className="inline-flex items-center gap-1.5">
-              Owner <span className="font-mono text-fg">{vault.owner_id}</span>
-              <CopyButton value={vault.owner_id} label="Copy owner account" size="sm" />
-            </span>
+            {inEscrow ? (
+              <span className="inline-flex items-center gap-1.5">
+                Held by the market for <span className="font-mono text-fg">{listing.seller}</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                Owner <span className="font-mono text-fg">{vault.owner_id}</span>
+                <CopyButton value={vault.owner_id} label="Copy owner account" size="sm" />
+              </span>
+            )}
             <span>Created {formatDate(nsToMs(vault.created_at_ns))}</span>
           </div>
 
@@ -160,6 +175,12 @@ export function VaultDetailView() {
                     <Send className="size-4" />
                     Transfer
                   </Button>
+                  {MARKET_CONTRACT ? (
+                    <Button onClick={() => setSheet("list")} disabled={!vault.keys}>
+                      <Store className="size-4" />
+                      List for sale
+                    </Button>
+                  ) : null}
                   <Button onClick={() => setSheet("fund")}>
                     <ArrowDownLeft className="size-4" />
                     Deposit
@@ -183,8 +204,20 @@ export function VaultDetailView() {
               )}
             </div>
           ) : null}
+          {inEscrow ? (
+            <ListingPanel
+              listing={listing}
+              viewer={ready ? accountId : null}
+              now={now}
+              onBuy={() => {
+                setBuying(listing);
+                setSheet("buy");
+              }}
+              onConnect={() => openConnect()}
+            />
+          ) : null}
           <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
-            {sealed ? (
+            {sealed && !inEscrow ? (
               <Link
                 href={`/v/${vault.token_id}/handover`}
                 className="inline-flex items-center gap-1.5 text-[13.5px] font-medium text-fg-2 transition-colors hover:text-fg"
@@ -308,6 +341,23 @@ export function VaultDetailView() {
           open={sheet === "withdraw"}
           onOpenChange={(o) => setSheet(o ? "withdraw" : null)}
           vault={vault}
+          observations={observations}
+          signer={accountId}
+        />
+      ) : null}
+      {accountId && (isOwner || sheet === "list") ? (
+        // Stays mounted after listing so its success screen survives the move to the market.
+        <ListSheet open={sheet === "list"} onOpenChange={(o) => setSheet(o ? "list" : null)} vault={vault} signer={accountId} />
+      ) : null}
+      {accountId && buying ? (
+        <BuySheet
+          open={sheet === "buy"}
+          onOpenChange={(o) => {
+            setSheet(o ? "buy" : null);
+            if (!o) setBuying(null);
+          }}
+          vault={vault}
+          listing={buying}
           observations={observations}
           signer={accountId}
         />

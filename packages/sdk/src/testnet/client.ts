@@ -6,6 +6,8 @@ import type {
   ChainTag,
   ContractConfig,
   Finish,
+  MarketConfig,
+  MarketListing,
   VaultView,
   WithdrawRequest,
   Withdrawal,
@@ -33,10 +35,14 @@ export interface WalletAdapter {
   accountId(): string | null;
   /** Signs and sends one transaction holding these calls, in order; resolves once it executes. */
   send(receiverId: string, calls: FunctionCall[]): Promise<{ txHash: string; returnValue: unknown }>;
+  /** Several transactions under one approval, where the wallet supports it; they run in order. */
+  sendMany?(txs: { receiverId: string; calls: FunctionCall[] }[]): Promise<{ txHash: string; returnValue: unknown }[]>;
 }
 
 export interface TestnetClientOptions {
   contractId: string;
+  /** The market contract (contracts/market) selling this contract's vaults, if any. */
+  marketId?: string | null;
   wallet: WalletAdapter;
   endpoints?: Partial<TestnetEndpoints>;
 }
@@ -59,6 +65,7 @@ export class TestnetBearerClient implements BearerClient {
   private readonly near: NearRpc;
   private readonly ep: TestnetEndpoints;
   private config: Promise<ContractConfig> | null = null;
+  private marketCfg: Promise<MarketConfig> | null = null;
 
   constructor(private readonly opts: TestnetClientOptions) {
     this.ep = { ...TESTNET_ENDPOINTS, ...opts.endpoints };
@@ -214,6 +221,96 @@ export class TestnetBearerClient implements BearerClient {
     if (!w.signed_raw_tx) throw new Error("This withdrawal isn't signed yet.");
     await broadcastRaw(chainOf(w.params), w.signed_raw_tx, this.ep);
     return this.trackWithdrawal(tokenId, index);
+  }
+
+  /* ---------- the market: escrow by transfer (docs/features/market.md) ---------- */
+
+  get marketId() {
+    return this.opts.marketId ?? null;
+  }
+
+  private market() {
+    if (!this.opts.marketId) throw new Error("This deployment has no market.");
+    return this.opts.marketId;
+  }
+
+  async listings() {
+    if (!this.opts.marketId) return [];
+    return this.near.view<MarketListing[]>(this.opts.marketId, "listings", { from_index: 0, limit: 100 });
+  }
+
+  async getListing(tokenId: string) {
+    if (!this.opts.marketId) return null;
+    return this.near.view<MarketListing | null>(this.opts.marketId, "listing", { token_id: tokenId });
+  }
+
+  marketConfig() {
+    this.marketCfg ??= this.near.view<MarketConfig>(this.market(), "get_config");
+    return this.marketCfg;
+  }
+
+  private async sendAll(txs: { receiverId: string; calls: FunctionCall[] }[]) {
+    if (txs.length > 1 && this.opts.wallet.sendMany) return this.opts.wallet.sendMany(txs);
+    const out = [];
+    for (const t of txs) out.push(await this.opts.wallet.send(t.receiverId, t.calls));
+    return out;
+  }
+
+  async listVault(tokenId: string, priceYocto: string, signer: string) {
+    this.signerFor(signer);
+    const market = this.market();
+    const [{ listing_deposit, min_price }, balance] = await Promise.all([
+      this.marketConfig(),
+      this.near.view<string>(market, "deposit_of", { account_id: signer }),
+    ]);
+    if (BigInt(priceYocto) < BigInt(min_price)) throw new Error("ERR_PRICE: the price is below the market's minimum.");
+    // nft_transfer_call forwards only 1 yoctoNEAR, so the listing deposit is paid to the market first.
+    const send = {
+      receiverId: this.opts.contractId,
+      calls: [
+        {
+          methodName: "nft_transfer_call",
+          args: { receiver_id: market, token_id: tokenId, msg: JSON.stringify({ price: priceYocto }) },
+          gas: 100n * TGAS,
+          deposit: ONE_YOCTO,
+        },
+      ],
+    };
+    const deposit = { receiverId: market, calls: [{ methodName: "deposit_for_listing", args: {}, gas: 30n * TGAS, deposit: BigInt(listing_deposit) }] };
+    const results = await this.sendAll(BigInt(balance) >= BigInt(listing_deposit) ? [send] : [deposit, send]);
+    // Bearer's transfer returns `false` when the market refused the listing and sent the vault back.
+    if (results.at(-1)?.returnValue === false) throw new Error("The market sent the vault back, so it isn't listed.");
+    for (let i = 0; i < 20; i++) {
+      const listing = await this.getListing(tokenId);
+      if (listing) return listing;
+      await sleep(1000);
+    }
+    throw new Error("The vault was sent, but its listing hasn't appeared yet. Check the market in a moment.");
+  }
+
+  async buyVault(tokenId: string, priceYocto: string, signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.market(), [{ methodName: "buy", args: { token_id: tokenId }, gas: 100n * TGAS, deposit: BigInt(priceYocto) }]);
+    // Settlement takes a few receipts: the vault moves to the buyer, then the seller is paid.
+    for (let i = 0; i < 20; i++) {
+      const vault = await this.getVault(tokenId);
+      if (vault?.owner_id === signer) return vault;
+      const listing = await this.getListing(tokenId);
+      if (listing?.state.kind === "listed") throw new Error("The vault didn't move, so your payment was refunded. The listing stands.");
+      await sleep(1000);
+    }
+    throw new Error("The sale hasn't settled yet. Check the vault page in a moment.");
+  }
+
+  async delistVault(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.market(), [{ methodName: "delist", args: { token_id: tokenId }, gas: 100n * TGAS, deposit: ONE_YOCTO }]);
+    for (let i = 0; i < 20; i++) {
+      const vault = await this.getVault(tokenId);
+      if (vault?.owner_id === signer) return vault;
+      await sleep(1000);
+    }
+    throw new Error("The vault hasn't come back yet. Check the vault page in a moment.");
   }
 
   async runAttack(kind: AttackKind): Promise<AttackResult> {

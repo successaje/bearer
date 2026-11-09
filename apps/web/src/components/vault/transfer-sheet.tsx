@@ -247,7 +247,7 @@ function RecipientStep({ signer, initial, onNext }: { signer: string; initial: s
   );
 }
 
-function ReviewBlock({ title, tone, children }: { title: string; tone: "gold" | "neutral" | "danger"; children: React.ReactNode }) {
+export function ReviewBlock({ title, tone, children }: { title: string; tone: "gold" | "neutral" | "danger"; children: React.ReactNode }) {
   return (
     <div
       className={cn(

@@ -1,6 +1,6 @@
 "use client";
 
-import type { WalletAdapter } from "@bearer/sdk";
+import type { FunctionCall, WalletAdapter } from "@bearer/sdk";
 import type { NearConnector } from "@hot-labs/near-connect";
 import { NEAR_RPC } from "@/lib/config";
 
@@ -31,19 +31,31 @@ function decodeReturn(value: string | undefined) {
   return text ? JSON.parse(text) : null;
 }
 
+type Outcome = { transaction: { hash: string }; status: { SuccessValue?: string; Failure?: unknown } };
+
+const toActions = (calls: FunctionCall[]) =>
+  calls.map((c) => ({
+    type: "FunctionCall" as const,
+    params: { methodName: c.methodName, args: c.args, gas: c.gas.toString(), deposit: c.deposit.toString() },
+  }));
+
+function result(outcome: Outcome) {
+  if (outcome.status?.Failure) throw new Error(JSON.stringify(outcome.status.Failure));
+  return { txHash: outcome.transaction.hash, returnValue: decodeReturn(outcome.status?.SuccessValue) };
+}
+
 /** @bearer/sdk's wallet interface, backed by whichever wallet the user picked in near-connect. */
 export const nearConnectWallet: WalletAdapter = {
   accountId: () => account,
   async send(receiverId, calls) {
     const wallet = await (await getConnector()).wallet();
-    const outcome = (await wallet.signAndSendTransaction({
-      receiverId,
-      actions: calls.map((c) => ({
-        type: "FunctionCall" as const,
-        params: { methodName: c.methodName, args: c.args, gas: c.gas.toString(), deposit: c.deposit.toString() },
-      })),
-    })) as unknown as { transaction: { hash: string }; status: { SuccessValue?: string; Failure?: unknown } };
-    if (outcome.status?.Failure) throw new Error(JSON.stringify(outcome.status.Failure));
-    return { txHash: outcome.transaction.hash, returnValue: decodeReturn(outcome.status?.SuccessValue) };
+    return result((await wallet.signAndSendTransaction({ receiverId, actions: toActions(calls) })) as unknown as Outcome);
+  },
+  async sendMany(txs) {
+    const wallet = await (await getConnector()).wallet();
+    const outcomes = (await wallet.signAndSendTransactions({
+      transactions: txs.map((t) => ({ receiverId: t.receiverId, actions: toActions(t.calls) })),
+    })) as unknown as Outcome[];
+    return outcomes.map(result);
   },
 };

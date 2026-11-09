@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 export const NAV_LINKS = [
   { href: "/vaults", label: "My vaults" },
+  { href: "/market", label: "Market" },
   { href: "/verify", label: "Verify" },
   { href: "/how", label: "How it works" },
   { href: "/proof", label: "Proof" },

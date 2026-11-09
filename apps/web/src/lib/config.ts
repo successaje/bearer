@@ -10,6 +10,14 @@ export const IS_SIMULATED = NETWORK === "mock";
 
 export const BEARER_CONTRACT = process.env.NEXT_PUBLIC_BEARER_CONTRACT || "bearer-v1.testnet";
 
+/**
+ * The market contract (contracts/market) that sells this contract's vaults from escrow. On
+ * testnet it exists only for bearer.testnet; the simulated demo has its own.
+ */
+export const MARKET_CONTRACT: string | null =
+  process.env.NEXT_PUBLIC_MARKET_CONTRACT ||
+  (NETWORK === "mock" ? "market.testnet" : BEARER_CONTRACT === "bearer.testnet" ? "bearer-market.testnet" : null);
+
 /** Public, keyless endpoints the testnet adapter reads (defaults live in @bearer/sdk). */
 export const NEAR_RPC = process.env.NEXT_PUBLIC_NEAR_RPC || "https://test.rpc.fastnear.com";
 export const ESPLORA_API = process.env.NEXT_PUBLIC_ESPLORA_API || "https://blockstream.info/testnet4/api";

@@ -1,5 +1,6 @@
 import type { ChainObservation, VaultView, Withdrawal } from "@bearer/sdk";
 import { ArrowDownLeft, PackageOpen, PenLine, Plus, Send, type LucideIcon } from "lucide-react";
+import { MARKET_CONTRACT } from "@/lib/config";
 import { withdrawalAmount } from "@/lib/vault/report";
 import { CHAIN_META, formatAmount, nsToMs, relativeTime } from "@/lib/vault/format";
 import { cn } from "@/lib/utils";
@@ -32,14 +33,20 @@ export function Activity({
     if (i === 0 && Math.abs(at - created) < 1000) {
       items.push({ key: "created", at, icon: Plus, tone: "bg-raised text-fg-2", title: "Vault created", detail: `By ${c.account_id}. Sealed.` });
     } else {
-      items.push({
-        key: `custody-${i}`,
-        at,
-        icon: Send,
-        tone: "bg-gold/15 text-accent",
-        title: `Transferred to ${c.account_id}`,
-        detail: `From ${vault.custody[i - 1]?.account_id ?? "an earlier holder"}. Nothing moved on Bitcoin, Base or Solana.`,
-      });
+      const from = vault.custody[i - 1]?.account_id;
+      const market = MARKET_CONTRACT;
+      const { title, detail } =
+        market && c.account_id === market
+          ? { title: "Listed on the market", detail: `By ${from ?? "its holder"}. The market holds it in escrow, sealed.` }
+          : market && from === market
+            ? c.account_id === vault.custody[i - 2]?.account_id
+              ? { title: `Back with ${c.account_id}`, detail: "Delisted, or the market refused the listing. Still sealed." }
+              : { title: `Bought by ${c.account_id}`, detail: "From the market, which paid the seller after the vault moved." }
+            : {
+                title: `Transferred to ${c.account_id}`,
+                detail: `From ${from ?? "an earlier holder"}. Nothing moved on Bitcoin, Base or Solana.`,
+              };
+      items.push({ key: `custody-${i}`, at, icon: Send, tone: "bg-gold/15 text-accent", title, detail });
     }
   });
   if (vault.state.kind === "opened") {

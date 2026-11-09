@@ -5,6 +5,8 @@ import type {
   ChainObservation,
   ChainTag,
   Finish,
+  MarketConfig,
+  MarketListing,
   VaultView,
   Withdrawal,
   WithdrawalProgress,
@@ -15,6 +17,8 @@ import { validateAddress } from "@/lib/validation";
 import { CHAIN_META } from "./format";
 import {
   FEES,
+  MOCK_LISTING_DEPOSIT,
+  MOCK_MARKET,
   mockAddresses,
   mockHex,
   mockView,
@@ -27,7 +31,7 @@ import {
 import { ATTACK_TESTS, VaultError } from "./errors";
 import { withdrawalAmount } from "./report";
 
-const STORAGE_KEY = "bearer:mock:v3";
+const STORAGE_KEY = "bearer:mock:v4";
 const CUSTODY_CAP = 16;
 const KEYS_DELAY_MS = 1_500;
 
@@ -60,7 +64,7 @@ export class MockBearerClient implements BearerClient {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as MockState;
-        if (parsed.version === 3) return (this.state = parsed);
+        if (parsed.version === 4) return (this.state = parsed);
       }
     } catch {
       // Private mode or corrupt storage: start fresh.
@@ -334,6 +338,75 @@ export class MockBearerClient implements BearerClient {
   async accountExists(accountId: string) {
     await jitter(200, 400);
     return this.load().accounts.includes(accountId);
+  }
+
+  /* ---------- the simulated market: same rules as contracts/market ---------- */
+
+  readonly marketId = MOCK_MARKET;
+
+  async listings() {
+    await jitter(150, 300);
+    return clone(Object.values(this.load().listings));
+  }
+
+  async getListing(tokenId: string) {
+    await jitter(100, 200);
+    return clone(this.load().listings[tokenId] ?? null);
+  }
+
+  async marketConfig(): Promise<MarketConfig> {
+    return { nft_contract: "bearer-v1.testnet", listing_deposit: MOCK_LISTING_DEPOSIT, min_price: (10n ** 21n).toString() };
+  }
+
+  private moveTo(v: MockVault, owner: string) {
+    v.view.owner_id = owner;
+    v.view.custody.push({ account_id: owner, since_ns: ns(Date.now()) });
+    if (v.view.custody.length > CUSTODY_CAP) v.view.custody.shift();
+  }
+
+  async listVault(tokenId: string, priceYocto: string, signer: string): Promise<MarketListing> {
+    await jitter(1200, 1800);
+    const v = this.vault(tokenId);
+    this.assertOwner(v, signer);
+    if (v.view.state.kind !== "sealed") throw new VaultError("ERR_VAULT_OPENED", "Opened vaults can't change hands, so they can't be listed.");
+    if (BigInt(priceYocto) < 10n ** 21n) throw new VaultError("ERR_PRICE", "The lowest price is 0.001 NEAR.");
+    const listing: MarketListing = {
+      token_id: tokenId,
+      seller: signer,
+      price: priceYocto,
+      deposit: MOCK_LISTING_DEPOSIT,
+      listed_at_ns: ns(Date.now()),
+      state: { kind: "listed" },
+    };
+    this.moveTo(v, MOCK_MARKET);
+    this.load().listings[tokenId] = listing;
+    this.save();
+    return clone(listing);
+  }
+
+  async buyVault(tokenId: string, priceYocto: string, signer: string) {
+    await jitter(1500, 2200);
+    const listing = this.load().listings[tokenId];
+    if (!listing) throw new VaultError("ERR_NOT_LISTED", "This vault isn't for sale.");
+    if (listing.seller === signer) throw new VaultError("ERR_OWN_LISTING", "You listed this vault; delist it instead.");
+    if (listing.price !== priceYocto) throw new VaultError("ERR_WRONG_PRICE", "The price changed. Check it and try again.");
+    const v = this.vault(tokenId);
+    this.moveTo(v, signer);
+    delete this.load().listings[tokenId];
+    this.save();
+    return this.publicView(v);
+  }
+
+  async delistVault(tokenId: string, signer: string) {
+    await jitter(1200, 1800);
+    const listing = this.load().listings[tokenId];
+    if (!listing) throw new VaultError("ERR_NOT_LISTED", "This vault isn't for sale.");
+    if (listing.seller !== signer) throw new VaultError("ERR_NOT_SELLER", `Only ${listing.seller} can delist it.`);
+    const v = this.vault(tokenId);
+    this.moveTo(v, signer);
+    delete this.load().listings[tokenId];
+    this.save();
+    return this.publicView(v);
   }
 
   async simulateDeposit(tokenId: string, chain: ChainTag) {

@@ -28,5 +28,11 @@ export function errorCopy(error: unknown): string {
   if (text.includes("ERR_NOT_OWNER")) return "Only the vault's current owner can do that.";
   if (text.includes("ERR_VAULT_OPENED")) return "Opened vaults can't change hands.";
   if (text.includes("ERR_VAULT_SEALED")) return "Break the seal first. That's what makes withdrawals possible, and it can't be undone.";
+  if (text.includes("ERR_WRONG_PRICE")) return "The price changed. Check the listing and try again.";
+  if (text.includes("ERR_SALE_PENDING")) return "Someone is already buying this vault, or it's being delisted.";
+  if (text.includes("ERR_NOT_LISTED")) return "This vault isn't for sale any more.";
+  if (text.includes("ERR_OWN_LISTING")) return "You listed this vault. Delist it instead.";
+  if (text.includes("ERR_NOT_SELLER")) return "Only the seller can delist this vault.";
+  if (text.includes("ERR_PRICE")) return "The lowest price is 0.001 NEAR.";
   return text;
 }

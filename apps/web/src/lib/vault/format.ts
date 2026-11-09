@@ -94,3 +94,20 @@ export function formatDate(at: number) {
 export function vaultNumber(id: string) {
   return `No. ${id.padStart(4, "0")}`;
 }
+
+const YOCTO = 10n ** 24n;
+
+/** yoctoNEAR → "12 NEAR", "0.015 NEAR": up to `digits` decimals, trailing zeros dropped. */
+export function formatNear(yocto: string | bigint, digits = 5): string {
+  const v = BigInt(yocto);
+  const frac = (v % YOCTO).toString().padStart(24, "0").slice(0, digits).replace(/0+$/, "");
+  return `${(v / YOCTO).toLocaleString("en-US")}${frac ? `.${frac}` : ""} NEAR`;
+}
+
+/** "12.5" → yoctoNEAR, or null unless it's a plain number with at most 24 decimals. */
+export function parseNear(input: string): string | null {
+  const t = input.trim();
+  if (!/^\d+(\.\d{1,24})?$/.test(t)) return null;
+  const [whole, frac = ""] = t.split(".");
+  return (BigInt(whole) * YOCTO + BigInt(frac.padEnd(24, "0"))).toString();
+}

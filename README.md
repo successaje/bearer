@@ -269,4 +269,4 @@ two share no code.
 
 ## License
 
-MIT. The license file is pending the owner's name.
+[MIT](LICENSE), © 2026 Success Aje.

@@ -126,6 +126,13 @@ other chain accepts it, not a payout to a separate person.
 **Through a browser wallet.** On the live site, the owner's own testnet wallet created two vaults and
 listed one on the market (docs/SPIKES.md).
 
+**A scheduled handover.** Vault No. 0007, scheduled by alice for bob and not cancellable, was
+handed over on its date by a third account
+([tx](https://testnet.nearblocks.io/txns/76eGYPzRDspJi3YXLXVGU1zDnj8wcNF14kSz8Vu2HUpt)). It arrived
+sealed with 0 signatures. Earlier moves were refused: an early release, a cancel, and alice
+breaking the seal. A vault scheduled for an unregistered name waited until that account existed.
+The schedule contract (`bearer-schedule.testnet`) is reproducibly built but not locked yet.
+
 A signature, a self-transfer or one sale is not proof of every possible withdrawal, or of the full
 flow in a browser wallet. What's left is listed under [What comes next](#what-comes-next).
 
@@ -183,6 +190,9 @@ pnpm spike:testnet run
 ## What you can use it for
 
 - **Gifts.** Put coins in a sealed vault and hand it to someone, who opens it when they want.
+- **Gifts for a day.** Schedule a vault for someone, on or after a date: it stays sealed, and
+  nobody can withdraw, the giver included, until it's handed over. You choose whether you can
+  cancel before then ([docs/features/schedule.md](docs/features/schedule.md)).
 - **Prizes.** Fund a vault and hand it to the winner, who can check it's untouched first.
 - **Collectibles.** A named, finished vault with a printable certificate, holding native assets, that
   can be handed on again while sealed.
@@ -227,8 +237,9 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 - **Testnet prototype, not audited.**
 - **Trust.** It relies on NEAR, its MPC signing network, the deployed contracts and each external
-  chain's normal operation. Both contracts, Bearer's and the market's, are open source,
-  reproducibly built and locked.
+  chain's normal operation. Bearer's and the market's contracts are open source, reproducibly
+  built and locked. The schedule contract isn't locked yet: until it is, whoever holds its key
+  could act as the owner of a scheduled vault.
 - **Opened is final.** Once opened, a vault can't be transferred or sealed again.
 - **Balances.** The ones shown come from public data sources (Blockstream Esplora, Base Sepolia RPC,
   Solana devnet RPC), with their source, time and confirmation status. They can lag or be
@@ -256,6 +267,7 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 apps/web            Next.js app: a simulated demo, or the testnet contract with NEAR wallets
 contracts/bearer    the NEAR contract (near-sdk 5.30)
 contracts/market    the market: sells sealed vaults from escrow
+contracts/schedule  the scheduled handover: holds a sealed vault until a date
 contracts/mock-signer   an MPC signer stand-in for the sandbox
 contracts/tests     sandbox tests (near-sandbox) and testnet scripts
 packages/sdk        shared types and the client interface

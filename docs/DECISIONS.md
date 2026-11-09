@@ -3,6 +3,12 @@
 **For:** anyone wondering why Bearer is built the way it is.
 Newest first. Each entry: date, decision, reason, alternatives considered.
 
+## 2026-11-09 · Scheduled handover: a separate contract, released by anyone after the date
+
+- **Decision:** `contracts/schedule` (`bearer-schedule.testnet`) holds a sealed vault sent with `nft_transfer_call` and a message naming the recipient, the date and whether the giver may cancel. On or after the date anyone may call `release`, which sends the recipient 1 yoctoNEAR first and moves the vault only if that succeeds; the giver may cancel only if they chose to and only before the date. A 0.01 NEAR deposit per schedule, paid back at the end. Reproducibly built like Bearer and the market.
+- **Reason:** a reviewer suggested a gift that arrives on a day (a parent's vault for a child's graduation). Bearer is locked, so escrow by transfer is the only way, and it keeps the seal: the schedule never breaks one. A blockchain doesn't act on its own, so release is a call anyone can make; it can only go to the recipient, so it needs no trusted keeper. The existence check exists because a NEAR NFT can be sent to a name nobody has registered, and whoever registered it later would get the vault.
+- **Alternatives:** a keeper service that releases on time (a trusted party and a server); letting the giver change the recipient (turns a promise into a draft; cancel and reschedule instead, when cancellable); an on-chain message (public forever; a message on the card instead, later).
+
 ## 2026-11-09 · Market: a separate contract that holds listed vaults in escrow
 
 - **Decision:** sales go through `contracts/market` (`bearer-market.testnet`). The seller sends the vault with `nft_transfer_call` and a price; the market keeps it until `buy` (exact price) or `delist`. Settlement moves the vault first and money second: a vault that didn't move refunds the buyer, a bounced payout becomes claimable. Each listing holds a 0.01 NEAR deposit, checked against the storage it uses and returned with the sale or delisting; it's paid in its own transaction because `nft_transfer_call` forwards only 1 yoctoNEAR. Reproducibly built like Bearer. See docs/features/market.md.

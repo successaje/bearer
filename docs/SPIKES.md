@@ -3,6 +3,34 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-09 · Scheduled handover, on the locked contract
+
+`bearer-schedule.testnet` (faucet-created) runs `contracts/res/schedule.wasm`, the reproducible
+build of `47b5d25`: two builds from a clean checkout gave identical bytes (sha256
+`83c2ea97…a247`); on-chain code hash `9sLo27AU…JSkE`, which matches. It sells nothing: it holds a
+sealed `bearer.testnet` vault until a date, then hands it to the recipient chosen at scheduling.
+It still has its full-access key (S10).
+
+`pnpm spike:schedule run`:
+- A cancellable schedule (No. 0008) was cancelled and the vault returned.
+- An early release was refused (`ERR_TOO_EARLY`).
+- Cancelling an irrevocable schedule was refused (`ERR_NOT_CANCELLABLE`).
+- The giver breaking the seal on a scheduled vault was refused (`ERR_NOT_OWNER`).
+- On the date, a third account released No. 0007 to bob ([tx](https://testnet.nearblocks.io/txns/76eGYPzRDspJi3YXLXVGU1zDnj8wcNF14kSz8Vu2HUpt)):
+  - it arrived sealed with 0 signatures;
+  - custody shows alice, then the schedule, then bob;
+  - alice's balance rose by exactly the 0.01 NEAR deposit.
+- No. 0002, scheduled for an unregistered name, stayed put on release (`recipient_missing`,
+  [tx](https://testnet.nearblocks.io/txns/zaDjCK5w2x8MQG87vhQ3pL6VWdQPSymutSGDKL5NqUZ)), and went to that account once it existed
+  ([tx](https://testnet.nearblocks.io/txns/9fVdTyuJWyabMsZMbe17p1t2wv2MqJYwMUmooxbFBisB)).
+
+Release took 15.2 Tgas and scheduling 9.0–9.3 Tgas, one run each. Report:
+[`testnet-schedule-2026-11-09T14-37-57.715Z.json`](../contracts/tests/spike/reports/testnet-schedule-2026-11-09T14-37-57.715Z.json).
+
+An earlier attempt the same day also handed No. 0002 to bob and showed No. 0004 waiting for
+`nobody.…` until that account was created; its script stopped on the expected failed account
+check before saving a report, so it isn't counted as evidence.
+
 ## 2026-11-09 · First vaults created and listed through a browser wallet
 
 The owner used their own testnet account, `finishr.testnet`, on https://bearer-near.vercel.app

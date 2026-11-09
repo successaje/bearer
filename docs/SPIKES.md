@@ -3,6 +3,22 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-09 · Bitcoin that changed hands without a Bitcoin transaction, with real coins
+
+On `bearer.testnet`, through the owner's own wallets on the live site:
+
+| Step | Result | Tx |
+|---|---|---|
+| The owner funds sealed vault No. 0006 | 684,666 sats at `tb1qqtlw…g4g` (testnet4 block 160,224), 1 SOL, 0.001 ETH | [address](https://blockstream.info/testnet4/address/tb1qqtlwr0xlr8ex8qldu3nea5s2kc4ajzrsnd2g4g) |
+| `finishr.testnet` creates vault No. 0009, "1st Son College Fund" | sealed, keys set | [7YMBr4VB…](https://testnet.nearblocks.io/txns/7YMBr4VBUJW99szKvjFg1aXJXeqF7RU1HTC2BnHSpQT8) |
+| `finishr.testnet` hands sealed No. 0006 to `takaba.testnet` | one NEAR transaction, 4.2 Tgas. Nothing on Bitcoin: the address's whole history is the deposit and the withdrawal below, which spends that same coin (`def9e35c…:0`) | [H3XPWh2n…](https://testnet.nearblocks.io/txns/H3XPWh2n5cvDKaqKS8pY4kSCjXDCaPgG3fp6E8beJJYj) |
+| `takaba.testnet` breaks the seal and asks for a Bitcoin withdrawal, in one transaction | events `vault_opened`, `withdrawal_requested` and `withdrawal_signed`; 17.2 Tgas | [3vEJFVpA…](https://testnet.nearblocks.io/txns/3vEJFVpAM5TQjNRz57mmFHsnHPs8QUi65SyQFR4tMpQQ) |
+| The signed Bitcoin spend | 300,000 sats to No. 0009's `tb1qw7v4…tzct`, 384,384 sats change back to No. 0006, 282 sats fee. Confirmed in testnet4 block 160,228 | [6002c967…](https://blockstream.info/testnet4/tx/6002c967889d8185b4457837db9c44369b06af0208998cb445a64cea2b5e1e23) |
+| `takaba.testnet` asks for a Solana withdrawal | 14.8 Tgas | [4dABcJcu…](https://testnet.nearblocks.io/txns/4dABcJcuWaHzzJA4Z2kaGLqR1qT1c4A9wgjW3bQEqekp) |
+| The signed Solana transfer | 0.5 SOL to No. 0009's `2xrCWyaN…diuDW`, fee 5,000 lamports. Finalized in devnet slot 520,527,063 | [5FQ1wbWQ…](https://explorer.solana.com/tx/5FQ1wbWQrcLEpb4aqBgpCb3KC5D1UQvPR1aWFjaeEfLBW3eNqFQp2aLMxMKd4NwSeBy86sznnyDvAgoXe4T5XSqm?cluster=devnet) |
+
+No. 0009 is now a sealed vault holding testnet Bitcoin and SOL, with 0 signatures. N = 1.
+
 ## 2026-11-09 · Every flow through browser wallets, including a funded withdrawal
 
 The owner used the live site with two of their own testnet wallets. Read back from the chain:

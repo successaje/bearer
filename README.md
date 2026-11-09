@@ -118,6 +118,13 @@ other chain accepts it, not a payout to a separate person.
   - Solana: signed and verified.
 
   These weren't broadcast: those vaults held no funds.
+- **Bitcoin that changed hands without a Bitcoin transaction.** Sealed vault No. 0006 held 684,666
+  sats of testnet Bitcoin. The owner's wallet handed it to a second account in one NEAR transaction
+  ([handover](https://testnet.nearblocks.io/txns/H3XPWh2n5cvDKaqKS8pY4kSCjXDCaPgG3fp6E8beJJYj)), and nothing happened on Bitcoin: the vault's address shows only the deposit
+  and, later, the new holder's withdrawal of that same coin ([address](https://blockstream.info/testnet4/address/tb1qqtlwr0xlr8ex8qldu3nea5s2kc4ajzrsnd2g4g)). The new holder
+  broke the seal and withdrew 300,000 sats into sealed vault No. 0009
+  ([Bitcoin](https://blockstream.info/testnet4/tx/6002c967889d8185b4457837db9c44369b06af0208998cb445a64cea2b5e1e23), confirmed in testnet4 block 160,228). They also withdrew 0.5 SOL
+  ([Solana](https://explorer.solana.com/tx/5FQ1wbWQrcLEpb4aqBgpCb3KC5D1UQvPR1aWFjaeEfLBW3eNqFQp2aLMxMKd4NwSeBy86sznnyDvAgoXe4T5XSqm?cluster=devnet), finalized).
 - **A funded withdrawal through a wallet.** The owner opened vault No. 0005 and withdrew 0.0002 ETH
   to a separate Base Sepolia address, in one NEAR transaction from their own wallet
   ([NEAR](https://testnet.nearblocks.io/txns/9ioTWzebJRgkTaRLG9ZVNQzFKdyX9RSqkxMKwjN4UKwf)). Base Sepolia confirmed it in block 56,685,109
@@ -288,8 +295,6 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 - Email alerts. The bell and browser alerts only work while the site is open; email needs a small
   service that watches the chain and keeps addresses, which isn't built.
-- Funded Bitcoin and Solana withdrawals from the final contract. Both confirmed from the earlier test
-  contract; from `bearer.testnet` so far only Base has been broadcast.
 - More adversarial tests: the `nft_transfer_call` return path (T6), and duplicate Bitcoin spends on
   testnet4 (T10 is shown on Base Sepolia, and for Bitcoin on a simulated ledger).
 - An independent security review before anything on mainnet.

@@ -1,7 +1,7 @@
 "use client";
 
 import type { MarketListing } from "@bearer/sdk";
-import { ArrowUpRight, History, Repeat, ShieldCheck } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ChainStack } from "@/components/brand/chain-icon";
@@ -9,8 +9,7 @@ import { BearerCard } from "@/components/card/bearer-card";
 import { EmptyState, ErrorState } from "@/components/layout/page-states";
 import { buttonVariants } from "@/components/ui/button";
 import { Eyebrow, SimulatedTag, Skeleton } from "@/components/ui/primitives";
-import { IS_SIMULATED, MARKET_CONTRACT, explorer } from "@/lib/config";
-import { MARKET_SALE } from "@/lib/proof/data";
+import { IS_SIMULATED, MARKET_CONTRACT } from "@/lib/config";
 import { formatNear, formatUsd, nsToMs, relativeTime, vaultNumber } from "@/lib/vault/format";
 import { useListings, useNow, useObservation, useVault } from "@/lib/vault/hooks";
 import { observedUsd } from "@/lib/vault/report";
@@ -23,7 +22,7 @@ export function MarketView() {
   const items = listings.data ?? [];
 
   return (
-    <div className="mx-auto max-w-[1200px] px-5 pb-8 pt-14 md:px-8 md:pt-20">
+    <div className="mx-auto max-w-[1200px] px-5 pb-20 pt-14 md:px-8 md:pt-20">
       <div className="max-w-[760px]">
         <div className="flex items-center gap-2.5">
           <Eyebrow>Market</Eyebrow>
@@ -33,20 +32,14 @@ export function MarketView() {
           Sealed vaults, <span className="text-fg-3">for sale.</span>
         </h1>
         <p className="text-pretty mt-5 text-[17px] leading-relaxed text-fg-2">
-          Each one is held in escrow by the market contract, still sealed. Pay its price and the vault moves to you
-          before the seller is paid; if it can&apos;t move, your money comes back.
+          Held in escrow, still sealed. Pay the price and the vault is yours before the seller is paid.
         </p>
         {MARKET_CONTRACT ? (
           <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-fg-3">
-            <a
-              href={explorer.nearAccount(MARKET_CONTRACT)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 font-mono hover:text-fg"
-            >
-              {MARKET_CONTRACT}
-              <ArrowUpRight className="size-3" />
-            </a>
+            <Link href="/market/how" className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
+              How the market works
+              <ArrowRight className="size-3.5" />
+            </Link>
             <MarketLock compact />
           </div>
         ) : null}
@@ -85,77 +78,12 @@ export function MarketView() {
         )}
       </section>
 
-      {!IS_SIMULATED && MARKET_CONTRACT ? (
-        <div className="mt-8 flex flex-col gap-3 rounded-panel border border-line bg-surface p-5 md:flex-row md:items-center md:justify-between">
-          <div className="min-w-0">
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-3">First sale on testnet</p>
-            <p className="mt-1.5 text-[14px] leading-relaxed text-fg-2">
-              <Link href={`/v/${MARKET_SALE.tokenId}`} className="font-medium text-fg hover:underline">
-                Vault {vaultNumber(MARKET_SALE.tokenId)}
-              </Link>{" "}
-              for {MARKET_SALE.price}. {MARKET_SALE.detail}.
-            </p>
-          </div>
-          <div className="flex shrink-0 gap-4 text-[13px] font-medium">
-            <a href={MARKET_SALE.listTx} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
-              Listing <ArrowUpRight className="size-3.5" />
-            </a>
-            <a href={MARKET_SALE.buyTx} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
-              Purchase <ArrowUpRight className="size-3.5" />
-            </a>
-          </div>
-        </div>
-      ) : null}
-
-      <section aria-labelledby="why" className="mt-24">
-        <h2 id="why" className="text-[clamp(26px,3vw,34px)] font-semibold tracking-[-0.03em]">
-          Why buy the vault, not just the coins
-        </h2>
-        <p className="mt-3 max-w-[680px] text-[15.5px] leading-relaxed text-fg-2">
-          Anyone can already send Bitcoin directly. A vault is worth buying when the package matters:
-        </p>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          <Reason icon={<ShieldCheck />} title="A history you can check">
-            No withdrawal has ever been signed for a sealed vault, on any chain, and its custody log names every holder.
-            Coins sent directly carry neither.
-          </Reason>
-          <Reason icon={<Repeat />} title="Made to change hands">
-            A prize, a gift or a collectible can be handed on again, still sealed, without anyone moving the coins.
-          </Reason>
-          <Reason icon={<History />} title="No trust in the seller">
-            The contract moves the vault before the seller is paid, at exactly the listed price, and refunds you if it
-            can&apos;t.
-          </Reason>
-        </div>
-      </section>
-
-      <section aria-labelledby="before" className="mt-16 rounded-panel border border-line bg-surface p-6 md:p-8">
-        <h2 id="before" className="text-[20px] font-semibold tracking-[-0.02em]">
-          Before you buy
-        </h2>
-        <ul className="mt-4 grid gap-x-10 gap-y-3 text-[14.5px] leading-relaxed text-fg-2 md:grid-cols-2">
-          <li>Balances are observations from public data, with their source and time. Pending deposits can still fail.</li>
-          <li>A dollar figure is an estimate, not a value anyone guarantees.</li>
-          <li>Sealed means no withdrawal was ever signed. It doesn&apos;t make the vault risk-free.</li>
-          <li>This is a testnet prototype. Neither the Bearer contract nor the market has been audited.</li>
-        </ul>
-      </section>
     </div>
   );
 }
 
 function Grid({ children }: { children: ReactNode }) {
   return <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{children}</div>;
-}
-
-function Reason({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
-  return (
-    <div className="rounded-panel border border-line bg-surface p-5">
-      <span className="inline-flex size-9 items-center justify-center rounded-[10px] bg-gold/12 text-accent [&_svg]:size-[18px]">{icon}</span>
-      <p className="mt-4 text-[15.5px] font-semibold">{title}</p>
-      <p className="mt-1.5 text-[14px] leading-relaxed text-fg-2">{children}</p>
-    </div>
-  );
 }
 
 function ListingCard({ listing, now }: { listing: MarketListing; now: number }) {

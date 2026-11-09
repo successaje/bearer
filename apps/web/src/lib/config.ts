@@ -18,6 +18,9 @@ export const MARKET_CONTRACT: string | null =
   process.env.NEXT_PUBLIC_MARKET_CONTRACT ||
   (NETWORK === "mock" ? "market.testnet" : BEARER_CONTRACT === "bearer.testnet" ? "bearer-market.testnet" : null);
 
+/** Code hash of the market's reproducible build (contracts/res/market.wasm), deployed and locked on bearer-market.testnet. */
+export const MARKET_CODE_HASH = process.env.NEXT_PUBLIC_MARKET_CODE_HASH || "7joKh4WSVFGb6EEsUpS6BeC1wtp3pepG2FQwBuAJqt7P";
+
 /** Public, keyless endpoints the testnet adapter reads (defaults live in @bearer/sdk). */
 export const NEAR_RPC = process.env.NEXT_PUBLIC_NEAR_RPC || "https://test.rpc.fastnear.com";
 export const ESPLORA_API = process.env.NEXT_PUBLIC_ESPLORA_API || "https://blockstream.info/testnet4/api";

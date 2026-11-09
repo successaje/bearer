@@ -55,6 +55,26 @@ An opened vault's owner is fixed forever. Every signature the contract requests 
 | T16 | Wrong-network deposits (e.g. ETH on Ethereum Sepolia to the vault's 0x address) | UI warnings; `evm_chain_ids` allowlist; documented as unsupported in v1 | Copy review | |
 | T17 | Signer returns a signature for the wrong key | Callback verifies each signature against the vault's stored derived key before storing a transaction | `rejects_signature_from_wrong_key`, `a failed Bitcoin signature fails the whole withdrawal, which can be retried`, `a failed or wrong-key Ed25519 signature fails the withdrawal` (sandbox; Ed25519 checked with `env::ed25519_verify`) | ✅ Base, Bitcoin, Solana |
 
+## Market threats
+
+The market (`contracts/market`) is a separate contract: it holds a listed vault in escrow and
+sells it for an exact NEAR price. It can't change Bearer's rules: a vault reaches it only through
+Bearer's sealed-only transfer gate, and nothing in it can break a seal. Tests: `cargo test -p
+market` (unit) and `contracts/tests/market.test.ts` (sandbox, against the locked Bearer wasm).
+
+| # | Attack | Defence | Test | Status |
+|---|---|---|---|---|
+| M1 | Fake a listing by calling `nft_on_transfer` directly | Only the Bearer contract may call it | `only_bearer_can_list` (unit and sandbox) | ✅ |
+| M2 | List or sell an opened vault, or one the seller no longer holds | The vault arrives through Bearer's gate (sealed only) and stays in escrow; at settlement Bearer's gate checks again, in the same receipt that moves it | `opened_vault_cannot_be_listed` (sandbox) | ✅ |
+| M3 | Buyer pays and gets nothing, pays a different price, or races another buyer | Exact price only; a sale in flight locks the listing; the vault moves before any money; a vault that didn't move refunds the buyer and the listing stands | `buy_needs_the_exact_price`, `double_buy_race`, `failed_move_refunds_the_buyer`, `sold_vault_moves_first_then_seller_is_paid` (sandbox); `settle_every_branch`, `second_buyer_is_refused_while_a_sale_is_pending` (unit) | ✅ |
+| M4 | A payout bounces (the seller's account is gone) and the money is lost | The callback keeps it as a claimable balance; `claim` pays it to whoever holds the name | `bounced_payout_becomes_claimable` (sandbox and unit) | ✅ |
+| M5 | Settlement stops halfway | `buy` and `delist` refuse under 60 Tgas; callbacks never panic | `buy_needs_gas_for_the_whole_settlement`, `failed_move_restores_the_listing` (unit) | ✅ |
+| M6 | Fill the market's storage for free | Each listing holds a 0.01 NEAR deposit, checked against the storage it uses and paid back on sale or delisting; without one the vault goes straight back | `listing_holds_the_deposit_and_covers_its_storage` (unit), `listing_without_deposit_returns_the_vault` (sandbox) | ✅ |
+| M7 | Someone else delists, or a delisted vault is bought | Only the seller delists; delisting removes the listing | `only_the_seller_can_delist`, `buy_after_delist` (sandbox) | ✅ |
+| M8 | A vault sent with plain `nft_transfer` is stuck in the market | `return_unlisted` sends it to the holder before the market, read from Bearer's custody log; it refuses listed vaults | `return_unlisted` tests (sandbox) | ✅ |
+| M9 | Admin or upgrade powers over the market | No admin, owner or upgrade methods; full-access keys deleted at the locked deploy | lock not yet run | partly |
+| M10 | A buyer reads an observed balance as a guaranteed value | Listings show balances as observations, with source, time and confirmation status | UI review | policy |
+
 ## What you are trusting
 
 - **NEAR's MPC network** to sign only what the Bearer contract requests, and to keep its key shares safe.

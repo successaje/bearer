@@ -69,12 +69,16 @@ export function FundSheet({
           <Callout tone={chain === "evm" ? "info" : "neutral"} icon={<Info />}>
             {chain === "evm" ? (
               <>
-                <strong className="font-semibold">Send only on Base Sepolia.</strong> Funds sent on other networks can&apos;t
+                <strong className="font-semibold">Send only ETH on Base Sepolia.</strong> Funds sent on other networks can&apos;t
                 be withdrawn by this version.
               </>
             ) : (
               <>Send only {meta.unit} on {meta.name} {meta.network}. Mainnet coins sent here are lost to this vault.</>
-            )}
+            )}{" "}
+            <strong className="font-semibold">Native coins only:</strong>{" "}
+            {chain === "btc"
+              ? "this version can't move tokens, NFTs or inscriptions, and a withdrawal could spend the coin an inscription sits on."
+              : "tokens and NFTs sent here can never be withdrawn by this version."}
           </Callout>
 
           {IS_SIMULATED ? (

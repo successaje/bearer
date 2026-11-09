@@ -117,6 +117,7 @@ mod tests {
             ("mpc.rs", include_str!("mpc.rs")),
             ("evm.rs", include_str!("evm.rs")),
             ("events.rs", include_str!("events.rs")),
+            ("holdings.rs", include_str!("holdings.rs")),
         ];
         for (file, src) in others {
             for pat in forbidden {

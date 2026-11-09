@@ -79,6 +79,24 @@ market` (unit) and `contracts/tests/market.test.ts` (sandbox, against the locked
 | M9 | Admin or upgrade powers over the market, including its key holder acting as the owner of a listed vault (breaking its seal) | No admin, owner or upgrade methods; every key deleted (`spike:market lock`, same guards as Bearer's). The site shows the market's key count and code hash live | `spike:market lock` run on `bearer-market.testnet` 2026-11-09: 0 keys left, code hash `7joKh4WS…qt7P` = the reproducible build ([tx](https://testnet.nearblocks.io/txns/G8t9cc9xKa7ymc84hCtk8xeRG2JKBao8auFLKLg1SHVK)) | ✅ |
 | M10 | A buyer reads an observed balance as a guaranteed value | Listings show balances as observations, with source, time and confirmation status | UI review | policy |
 
+## Holdings threats (v2, branch `v2`, not deployed)
+
+v2 lets a vault also hold NEAR, NEP-141 tokens and NEP-171 NFTs, kept by the contract on its
+behalf (`contracts/bearer/src/holdings.rs`). They follow the vault's rule: they move with it while
+sealed and leave only after opening, by the owner. Tests: `contracts/tests/holdings.test.ts`
+(sandbox, against a mock token and NFT contract, `contracts/mock-assets`).
+
+| # | Attack | Defence | Test | Status |
+|---|---|---|---|---|
+| H1 | Fill someone's vault with spam tokens or NFTs, or use up its slots | Only the vault's owner can load tokens and NFTs; anyone else's are returned by the sender's own contract | `only_owner_can_load_tokens_and_nfts` | ✅ |
+| H2 | Take holdings out of a sealed vault | Every withdrawal requires an opened vault | `nothing_leaves_a_sealed_vault` | ✅ |
+| H3 | Former owner takes holdings after a transfer | Every withdrawal requires the caller to be the owner | `former_owner_cannot_withdraw_holdings` | ✅ |
+| H4 | A failed transfer loses the asset | What a withdrawal moves is marked pending first and restored if the transfer fails; callbacks never panic | `failed_withdrawal_keeps_the_asset` | ✅ |
+| H5 | Put a vault inside a vault | Bearer vaults are refused as holdings | `no_nested_vaults` | ✅ |
+| H6 | Drain the contract's storage | Each entry's storage is paid from the vault's own NEAR and refunded when it empties; at most 8 tokens and 16 NFTs per vault | `storage_paid_from_vault_near` | ✅ |
+| H7 | A fake token pretends to be a known one | Holdings are shown by contract account, not by symbol | UI review | policy |
+| H8 | Two withdrawals take the same tokens | Amounts in flight are pending and can't be withdrawn again | `double_withdrawal` | ✅ |
+
 ## What you are trusting
 
 - **NEAR's MPC network** to sign only what the Bearer contract requests, and to keep its key shares safe.

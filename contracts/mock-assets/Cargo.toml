@@ -1,0 +1,13 @@
+[package]
+name = "mock-assets"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Sandbox-only NEP-141 token and NEP-171 NFT contract, to load into and withdraw from vaults"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { workspace = true }
+near-contract-standards = { workspace = true }

@@ -9,6 +9,7 @@
 mod bitcoin;
 mod events;
 mod evm;
+mod holdings;
 mod mpc;
 mod seal;
 mod solana;
@@ -19,6 +20,7 @@ mod withdraw_evm;
 mod withdraw_sol;
 
 pub use evm::EvmWithdrawParams;
+pub use holdings::{Holdings, NftHolding, TokenHolding};
 pub use vault::{ChainTag, Custody, DerivedKeys, Finish, Vault, VaultState};
 pub use withdraw_evm::{Withdrawal, WithdrawalParams, WithdrawalStatus};
 
@@ -61,6 +63,7 @@ enum StorageKey {
     ContractMetadata,
     Vaults,
     Withdrawals,
+    Holdings,
 }
 
 #[near(serializers = [borsh, json])]
@@ -98,6 +101,8 @@ pub struct Contract {
     vaults: LookupMap<TokenId, Vault>,
     withdrawals: LookupMap<String, Withdrawal>,
     config: Config,
+    /// NEAR, NEP-141 tokens and NEP-171 NFTs held for each vault (v2, holdings.rs).
+    holdings: LookupMap<TokenId, Holdings>,
 }
 
 #[near(serializers = [json])]
@@ -161,6 +166,7 @@ impl Contract {
             vaults: LookupMap::new(StorageKey::Vaults),
             withdrawals: LookupMap::new(StorageKey::Withdrawals),
             config,
+            holdings: LookupMap::new(StorageKey::Holdings),
         }
     }
 

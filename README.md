@@ -135,7 +135,7 @@ other chain accepts it, not a payout to a separate person.
 
 **Through a browser wallet.** On the live site, the owner's own testnet wallets created two vaults,
 listed one, bought it from a second account (the seller was paid 2.01 NEAR: the price plus the
-listing deposit), and scheduled a handover, then cancelled it (docs/SPIKES.md).
+listing deposit), handed it back, and scheduled a handover, then cancelled it (docs/SPIKES.md).
 
 **A scheduled handover.** Vault No. 0007, scheduled by alice for bob and not cancellable, was
 handed over on its date by a third account
@@ -276,8 +276,8 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## What comes next
 
-- Finish the browser-wallet flow by hand. Creating, listing, buying, scheduling and cancelling worked
-  from real testnet wallets on the live site (9 Nov); a plain transfer, opening and withdrawal are
+- Finish the browser-wallet flow by hand. Creating, listing, buying, transferring, scheduling and
+  cancelling worked from real testnet wallets on the live site (9 Nov); opening and withdrawal are
   proven with key-backed test accounts but not yet through a wallet.
 - Email alerts. The bell and browser alerts only work while the site is open; email needs a small
   service that watches the chain and keeps addresses, which isn't built.

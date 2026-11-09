@@ -3,7 +3,7 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
-## 2026-11-09 · A purchase and a scheduled handover through browser wallets
+## 2026-11-09 · A purchase, a scheduled handover and a transfer through browser wallets
 
 The owner used the live site with two of their own testnet wallets. Read back from the chain:
 
@@ -13,8 +13,10 @@ The owner used the live site with two of their own testnet wallets. Read back fr
 | `finishr.testnet` cancels it two minutes later | the vault came back sealed, and the 0.01 NEAR deposit with it; event `cancelled` | [HK2Si4jG…](https://testnet.nearblocks.io/txns/HK2Si4jGa4YBg4DbCUBxEBhXbg74wj68tfLwa8zGiBdf) |
 | `takaba.testnet` buys vault No. 0005, listed by `finishr.testnet` at 2 NEAR | event `sold` (price 2 NEAR); the vault moved to the buyer, then the market paid `finishr.testnet` 2.01 NEAR, the price plus the listing deposit | [2wReQN8A…](https://testnet.nearblocks.io/txns/2wReQN8Ajer7Cx93KYFnZyxFncpo2KVQFBT3vTsxnmxm) |
 
-Through a wallet so far: creating, listing, buying, scheduling and cancelling. Still only with
-key-backed test accounts: a plain transfer, breaking the seal, withdrawing.
+| `takaba.testnet` hands vault No. 0005 back to `finishr.testnet` with `nft_transfer` | 3.8 Tgas; the vault arrived sealed with 0 signatures. Its custody log reads `finishr.testnet` → market → `takaba.testnet` → `finishr.testnet` | [ER7uyXcZ…](https://testnet.nearblocks.io/txns/ER7uyXcZiQsHnz7QoiAGepwx5gJKd4nYZasRHY1BwSxf) |
+
+Through a wallet so far: creating, listing, buying, scheduling, cancelling and a plain transfer.
+Still only with key-backed test accounts: breaking the seal and withdrawing.
 
 The seller had no way to see the sale on the site, which is why the notifications bell and the
 account page exist (docs/features/account.md).

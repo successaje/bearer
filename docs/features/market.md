@@ -106,8 +106,9 @@ delisting. Unused balance can be withdrawn (`withdraw_deposit`).
 
 ## Not done yet
 
-- Buying and listing through a real browser wallet. The flow is proven with key-backed accounts; the
-  near-connect path needs a human with a testnet wallet.
+- Buying through a real browser wallet. Listing works in one: on 2026-11-09 the owner listed vault
+  No. 0005 from their own testnet wallet on the live site (deposit and transfer 1.8 s apart). Buying
+  is proven with key-backed accounts only.
 - Payment between people outside the market is still out of scope (T14). Inside it, the contract
   settles.
 

@@ -123,6 +123,9 @@ other chain accepts it, not a payout to a separate person.
   The market contract (`bearer-market.testnet`) is reproducibly built and locked too
   ([tx](https://testnet.nearblocks.io/txns/G8t9cc9xKa7ymc84hCtk8xeRG2JKBao8auFLKLg1SHVK)).
 
+**Through a browser wallet.** On the live site, the owner's own testnet wallet created two vaults and
+listed one on the market (docs/SPIKES.md).
+
 A signature, a self-transfer or one sale is not proof of every possible withdrawal, or of the full
 flow in a browser wallet. What's left is listed under [What comes next](#what-comes-next).
 
@@ -239,8 +242,9 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## What comes next
 
-- Complete the browser-wallet flow by hand, from creation through withdrawal. Every step is proven
-  with key-backed test accounts; signing in a wallet through near-connect isn't yet.
+- Finish the browser-wallet flow by hand. Creating vaults and listing one worked from a real testnet
+  wallet on the live site (9 Nov); transfer, opening, withdrawal and buying are proven with
+  key-backed test accounts but not yet through a wallet.
 - A funded withdrawal from the final contract to a separate recipient.
 - More adversarial tests: the `nft_transfer_call` return path (T6) and duplicate signatures on real
   chains (T10, so far shown on a simulated ledger).

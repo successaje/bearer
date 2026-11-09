@@ -3,6 +3,22 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-09 · First vaults created and listed through a browser wallet
+
+The owner used their own testnet account, `finishr.testnet`, on https://bearer-near.vercel.app
+(near-connect, testnet mode, against `bearer.testnet` and `bearer-market.testnet`). Read back from
+the chain afterwards:
+
+| Step | Result |
+|---|---|
+| Create | Two `create_vault` calls ([No. 0005](https://testnet.nearblocks.io/txns/J8a6kuCnezWVEQerAvJTkY1pnnGjabRm39ZgbRhTNJHo), [No. 0006](https://testnet.nearblocks.io/txns/76ZVYp3sHgJ6sduZ7zLz5RqWDSsRAqsVrHejZ5TeB1d9)). Both vaults sealed, with the signer's keys stored |
+| List | `deposit_for_listing` (0.01 NEAR, [tx](https://testnet.nearblocks.io/txns/6EYwtNXGeJ8TLLMyZs6ExXDqEC6AvkxUj8PXaGFaBDPf)), then `nft_transfer_call` to the market at 2 NEAR ([tx](https://testnet.nearblocks.io/txns/8GBRkYobpx3JiQHkrgKjmMYWfKCYXfE5ocgS8i6u7mX1)), 1.8 s apart: the site asks the wallet for both in one request |
+| After | Vault No. 0005 ("Obsidian") held by the market for `finishr.testnet`, sealed, 0 signatures, for sale at 2 NEAR |
+
+This is the first time a human wallet, rather than a key-backed test account, signed Bearer
+transactions through the site. Not yet done through a wallet: transfer, breaking the seal,
+withdrawing, buying.
+
 ## 2026-11-09 · The attack lab's attacks, as real transactions on the locked contract
 
 `pnpm spike:testnet attacks` sent each of the attack lab's five attacks to `bearer.testnet` from

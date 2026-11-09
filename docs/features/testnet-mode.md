@@ -52,8 +52,10 @@ adapter (brief 4.12) and wires the app to it:
 
 ## Not verified yet (needs a human)
 
-- Connecting a real wallet through near-connect's picker and signing in the browser. The headless
-  checks can't log into a wallet; the adapter's write path is proven with keys instead.
+- Every step through a real wallet. On 2026-11-09 the owner created two vaults and listed one on
+  the market from their own testnet wallet on the live site (docs/SPIKES.md). Transfer, breaking
+  the seal, withdrawing and buying through a wallet are still to do; the adapter's write path for
+  them is proven with keys instead.
 - Sending attacks from the visitor's own wallet. Instead, the five attacks were sent once to
   `bearer.testnet` as real transactions by the test accounts (`pnpm spike:testnet attacks`), and
   the lab's Check buttons re-read each one's outcome from an archival RPC in the browser.

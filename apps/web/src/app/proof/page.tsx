@@ -20,7 +20,8 @@ export const metadata: Metadata = {
 
 export default function ProofPage() {
   const proven = THREATS.filter((t) => t.status === "proven").length;
-  const signatures = LATENCY.reduce((n, s) => n + s.runs.length, 0);
+  // The handover series is timed too, but it asks for no signature.
+  const signatures = LATENCY.filter((s) => s.id !== "handover").reduce((n, s) => n + s.runs.length, 0);
   const landed = LANDED.filter((l) => l.status === "confirmed").length;
 
   return (

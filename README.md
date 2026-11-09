@@ -131,7 +131,8 @@ handed over on its date by a third account
 ([tx](https://testnet.nearblocks.io/txns/76eGYPzRDspJi3YXLXVGU1zDnj8wcNF14kSz8Vu2HUpt)). It arrived
 sealed with 0 signatures. Earlier moves were refused: an early release, a cancel, and alice
 breaking the seal. A vault scheduled for an unregistered name waited until that account existed.
-The schedule contract (`bearer-schedule.testnet`) is reproducibly built but not locked yet.
+The schedule contract (`bearer-schedule.testnet`) is reproducibly built and locked
+([tx](https://testnet.nearblocks.io/txns/6wAyfjD218s7DvCwuzK7nEtAdLDQK5eZujY3caDJRekx)).
 
 A signature, a self-transfer or one sale is not proof of every possible withdrawal, or of the full
 flow in a browser wallet. What's left is listed under [What comes next](#what-comes-next).
@@ -237,9 +238,8 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 - **Testnet prototype, not audited.**
 - **Trust.** It relies on NEAR, its MPC signing network, the deployed contracts and each external
-  chain's normal operation. Bearer's and the market's contracts are open source, reproducibly
-  built and locked. The schedule contract isn't locked yet: until it is, whoever holds its key
-  could act as the owner of a scheduled vault.
+  chain's normal operation. Bearer's, the market's and the schedule's contracts are open source,
+  reproducibly built and locked: none has a key, so nobody can change them.
 - **Opened is final.** Once opened, a vault can't be transferred or sealed again.
 - **Balances.** The ones shown come from public data sources (Blockstream Esplora, Base Sepolia RPC,
   Solana devnet RPC), with their source, time and confirmation status. They can lag or be

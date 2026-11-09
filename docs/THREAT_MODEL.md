@@ -97,7 +97,7 @@ and `contracts/tests/schedule.test.ts` (sandbox, against the locked Bearer wasm)
 | S7 | Fill the schedule's storage for free | Each schedule holds a 0.01 NEAR deposit, checked against its storage and paid back with the release or the cancellation | `schedule_holds_the_deposit_and_covers_its_storage`, `scheduling_without_deposit_returns_the_vault` | ✅ |
 | S8 | A handover stops halfway | `release` and `cancel` refuse too little gas; callbacks never panic and put the schedule back to waiting | `failed_move_keeps_the_schedule` (unit) | ✅ |
 | S9 | A vault sent without a schedule is stuck | `return_unscheduled` sends it to the holder before the schedule; never a scheduled vault | `return_unscheduled` tests (sandbox) | ✅ |
-| S10 | Admin or upgrade powers over the schedule | No admin, owner or upgrade methods; keys deleted at the locked deploy | lock not yet run | partly |
+| S10 | Admin or upgrade powers over the schedule, including its key holder acting as the owner of a scheduled vault (breaking its seal) | No admin, owner or upgrade methods; every key deleted (`spike:schedule lock`, same guards as Bearer's). The site shows the schedule's lock state live | `spike:schedule lock` run on `bearer-schedule.testnet` 2026-11-09: 0 keys left, code hash `9sLo27AU…JSkE` = the reproducible build ([tx](https://testnet.nearblocks.io/txns/6wAyfjD218s7DvCwuzK7nEtAdLDQK5eZujY3caDJRekx)) | ✅ |
 
 ## What you are trusting
 

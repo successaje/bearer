@@ -368,7 +368,7 @@ export const THREATS: Threat[] = [
   { id: "S7", attack: "Fill the schedule's storage for free", defence: "Each schedule holds a 0.01 NEAR deposit, checked against its storage", tests: ["schedule_holds_the_deposit_and_covers_its_storage", "scheduling_without_deposit_returns_the_vault"], status: "proven" },
   { id: "S8", attack: "A handover stops halfway", defence: "Gas floors; callbacks never panic and put the schedule back to waiting", tests: ["failed_move_keeps_the_schedule"], status: "proven" },
   { id: "S9", attack: "A vault sent without a schedule is stuck", defence: "return_unscheduled sends it back to the holder before the schedule", tests: ["return_unscheduled tests"], status: "proven" },
-  { id: "S10", attack: "Admin or upgrade powers over the schedule", defence: "No admin or upgrade methods; keys deleted at the locked deploy", tests: ["lock not yet run"], status: "partly" },
+  { id: "S10", attack: "The schedule account's key holder acts as the owner of a scheduled vault", defence: "No admin or upgrade methods; full-access keys deleted at the locked deploy; the site shows the lock state", tests: ["spike:schedule lock (bearer-schedule.testnet: 0 keys, 9 Nov)"], status: "proven" },
   {
     id: "M10",
     attack: "A buyer reads an observed balance as a guaranteed value",

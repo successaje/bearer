@@ -9,7 +9,12 @@ measured numbers (N stated) and links you can check. Newest first.
 build of `47b5d25`: two builds from a clean checkout gave identical bytes (sha256
 `83c2ea97…a247`); on-chain code hash `9sLo27AU…JSkE`, which matches. It sells nothing: it holds a
 sealed `bearer.testnet` vault until a date, then hands it to the recipient chosen at scheduling.
-It still has its full-access key (S10).
+Locked the same day (S10): `CONFIRM_LOCK=bearer-schedule.testnet pnpm spike:schedule lock`
+checked the code hash, then deleted its one full-access key
+([tx](https://testnet.nearblocks.io/txns/6wAyfjD218s7DvCwuzK7nEtAdLDQK5eZujY3caDJRekx)). Afterwards
+three RPCs (rpc.testnet.near.org, test.rpc.fastnear.com, archival-rpc.testnet.fastnear.com)
+reported 0 keys and the same code hash. Report:
+[`testnet-schedule-lock-2026-11-09T16-11-33.926Z.json`](../contracts/tests/spike/reports/testnet-schedule-lock-2026-11-09T16-11-33.926Z.json).
 
 `pnpm spike:schedule run`:
 - A cancellable schedule (No. 0008) was cancelled and the vault returned.

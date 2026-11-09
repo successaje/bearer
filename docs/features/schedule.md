@@ -1,7 +1,7 @@
 # Feature: scheduled handover
 
-**Contract:** `contracts/schedule`, deployed as `bearer-schedule.testnet` (reproducible build, not
-locked yet) · **On the site:** "Schedule a handover" on a sealed vault the owner holds; a panel on
+**Contract:** `contracts/schedule`, deployed as `bearer-schedule.testnet` (reproducible build,
+locked) · **On the site:** "Schedule a handover" on a sealed vault the owner holds; a panel on
 a scheduled vault's page; "Scheduled by you" and "Coming to you" on My vaults · **Status:** merged
 into main on 2026-11-09, run on testnet the same day
 
@@ -79,6 +79,11 @@ One run (N = 1). An earlier attempt the same day also handed No. 0002 to bob, an
 waiting for `nobody.…` until that account was created. Its report wasn't saved because the
 script stopped on the expected failed check, so only the run above counts as evidence.
 
+- **Locked, 2026-11-09** (S10): `CONFIRM_LOCK=bearer-schedule.testnet pnpm spike:schedule lock`
+  checked that the code hash matched the reproducible build, then deleted the account's one key
+  ([tx](https://testnet.nearblocks.io/txns/6wAyfjD218s7DvCwuzK7nEtAdLDQK5eZujY3caDJRekx)). Three
+  RPCs then reported 0 keys and code hash `9sLo27AU…JSkE`. Nobody can change the contract or act
+  as the owner of a vault it holds. The schedule panel and the review step read this live.
 - **Web:** in the simulated demo, scheduling vault No. 0042 for mira and cancelling it worked. The
   seeded gift No. 0021 ("For your next chapter", ada for theo, in six months, not cancellable)
   shows its schedule. Against testnet, vault No. 0007's history reads "Scheduled for a handover",
@@ -86,8 +91,6 @@ script stopped on the expected failed check, so only the run above counts as evi
 
 ## Not done yet
 
-- **Locking the schedule (S10).** Until then, whoever holds the account's key could act as the
-  owner of a scheduled vault.
 - **A real-wallet run** of scheduling, releasing and cancelling.
 - **A gift message.** Planned for the card or certificate, off-chain by default, since anything
   stored on-chain is public forever.

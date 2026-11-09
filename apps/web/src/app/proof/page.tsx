@@ -9,7 +9,8 @@ import { LiveChecks } from "@/components/proof/live-checks";
 import { ThreatTable } from "@/components/proof/threat-table";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Eyebrow } from "@/components/ui/primitives";
-import { LANDED, LATENCY, MEASURED_ON, PROOF_SIGNER, RUN_IT, SPIKE_CONTRACT, THREATS } from "@/lib/proof/data";
+import { LANDED, LATENCY, MARKET_SALE, MEASURED_ON, PROOF_SIGNER, RUN_IT, SPIKE_CONTRACT, THREATS } from "@/lib/proof/data";
+import { vaultNumber } from "@/lib/vault/format";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -83,6 +84,23 @@ export default function ProofPage() {
               ) : null}
             </div>
           ))}
+        </div>
+        <div className="mt-4 flex flex-col gap-3 rounded-panel border border-line bg-surface p-5 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <p className="text-[15px] font-semibold">The market&apos;s first sale</p>
+            <p className="mt-1.5 text-[13.5px] leading-relaxed text-fg-2">
+              On the locked contract, <span className="font-mono">bearer.testnet</span>: vault {vaultNumber(MARKET_SALE.tokenId)} for{" "}
+              {MARKET_SALE.price}. {MARKET_SALE.detail}. {MARKET_SALE.gas}.
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-4 font-mono text-[12.5px]">
+            <a href={MARKET_SALE.listTx} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
+              listing <ArrowUpRight className="size-3.5" />
+            </a>
+            <a href={MARKET_SALE.buyTx} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
+              purchase <ArrowUpRight className="size-3.5" />
+            </a>
+          </div>
         </div>
       </Section>
 

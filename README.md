@@ -62,6 +62,13 @@ These ran on the spike contract, `v3a.bearer-1108-ffb3.testnet`. The final contr
 checks, and is locked: its last access key was deleted on 9 Nov 2026
 ([tx](https://testnet.nearblocks.io/txns/J87dPH7D1LG7PLwvyzqwFbBKMsQ7pAd7Nxfn1DrvsaVT)), so nobody can change it. Its own withdrawals land once its vaults hold funds.
 
+**Market:** vaults can be listed for a NEAR price and bought from escrow
+([docs/features/market.md](docs/features/market.md)). First real sale on the locked contract:
+vault No. 0004 for 0.1 NEAR, alice to bob
+([purchase](https://testnet.nearblocks.io/txns/GCuy9zAFHGeN8ZsjgvUyaF8Uzz4xvW4UvNessKMMYv6F)); it
+arrived sealed with 0 signatures and alice received exactly the price plus her listing deposit. The
+market contract isn't locked yet.
+
 ## Try it
 
 ```bash
@@ -105,6 +112,7 @@ pnpm spike:testnet run         # create, transfer, 5 × break-and-withdraw on Ba
 | Page | What it's for |
 |---|---|
 | `/v/[id]` | A vault's public page: seal, observed balances, custody, signatures, the attacks it refuses (an interactive lab in mock mode) |
+| `/market` | Sealed vaults for sale, held in escrow by the market contract; list from a vault's page, buy at exactly the listed price |
 | `/v/[id]/handover` | Hand a vault over in person: a QR code for the recipient, and the card flips when the transfer lands |
 | `/v/[id]/certificate` | A printable bearer certificate, one A4 page, with a QR code to the live seal |
 | `/proof` | Live checks against NEAR testnet, every measured number, and the threat table |
@@ -143,7 +151,7 @@ transaction publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   recipient knows no withdrawal signature has ever been requested, on any chain.
 - **Retries and late signatures are safe:** once opened, the owner is fixed forever. A retried or
   duplicated signature spends the same coins or the same nonce, and pays the same owner.
-- **Threat model:** 17 rows with the tests that prove them, in
+- **Threat model:** 17 rows for the vault and 10 for the market, with the tests that prove them, in
   [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
 ## What you're trusting
@@ -159,6 +167,7 @@ transaction publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 ```text
 apps/web            Next.js app: a simulated demo, or the testnet contract with NEAR wallets
 contracts/bearer    the NEAR contract (near-sdk 5.30)
+contracts/market    the market: sells sealed vaults from escrow
 contracts/mock-signer   an MPC signer stand-in for the sandbox
 contracts/tests     sandbox tests (near-sandbox) and testnet spikes
 packages/sdk        shared types and the client interface

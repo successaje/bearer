@@ -72,7 +72,7 @@ market` (unit) and `contracts/tests/market.test.ts` (sandbox, against the locked
 | M6 | Fill the market's storage for free | Each listing holds a 0.01 NEAR deposit, checked against the storage it uses and paid back on sale or delisting; without one the vault goes straight back | `listing_holds_the_deposit_and_covers_its_storage` (unit), `listing_without_deposit_returns_the_vault` (sandbox) | ✅ |
 | M7 | Someone else delists, or a delisted vault is bought | Only the seller delists; delisting removes the listing | `only_the_seller_can_delist`, `buy_after_delist` (sandbox) | ✅ |
 | M8 | A vault sent with plain `nft_transfer` is stuck in the market | `return_unlisted` sends it to the holder before the market, read from Bearer's custody log; it refuses listed vaults | `return_unlisted` tests (sandbox) | ✅ |
-| M9 | Admin or upgrade powers over the market | No admin, owner or upgrade methods; full-access keys deleted at the locked deploy | lock not yet run | partly |
+| M9 | Admin or upgrade powers over the market, including its key holder acting as the owner of a listed vault (breaking its seal) | No admin, owner or upgrade methods; full-access keys deleted at the locked deploy (`spike:market lock`, same guards as Bearer's). Until then the site shows the market's key count live wherever a listing appears | lock not yet run on `bearer-market.testnet` | partly |
 | M10 | A buyer reads an observed balance as a guaranteed value | Listings show balances as observations, with source, time and confirmation status | UI review | policy |
 
 ## What you are trusting

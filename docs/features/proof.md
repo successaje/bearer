@@ -22,7 +22,7 @@ of an eval dashboard (braintrust.dev's bars, Bearer's gold):
    with an explorer link.
 4. **Gas, measured.** Bitcoin's callback (reserved 30 Tgas vs 2.8–4.4 used) and the whole
    withdrawal vs NEAR's 300 Tgas limit.
-5. **Every attack we know of.** T1–T17 from docs/THREAT_MODEL.md with the defence, the tests and a
+5. **Every attack we know of.** T1–T17 and the market's M1–M10 from docs/THREAT_MODEL.md with the defence, the tests and a
    status: Proven, Partly, Not yet, By design.
 6. **Run it yourself.** The commands for unit tests, sandbox tests and the testnet spike.
 

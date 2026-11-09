@@ -3,6 +3,12 @@
 **For:** anyone wondering why Bearer is built the way it is.
 Newest first. Each entry: date, decision, reason, alternatives considered.
 
+## 2026-11-09 · Market: a separate contract that holds listed vaults in escrow
+
+- **Decision:** sales go through `contracts/market` (`bearer-market.testnet`). The seller sends the vault with `nft_transfer_call` and a price; the market keeps it until `buy` (exact price) or `delist`. Settlement moves the vault first and money second: a vault that didn't move refunds the buyer, a bounced payout becomes claimable. Each listing holds a 0.01 NEAR deposit, checked against the storage it uses and returned with the sale or delisting; it's paid in its own transaction because `nft_transfer_call` forwards only 1 yoctoNEAR. Reproducibly built like Bearer. See docs/features/market.md.
+- **Reason:** the reviewer asked for a marketplace with a safe exchange. Bearer is locked and has no NEP-178 approvals (T6), so escrow by transfer is the only way to sell without the seller online. It also answers "is it still the seller's, and still sealed?" by construction: the market holds it, and Bearer's gate checks again in the receipt that moves it.
+- **Alternatives:** approvals (Bearer refuses them on purpose and can't change); a signed offer the seller settles later (needs the seller online, and the price check moves off-chain); the market paying listing storage itself with a cap (a full market would block new listings for free).
+
 ## 2026-11-09 · The committed contract is the reproducible build
 
 - **Decision:** `contracts/res/bearer.wasm` is the output of `cargo near build reproducible-wasm --manifest-path contracts/bearer/Cargo.toml` at commit `71f194e`, run with the official cargo-near 0.22.0 binary (release checksum verified) in the image pinned in `contracts/bearer/Cargo.toml` (`sourcescan/cargo-near:0.22.0-rust-1.98.1`, by digest). Two builds from fresh clones gave the same bytes, sha256 `05b27506…8619`, code hash `PEsHBVDK…Vq1S`. `contracts/build.sh` stays for tests and development (`contracts/out/`). The contract's NEP-330 metadata now names its standards: NEP-171, 177, 181 and 297 besides 330 (no NEP-178 approvals, T6).

@@ -113,6 +113,22 @@ export interface Landed {
   linkLabel?: string;
 }
 
+/**
+ * The market's first sale on testnet, against the locked contract
+ * (contracts/tests/spike/reports/testnet-market-sale-2026-11-09T12-21-46.716Z.json).
+ */
+export const MARKET_SALE = {
+  tokenId: "4",
+  price: "0.1 NEAR",
+  seller: "alice",
+  buyer: "bob",
+  detail: "Listed by alice, bought by bob; the vault moved first and stayed sealed with 0 signatures, then alice received exactly 0.11 NEAR (price + listing deposit)",
+  gas: "8.9 Tgas to list, 11.5 Tgas to buy",
+  listTx: "https://testnet.nearblocks.io/txns/75Gdpx1BKNyi2qWGn7XuGVmQ9yH1mkYi3K3B4QRPoGk8",
+  buyTx: "https://testnet.nearblocks.io/txns/GCuy9zAFHGeN8ZsjgvUyaF8Uzz4xvW4UvNessKMMYv6F",
+  source: `${REPORTS}/testnet-market-sale-2026-11-09T12-21-46.716Z.json`,
+};
+
 /** Withdrawals that left NEAR and reached the other chain. */
 export const LANDED: Landed[] = [
   {
@@ -153,7 +169,7 @@ export interface Threat {
   chains?: string;
 }
 
-/** docs/THREAT_MODEL.md, rows T1–T17. */
+/** docs/THREAT_MODEL.md: rows T1–T17, then the market's M1–M10. */
 export const THREATS: Threat[] = [
   {
     id: "T1",
@@ -277,6 +293,77 @@ export const THREATS: Threat[] = [
     tests: ["rejects_signature_from_wrong_key", "wrong-key Bitcoin and Ed25519 cases"],
     status: "proven",
     chains: "Base, Bitcoin, Solana",
+  },
+  // The market (contracts/market), rows M1–M10.
+  {
+    id: "M1",
+    attack: "Fake a listing by calling the market's nft_on_transfer directly",
+    defence: "Only the Bearer contract may call it",
+    tests: ["only_bearer_can_list"],
+    status: "proven",
+  },
+  {
+    id: "M2",
+    attack: "Sell an opened vault, or one the seller no longer holds",
+    defence: "The vault arrives through Bearer's sealed-only gate and stays in escrow; the gate checks again as it moves to the buyer",
+    tests: ["opened_vault_cannot_be_listed"],
+    status: "proven",
+  },
+  {
+    id: "M3",
+    attack: "Buyer pays and gets nothing, pays a different price, or races another buyer",
+    defence: "Exact price; a sale in flight locks the listing; the vault moves before any money; a vault that didn't move refunds the buyer",
+    tests: ["sold_vault_moves_first_then_seller_is_paid", "buy_needs_the_exact_price", "double_buy_race", "failed_move_refunds_the_buyer"],
+    status: "proven",
+  },
+  {
+    id: "M4",
+    attack: "A payout bounces and the money is lost",
+    defence: "Kept as a claimable balance for whoever holds the account name",
+    tests: ["bounced_payout_becomes_claimable"],
+    status: "proven",
+  },
+  {
+    id: "M5",
+    attack: "Settlement stops halfway",
+    defence: "Buying and delisting refuse under 60 Tgas; the callbacks never panic",
+    tests: ["buy_needs_gas_for_the_whole_settlement", "failed_move_restores_the_listing"],
+    status: "proven",
+  },
+  {
+    id: "M6",
+    attack: "Fill the market's storage for free",
+    defence: "Each listing holds a 0.01 NEAR deposit checked against its storage, returned on sale or delisting",
+    tests: ["listing_holds_the_deposit_and_covers_its_storage", "listing_without_deposit_returns_the_vault"],
+    status: "proven",
+  },
+  {
+    id: "M7",
+    attack: "Someone else delists, or a delisted vault is bought",
+    defence: "Only the seller delists; delisting removes the listing",
+    tests: ["only_the_seller_can_delist", "buy_after_delist"],
+    status: "proven",
+  },
+  {
+    id: "M8",
+    attack: "A vault sent to the market without a listing is stuck there",
+    defence: "return_unlisted sends it to the holder before the market, read from the custody log; never a listed vault",
+    tests: ["return_unlisted sends a stray vault back", "return_unlisted can't take a listed vault"],
+    status: "proven",
+  },
+  {
+    id: "M9",
+    attack: "The market account's key holder acts as the owner of a listed vault",
+    defence: "No admin or upgrade methods; full-access keys deleted at the locked deploy; until then the site shows the key count",
+    tests: ["spike:market lock (not yet run)"],
+    status: "partly",
+  },
+  {
+    id: "M10",
+    attack: "A buyer reads an observed balance as a guaranteed value",
+    defence: "Listings show balances as observations, with source, time and confirmation status",
+    tests: ["UI review"],
+    status: "policy",
   },
 ];
 

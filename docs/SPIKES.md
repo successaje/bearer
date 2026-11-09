@@ -3,6 +3,34 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-09 · The market's first sale, on the locked contract
+
+`bearer-market.testnet` (faucet-created) runs `contracts/res/market.wasm`, the reproducible build of
+`579df21`: two builds from a clean checkout gave identical bytes (sha256 `641ce46c…71ce`); on-chain
+code hash `7joKh4WS…qt7P`, which matches. It was initialised with `nft_contract = bearer.testnet` and
+a 0.01 NEAR listing deposit ([tx](https://testnet.nearblocks.io/txns/WoVQHNTwGGRzMUqPdcNrh8QzdMikeVneAaDN1Zt3JHZ)).
+It still has its full-access key (M9).
+
+| Step | Result |
+|---|---|
+| Listing deposit | alice, 0.01 NEAR ([tx](https://testnet.nearblocks.io/txns/8j5C1Xiw3NUHAZABBJnaLTqzAYkkDtwLDuFdnt6rh4uT)) |
+| List | alice sent vault No. 0004 (sealed) with `nft_transfer_call`, price 0.1 NEAR: 8.9 Tgas, events `nft_transfer`, `listed`, no failed receipts ([tx](https://testnet.nearblocks.io/txns/75Gdpx1BKNyi2qWGn7XuGVmQ9yH1mkYi3K3B4QRPoGk8)) |
+| Buy | bob attached 0.1 NEAR: 11.5 Tgas, events `nft_transfer`, `sold`, no failed receipts ([tx](https://testnet.nearblocks.io/txns/GCuy9zAFHGeN8ZsjgvUyaF8Uzz4xvW4UvNessKMMYv6F)) |
+| After | Vault No. 0004: owner bob, sealed, 0 signatures; custody alice → market → bob; no listing left |
+| Seller paid | alice's balance rose by exactly 0.11 NEAR (price + deposit), read once pending receipts had landed; she signed nothing in between |
+
+One run each (N = 1). Report:
+[`testnet-market-sale-2026-11-09T12-21-46.716Z.json`](../contracts/tests/spike/reports/testnet-market-sale-2026-11-09T12-21-46.716Z.json).
+The script first recorded a "final after" time that also included waiting for alice's balance to
+settle, so it measured nothing useful; it was removed from the report and the script now times the
+purchase to finality only.
+
+```bash
+cd contracts/tests
+pnpm spike:market setup
+pnpm spike:market sale 4 0.1
+```
+
 ## 2026-11-09 · `bearer.testnet` locked
 
 With the owner's go-ahead, `CONFIRM_LOCK=bearer.testnet BEARER_CONTRACT_ID=bearer.testnet

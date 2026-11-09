@@ -10,6 +10,7 @@ import { EmptyState, ErrorState } from "@/components/layout/page-states";
 import { buttonVariants } from "@/components/ui/button";
 import { Eyebrow, SimulatedTag, Skeleton } from "@/components/ui/primitives";
 import { IS_SIMULATED, MARKET_CONTRACT, explorer } from "@/lib/config";
+import { MARKET_SALE } from "@/lib/proof/data";
 import { formatNear, formatUsd, nsToMs, relativeTime, vaultNumber } from "@/lib/vault/format";
 import { useListings, useNow, useObservation, useVault } from "@/lib/vault/hooks";
 import { observedUsd } from "@/lib/vault/report";
@@ -83,6 +84,28 @@ export function MarketView() {
           </Grid>
         )}
       </section>
+
+      {!IS_SIMULATED && MARKET_CONTRACT ? (
+        <div className="mt-8 flex flex-col gap-3 rounded-panel border border-line bg-surface p-5 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-3">First sale on testnet</p>
+            <p className="mt-1.5 text-[14px] leading-relaxed text-fg-2">
+              <Link href={`/v/${MARKET_SALE.tokenId}`} className="font-medium text-fg hover:underline">
+                Vault {vaultNumber(MARKET_SALE.tokenId)}
+              </Link>{" "}
+              for {MARKET_SALE.price}. {MARKET_SALE.detail}.
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-4 text-[13px] font-medium">
+            <a href={MARKET_SALE.listTx} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
+              Listing <ArrowUpRight className="size-3.5" />
+            </a>
+            <a href={MARKET_SALE.buyTx} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
+              Purchase <ArrowUpRight className="size-3.5" />
+            </a>
+          </div>
+        </div>
+      ) : null}
 
       <section aria-labelledby="why" className="mt-24">
         <h2 id="why" className="text-[clamp(26px,3vw,34px)] font-semibold tracking-[-0.03em]">

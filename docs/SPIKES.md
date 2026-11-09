@@ -3,6 +3,28 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-09 · The attack lab's attacks, as real transactions on the locked contract
+
+`pnpm spike:testnet attacks` sent each of the attack lab's five attacks to `bearer.testnet` from
+the test accounts, with the normal deposits and 100 Tgas so that each one reaches the check it
+targets. Vault No. 0001 is opened and bob's; No. 0004 is sealed and bob's (bought on the market);
+alice held both before him.
+
+| Attack | Sent by | Answer | Tx |
+|---|---|---|---|
+| Former owner withdraws: `withdraw_evm(vault 1)` | alice | `ERR_NOT_OWNER` | [F9X8pHP1…](https://testnet.nearblocks.io/txns/F9X8pHP1m2dKZq1JqZixnC9uao9gLL9YusifzEeo8RHz) |
+| Former owner breaks the seal: `break_seal(vault 4)` | alice | `ERR_NOT_OWNER` | [2BQmo5kJ…](https://testnet.nearblocks.io/txns/2BQmo5kJmdRxMyaRUbT8zvT56jGMsh3ZZCCexqCPA6Zm) |
+| Transfer an opened vault: `nft_transfer(vault 1)` | bob | `ERR_VAULT_OPENED` | [6GutSDN8…](https://testnet.nearblocks.io/txns/6GutSDN8MNpS4vq1FGAHeusLehLSpgz7aS4f9VUpA7Ed) |
+| Withdraw from a sealed vault: `withdraw_evm(vault 4)` | bob | `ERR_VAULT_SEALED` | [44XdgiB2…](https://testnet.nearblocks.io/txns/44XdgiB2NDJYBrh5mx2PJZd5Z3hRfJR5gVPhXWFMKPP8) |
+| Ask for a raw signature: `sign(32 bytes)` | bob | `MethodNotFound` | [4FA4AK5p…](https://testnet.nearblocks.io/txns/4FA4AK5psEtSx1h8fW2P5DRM43HV5AnWYwMmhi88QLHv) |
+
+None of the transactions has a receipt on `v1.signer-prod.testnet`, and both vaults' owners,
+seals and signature counts are unchanged afterwards. 1.4–2.3 Tgas each. Report:
+[`testnet-attacks-2026-11-09T12-34-55.181Z.json`](../contracts/tests/spike/reports/testnet-attacks-2026-11-09T12-34-55.181Z.json).
+The site's attack lab on testnet re-reads these five transactions from FastNEAR's archival RPC in
+the visitor's browser (regular nodes forget transactions after a few epochs), so the refusals it
+shows are the chain's, not a copy.
+
 ## 2026-11-09 · The market's first sale, on the locked contract
 
 `bearer-market.testnet` (faucet-created) runs `contracts/res/market.wasm`, the reproducible build of

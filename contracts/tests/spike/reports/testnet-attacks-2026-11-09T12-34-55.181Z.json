@@ -1,0 +1,73 @@
+{
+  "measured_at": "2026-11-09T12:34:54.932Z",
+  "contract": "bearer.testnet",
+  "code_hash": "PEsHBVDKpZ3fdpmfsJekrt52amLARnwRLWNXLQDVq1S",
+  "vaults": {
+    "opened": "1",
+    "sealed": "4"
+  },
+  "results": [
+    {
+      "kind": "former_owner_withdraws",
+      "actor": "alice.bearer-1108-ffb3.testnet",
+      "call": "withdraw_evm(vault 1)",
+      "expected": "ERR_NOT_OWNER",
+      "refused": true,
+      "error": "ERR_NOT_OWNER",
+      "signer_called": false,
+      "tx_hash": "F9X8pHP1m2dKZq1JqZixnC9uao9gLL9YusifzEeo8RHz",
+      "tx": "https://testnet.nearblocks.io/txns/F9X8pHP1m2dKZq1JqZixnC9uao9gLL9YusifzEeo8RHz",
+      "gas": 2.343
+    },
+    {
+      "kind": "former_owner_breaks_seal",
+      "actor": "alice.bearer-1108-ffb3.testnet",
+      "call": "break_seal(vault 4)",
+      "expected": "ERR_NOT_OWNER",
+      "refused": true,
+      "error": "ERR_NOT_OWNER",
+      "signer_called": false,
+      "tx_hash": "2BQmo5kJmdRxMyaRUbT8zvT56jGMsh3ZZCCexqCPA6Zm",
+      "tx": "https://testnet.nearblocks.io/txns/2BQmo5kJmdRxMyaRUbT8zvT56jGMsh3ZZCCexqCPA6Zm",
+      "gas": 2.307
+    },
+    {
+      "kind": "transfer_opened_vault",
+      "actor": "bob.bearer-1108-ffb3.testnet",
+      "call": "nft_transfer(vault 1)",
+      "expected": "ERR_VAULT_OPENED",
+      "refused": true,
+      "error": "ERR_VAULT_OPENED",
+      "signer_called": false,
+      "tx_hash": "6GutSDN8MNpS4vq1FGAHeusLehLSpgz7aS4f9VUpA7Ed",
+      "tx": "https://testnet.nearblocks.io/txns/6GutSDN8MNpS4vq1FGAHeusLehLSpgz7aS4f9VUpA7Ed",
+      "gas": 2.227
+    },
+    {
+      "kind": "withdraw_sealed_vault",
+      "actor": "bob.bearer-1108-ffb3.testnet",
+      "call": "withdraw_evm(vault 4)",
+      "expected": "ERR_VAULT_SEALED",
+      "refused": true,
+      "error": "ERR_VAULT_SEALED",
+      "signer_called": false,
+      "tx_hash": "44XdgiB2NDJYBrh5mx2PJZd5Z3hRfJR5gVPhXWFMKPP8",
+      "tx": "https://testnet.nearblocks.io/txns/44XdgiB2NDJYBrh5mx2PJZd5Z3hRfJR5gVPhXWFMKPP8",
+      "gas": 2.342
+    },
+    {
+      "kind": "sign_arbitrary_bytes",
+      "actor": "bob.bearer-1108-ffb3.testnet",
+      "call": "sign(payload)",
+      "expected": "MethodNotFound",
+      "refused": true,
+      "error": "MethodNotFound",
+      "signer_called": false,
+      "tx_hash": "4FA4AK5psEtSx1h8fW2P5DRM43HV5AnWYwMmhi88QLHv",
+      "tx": "https://testnet.nearblocks.io/txns/4FA4AK5psEtSx1h8fW2P5DRM43HV5AnWYwMmhi88QLHv",
+      "gas": 1.423
+    }
+  ],
+  "vaults_unchanged": true,
+  "all_refused_as_expected": true
+}

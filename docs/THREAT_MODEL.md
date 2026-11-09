@@ -55,6 +55,10 @@ An opened vault's owner is fixed forever. Every signature the contract requests 
 | T16 | Wrong-network deposits (e.g. ETH on Ethereum Sepolia to the vault's 0x address) | UI warnings; `evm_chain_ids` allowlist; documented as unsupported in v1 | Copy review | |
 | T17 | Signer returns a signature for the wrong key | Callback verifies each signature against the vault's stored derived key before storing a transaction | `rejects_signature_from_wrong_key`, `a failed Bitcoin signature fails the whole withdrawal, which can be retried`, `a failed or wrong-key Ed25519 signature fails the withdrawal` (sandbox; Ed25519 checked with `env::ed25519_verify`) | ✅ Base, Bitcoin, Solana |
 
+On 2026-11-09 the attack lab's five attacks (T1 twice, T2, T3, T11) were also sent to the locked
+`bearer.testnet` as real transactions, and each was refused with the expected error without
+reaching the signer (`pnpm spike:testnet attacks`; docs/SPIKES.md).
+
 ## Market threats
 
 The market (`contracts/market`) is a separate contract: it holds a listed vault in escrow and

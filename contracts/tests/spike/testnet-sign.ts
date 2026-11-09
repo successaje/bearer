@@ -10,6 +10,7 @@
  *   node spike/testnet-sign.ts btc-withdraw <token> # transfer to bob, break the seal, withdraw, broadcast
  *   node spike/testnet-sign.ts sol-withdraw <token> # sign a devnet transfer; airdrop and broadcast if possible
  *   CONFIRM_LOCK=<contract> node spike/testnet-sign.ts lock  # delete every key; only if the code is BEARER_WASM
+ *   node spike/testnet-sign.ts attacks  # the attack lab's attacks as real transactions; each must be refused
  *
  * Needs BEARER_TESTNET_PARENT: a faucet-created testnet account whose key is in
  * ~/.near-credentials/testnet. Subaccount keys are written there too, never to the repo.
@@ -215,6 +216,7 @@ type VaultView = {
   evm_address: string | null;
   sol_address: string | null;
   paths: { btc: string; evm: string; sol: string };
+  custody: { account_id: string; since_ns: string }[];
 };
 type Withdrawal = {
   index: number;
@@ -406,6 +408,82 @@ async function redeploy() {
     hash = (await viewAccount(CONTRACT)).code_hash;
   }
   console.log(`redeployed ${CONTRACT} ${hash} (${hash === expected ? "matches" : `expected ${expected}`} ${WASM})`);
+}
+
+/**
+ * The attack lab's attacks, sent to the contract as real transactions from the test accounts.
+ * Each must fail with its expected code, request no signature and leave the vaults unchanged.
+ * Needs an opened vault held by bob that alice handed over (ATTACK_OPENED, default 1) and a sealed
+ * one bob holds that alice held before (ATTACK_SEALED, default 4).
+ */
+async function attacks() {
+  const opened = process.env.ATTACK_OPENED ?? "1";
+  const sealed = process.env.ATTACK_SEALED ?? "4";
+  const [o, s] = await Promise.all([view<VaultView>(CONTRACT, "vault", { token_id: opened }), view<VaultView>(CONTRACT, "vault", { token_id: sealed })]);
+  const held = (v: VaultView) => v.custody.some((c) => c.account_id === ALICE) && v.owner_id === BOB;
+  if (o.state.kind !== "opened" || s.state.kind !== "sealed" || !held(o) || !held(s)) {
+    throw new Error(`need vault ${opened} opened and vault ${sealed} sealed, both bob's and formerly alice's`);
+  }
+  const evm = {
+    chain_id: String(BASE_SEPOLIA),
+    nonce: "0",
+    to: "0x3fa2b1c47d9e0f5a6b8c2d4e6f80a1b3c519cd00",
+    amount_wei: "1000000000000",
+    gas_limit: "21000",
+    max_fee_per_gas: "2000000000",
+    max_priority_fee_per_gas: "1000000",
+  };
+  const cases = [
+    { kind: "former_owner_withdraws", who: ALICE, token: opened, method: "withdraw_evm", args: { token_id: opened, params: evm }, deposit: WITHDRAW_DEPOSIT + ONE_YOCTO, expected: "ERR_NOT_OWNER" },
+    { kind: "former_owner_breaks_seal", who: ALICE, token: sealed, method: "break_seal", args: { token_id: sealed }, deposit: ONE_YOCTO, expected: "ERR_NOT_OWNER" },
+    { kind: "transfer_opened_vault", who: BOB, token: opened, method: "nft_transfer", args: { receiver_id: ALICE, token_id: opened }, deposit: ONE_YOCTO, expected: "ERR_VAULT_OPENED" },
+    { kind: "withdraw_sealed_vault", who: BOB, token: sealed, method: "withdraw_evm", args: { token_id: sealed, params: evm }, deposit: WITHDRAW_DEPOSIT + ONE_YOCTO, expected: "ERR_VAULT_SEALED" },
+    { kind: "sign_arbitrary_bytes", who: BOB, token: null, method: "sign", args: { payload: "00".repeat(32) }, deposit: 0n, expected: "MethodNotFound" },
+  ];
+  const signaturesBefore = { [opened]: o.signatures_requested, [sealed]: s.signatures_requested };
+
+  const results = [];
+  for (const c of cases) {
+    // Signed here and sent with send_tx, so a refusal comes back as an outcome, not a thrown error.
+    const signed = await account(c.who).createSignedTransaction({
+      receiverId: CONTRACT,
+      actions: [actions.functionCall(c.method, c.args, 100n * TGAS, c.deposit)],
+    });
+    const r = await rpc<Outcome>("send_tx", { signed_tx_base64: Buffer.from(signed.encode()).toString("base64"), wait_until: "FINAL" });
+    const failure = JSON.stringify(r.status.Failure ?? null);
+    const code = failure.match(/ERR_[A-Z_]+|MethodNotFound/)?.[0] ?? null;
+    const signerCalled = r.receipts_outcome.some((x) => x.outcome.executor_id === SIGNER);
+    results.push({
+      kind: c.kind,
+      actor: c.who,
+      call: `${c.method}(${c.token ? `vault ${c.token}` : "payload"})`,
+      expected: c.expected,
+      refused: !!r.status.Failure,
+      error: code,
+      signer_called: signerCalled,
+      tx_hash: r.transaction.hash,
+      tx: explorer(r.transaction.hash),
+      gas: gasReport(r).total_tgas,
+    });
+    console.log(`${c.kind}: ${r.status.Failure ? `refused, ${code}` : "ACCEPTED"} ${signerCalled ? "(signer called!)" : ""} ${explorer(r.transaction.hash)}`);
+  }
+
+  const [o2, s2] = await Promise.all([view<VaultView>(CONTRACT, "vault", { token_id: opened }), view<VaultView>(CONTRACT, "vault", { token_id: sealed })]);
+  const unchanged =
+    o2.owner_id === o.owner_id && s2.owner_id === s.owner_id && s2.state.kind === "sealed" &&
+    o2.signatures_requested === signaturesBefore[opened] && s2.signatures_requested === signaturesBefore[sealed];
+  const ok = results.every((r) => r.refused && r.error === r.expected && !r.signer_called) && unchanged;
+  console.log(`${ok ? "all refused as expected" : "SOMETHING WAS NOT REFUSED AS EXPECTED"}; vaults unchanged: ${unchanged}`);
+  saveReport("testnet-attacks", {
+    measured_at: new Date().toISOString(),
+    contract: CONTRACT,
+    code_hash: (await viewAccount(CONTRACT)).code_hash,
+    vaults: { opened, sealed },
+    results,
+    vaults_unchanged: unchanged,
+    all_refused_as_expected: ok,
+  });
+  if (!ok) throw new Error("an attack was not refused as expected");
 }
 
 /** create_vault must refuse gas that can't cover the key requests, and work at the floor. */
@@ -793,7 +871,8 @@ else if (cmd === "btc-vault") await btcVault();
 else if (cmd === "btc-withdraw") await btcWithdraw(process.argv[3] ?? "");
 else if (cmd === "sol-withdraw") await solWithdraw(process.argv[3] ?? "");
 else if (cmd === "lock") await lock();
+else if (cmd === "attacks") await attacks();
 else {
-  console.log("usage: node spike/testnet-sign.ts setup|run|redeploy|gas-floor|broadcast|btc-joined|btc-vault|btc-withdraw|sol-withdraw|lock");
+  console.log("usage: node spike/testnet-sign.ts setup|run|redeploy|gas-floor|broadcast|btc-joined|btc-vault|btc-withdraw|sol-withdraw|lock|attacks");
   process.exitCode = 1;
 }

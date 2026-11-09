@@ -6,7 +6,7 @@ import { BearerCard } from "@/components/card/bearer-card";
 export function HeroArt() {
   return (
     <div aria-hidden className="relative h-[440px] min-w-0 sm:h-[520px]">
-      <div className="absolute left-1/2 top-1/2 size-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(201_162_39/0.18),rgb(201_162_39/0.05)_55%,transparent)]" />
+      <div className="absolute left-1/2 top-1/2 aspect-square w-[min(560px,100%)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(201_162_39/0.18),rgb(201_162_39/0.05)_55%,transparent)]" />
 
       <div className="absolute left-1/2 top-[14%] w-[min(372px,74%)] -translate-x-[58%] -rotate-[10deg] sm:-translate-x-[70%]">
         <div className="animate-float-slow motion-reduce:animate-none">

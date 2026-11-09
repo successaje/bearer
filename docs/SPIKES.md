@@ -3,6 +3,40 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-09 · `bearer.testnet`: the final contract, deployed and checked (not locked yet)
+
+`bearer.testnet` was created through NEAR's testnet faucet service (10 NEAR) and runs
+`contracts/res/bearer.wasm` (sha256 `a2ab7843…36fd`; on-chain code hash `BwzhMbAg…RMLG`, which
+matches). It was initialised with the spike's settings and `base_uri`
+`https://bearer-near.vercel.app/nft`, so each token's media is the site's live image of its seal.
+It still has one full-access key: locking waits for the reproducible build and the owner's yes.
+Same signer (`v1.signer-prod.testnet` 3.18.0) and RPC as the spike; same test accounts.
+
+| Check | Result |
+|---|---|
+| Keys at creation | Vault No. 0001: keys visible 7.3 s after submitting (N = 1), 24.1 Tgas ([tx](https://testnet.nearblocks.io/txns/2r35HepxDBas5PKgZGWWXTEUmPxiQyD7Hihwz1WY1zV4)) |
+| Parity | All three stored keys equal the signer's own `derived_public_key`; the stored Base address equals viem's |
+| Base, through the contract | 5 of 5 signed, **median 8.1 s** (N = 5, range 6.5–9.1 s). Each recovers to the vault on chain 84532, nonces 0–4. 14.6 Tgas each, 16.9 with `break_seal`. Not broadcast: the vault's Base address holds no ETH |
+| Ed25519, called directly | 5 of 5 verify, **median 7.4 s** (N = 5, range 6.8–8.5 s), 8.5 Tgas each |
+| Gas floor | 40 Tgas refused with `ERR_GAS` (so panic messages survive this build); 44 Tgas stored the keys of vault No. 0002 ([tx](https://testnet.nearblocks.io/txns/ERi6vdvhCy4H2oxXAzqzLkFXSdvTj5gALER5HQEQLHLy)) |
+| Bitcoin, joined signatures | 1–4 inputs signed in 7.6–8.3 s (one run each), 15.1–42.6 Tgas, callback 2.8–4.5 Tgas; every spend checked with bitcoinjs-lib. Made-up inputs, never broadcast |
+| Solana | Signed in 7.0 s (N = 1), 14.8 Tgas, checked with `@solana/web3.js`; devnet's simulation stops at `AccountNotFound` because the vault holds no SOL |
+
+```bash
+cd contracts/tests
+BEARER_CONTRACT_ID=bearer.testnet BEARER_WASM=../res/bearer.wasm BEARER_MEDIA_BASE_URI=https://bearer-near.vercel.app/nft pnpm spike:testnet setup
+BEARER_CONTRACT_ID=bearer.testnet pnpm spike:testnet run
+```
+
+Raw numbers:
+[`testnet-sign-2026-11-09T09-00-46.070Z.json`](../contracts/tests/spike/reports/testnet-sign-2026-11-09T09-00-46.070Z.json),
+[`testnet-btc-joined-2026-11-09T09-03-48.362Z.json`](../contracts/tests/spike/reports/testnet-btc-joined-2026-11-09T09-03-48.362Z.json),
+[`testnet-sol-withdraw-2026-11-09T09-04-10.188Z.json`](../contracts/tests/spike/reports/testnet-sol-withdraw-2026-11-09T09-04-10.188Z.json).
+
+Before locking: deploy the reproducible build in place of this wasm (state is kept; no
+re-initialisation) and rerun these checks. Withdrawals land on other chains only once the new
+vaults' addresses hold funds.
+
 ## 2026-11-09 · First Solana withdrawal broadcast from an opened vault
 
 After the human funded vault No. 0002's Solana address with 0.5 devnet SOL, `pnpm spike:testnet

@@ -1,0 +1,465 @@
+{
+  "measured_at": "2026-11-09T09:00:46.070Z",
+  "contract": "bearer.testnet",
+  "signer": "v1.signer-prod.testnet",
+  "signer_version": "3.18.0",
+  "rpc": "https://test.rpc.fastnear.com",
+  "create_vault": {
+    "token_id": "1",
+    "tx": "https://testnet.nearblocks.io/txns/2r35HepxDBas5PKgZGWWXTEUmPxiQyD7Hihwz1WY1zV4",
+    "keys_visible_after_ms": 7283,
+    "gas": {
+      "total_tgas": 24.13,
+      "receipts": [
+        {
+          "executor": "bearer.testnet",
+          "tgas": 4.564,
+          "failed": false
+        },
+        {
+          "executor": "v1.signer-prod.testnet",
+          "tgas": 5.372,
+          "failed": false
+        },
+        {
+          "executor": "alice.bearer-1108-ffb3.testnet",
+          "tgas": 0.223,
+          "failed": false
+        },
+        {
+          "executor": "v1.signer-prod.testnet",
+          "tgas": 5.372,
+          "failed": false
+        },
+        {
+          "executor": "alice.bearer-1108-ffb3.testnet",
+          "tgas": 0.223,
+          "failed": false
+        },
+        {
+          "executor": "v1.signer-prod.testnet",
+          "tgas": 5.288,
+          "failed": false
+        },
+        {
+          "executor": "alice.bearer-1108-ffb3.testnet",
+          "tgas": 0.223,
+          "failed": false
+        },
+        {
+          "executor": "bearer.testnet",
+          "tgas": 2.106,
+          "failed": false
+        },
+        {
+          "executor": "alice.bearer-1108-ffb3.testnet",
+          "tgas": 0.223,
+          "failed": false
+        },
+        {
+          "executor": "alice.bearer-1108-ffb3.testnet",
+          "tgas": 0.223,
+          "failed": false
+        }
+      ]
+    },
+    "storage_bytes_added": 1061
+  },
+  "parity": {
+    "btc": {
+      "path": "bearer:v3:1:btc",
+      "stored": "secp256k1:2sepN5anFUrNmxcz8UsU1BWMTvJHPs1jY7Y8xvFJ7wn1w8KiAzCKoqYd1i9DbXbyx9zLvpgaydW6yv8fnA3dJ3aQ",
+      "matches_signer": true
+    },
+    "evm": {
+      "path": "bearer:v3:1:evm",
+      "stored": "secp256k1:2yGEhnDi87UKqcNnrzvE9uQdDJNk8uNeb2Xxz4Tx3swQwM8DcMk6agLL6zVAzRkXgqiPEkUAxuNmXwoGSVsrPEKZ",
+      "matches_signer": true
+    },
+    "sol": {
+      "path": "bearer:v3:1:sol",
+      "stored": "ed25519:Fet45A9Y5NLAuT9vUEgsJ6KseNawHGGZzPh22BdCkmij",
+      "matches_signer": true
+    },
+    "evm_address": {
+      "stored": "0x02f7ad77c02397a941ba832a866a24bec64b81e8",
+      "from_key_via_viem": "0x02f7Ad77C02397a941bA832A866a24bec64B81E8",
+      "matches": true
+    }
+  },
+  "nft_transfer": {
+    "tx": "https://testnet.nearblocks.io/txns/9qzYBh3WGLQdSAbs5gyLvfaT5qGEB9p6yUbWvnG1QJDK",
+    "gas": {
+      "total_tgas": 3.858,
+      "receipts": [
+        {
+          "executor": "bearer.testnet",
+          "tgas": 3.324,
+          "failed": false
+        },
+        {
+          "executor": "alice.bearer-1108-ffb3.testnet",
+          "tgas": 0.223,
+          "failed": false
+        }
+      ]
+    }
+  },
+  "withdraw_evm": {
+    "runs": [
+      {
+        "run": 1,
+        "batched_break_seal": true,
+        "tx": "https://testnet.nearblocks.io/txns/7uwn1X2PuSVmyx3KNoqAFQ1hfhNFGx1xuUbyywUsw4cD",
+        "status": "signed",
+        "error": null,
+        "signed_visible_after_ms": 8151,
+        "gas": {
+          "total_tgas": 16.918,
+          "receipts": [
+            {
+              "executor": "bearer.testnet",
+              "tgas": 5.202,
+              "failed": false
+            },
+            {
+              "executor": "v1.signer-prod.testnet",
+              "tgas": 4.269,
+              "failed": false
+            },
+            {
+              "executor": "v1.signer-prod.testnet",
+              "tgas": 3.463,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bearer.testnet",
+              "tgas": 2.571,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            }
+          ]
+        },
+        "evm": {
+          "recovers_to_vault": true,
+          "chain_id": 84532,
+          "nonce": 0,
+          "type": "eip1559"
+        },
+        "raw_tx": "0x02f87183014a3480830f424084773594008252089402f7ad77c02397a941ba832a866a24bec64b81e885e8d4a5100080c001a05b56a487b5a3bcfb3904ff0330b92aee8a0bd8f04babe1495790b527edd88b84a0538a01b2d14e0ec9b0f33bfa9f526b6ef5c4d0809da03e91cf848b480ea5d755"
+      },
+      {
+        "run": 2,
+        "batched_break_seal": false,
+        "tx": "https://testnet.nearblocks.io/txns/8dg7kvgf1ypVET2TobW1Add7PzrdvQJBdpBg9MJpHZpJ",
+        "status": "signed",
+        "error": null,
+        "signed_visible_after_ms": 8087,
+        "gas": {
+          "total_tgas": 14.617,
+          "receipts": [
+            {
+              "executor": "bearer.testnet",
+              "tgas": 3.098,
+              "failed": false
+            },
+            {
+              "executor": "v1.signer-prod.testnet",
+              "tgas": 4.269,
+              "failed": false
+            },
+            {
+              "executor": "v1.signer-prod.testnet",
+              "tgas": 3.463,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bearer.testnet",
+              "tgas": 2.575,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            }
+          ]
+        },
+        "evm": {
+          "recovers_to_vault": true,
+          "chain_id": 84532,
+          "nonce": 1,
+          "type": "eip1559"
+        }
+      },
+      {
+        "run": 3,
+        "batched_break_seal": false,
+        "tx": "https://testnet.nearblocks.io/txns/eTobR5Wcsee3Pxm5bZt3q3sUfts3iVWxXCSyhveVKHr",
+        "status": "signed",
+        "error": null,
+        "signed_visible_after_ms": 7331,
+        "gas": {
+          "total_tgas": 14.571,
+          "receipts": [
+            {
+              "executor": "bearer.testnet",
+              "tgas": 3.1,
+              "failed": false
+            },
+            {
+              "executor": "v1.signer-prod.testnet",
+              "tgas": 4.269,
+              "failed": false
+            },
+            {
+              "executor": "v1.signer-prod.testnet",
+              "tgas": 3.415,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bearer.testnet",
+              "tgas": 2.575,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            }
+          ]
+        },
+        "evm": {
+          "recovers_to_vault": true,
+          "chain_id": 84532,
+          "nonce": 2,
+          "type": "eip1559"
+        }
+      },
+      {
+        "run": 4,
+        "batched_break_seal": false,
+        "tx": "https://testnet.nearblocks.io/txns/2kyDaRcg2gPJbiNs6G9iGMqy6HdPCACc8PnLkPoXFykR",
+        "status": "signed",
+        "error": null,
+        "signed_visible_after_ms": 9129,
+        "gas": {
+          "total_tgas": 14.621,
+          "receipts": [
+            {
+              "executor": "bearer.testnet",
+              "tgas": 3.1,
+              "failed": false
+            },
+            {
+              "executor": "v1.signer-prod.testnet",
+              "tgas": 4.271,
+              "failed": false
+            },
+            {
+              "executor": "v1.signer-prod.testnet",
+              "tgas": 3.463,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bearer.testnet",
+              "tgas": 2.575,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            }
+          ]
+        },
+        "evm": {
+          "recovers_to_vault": true,
+          "chain_id": 84532,
+          "nonce": 3,
+          "type": "eip1559"
+        }
+      },
+      {
+        "run": 5,
+        "batched_break_seal": false,
+        "tx": "https://testnet.nearblocks.io/txns/CRk6avo1iFzsFv2GEVLXQbf7Dv8JJ5Z6DaRWXWug1SrW",
+        "status": "signed",
+        "error": null,
+        "signed_visible_after_ms": 6542,
+        "gas": {
+          "total_tgas": 14.62,
+          "receipts": [
+            {
+              "executor": "bearer.testnet",
+              "tgas": 3.1,
+              "failed": false
+            },
+            {
+              "executor": "v1.signer-prod.testnet",
+              "tgas": 4.269,
+              "failed": false
+            },
+            {
+              "executor": "v1.signer-prod.testnet",
+              "tgas": 3.463,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bearer.testnet",
+              "tgas": 2.575,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            },
+            {
+              "executor": "bob.bearer-1108-ffb3.testnet",
+              "tgas": 0.223,
+              "failed": false
+            }
+          ]
+        },
+        "evm": {
+          "recovers_to_vault": true,
+          "chain_id": 84532,
+          "nonce": 4,
+          "type": "eip1559"
+        }
+      }
+    ],
+    "n": 5,
+    "median_signed_visible_ms": 8087
+  },
+  "base_sepolia_broadcast": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": {
+      "code": -32003,
+      "message": "insufficient funds for gas * price + value: have 0 want 43000000000000"
+    }
+  },
+  "sign_eddsa_direct": {
+    "derived_key": "ed25519:8JJvYQwFeGYVevsxQQmULmksLj4yBPPu97R325wZGvow",
+    "runs": [
+      {
+        "run": 1,
+        "tx": "https://testnet.nearblocks.io/txns/8AXrDzW6PhUub1HQDxSRbpqtVHoLRpVei9xEdedKEh64",
+        "final_after_ms": 7893,
+        "scheme": "Ed25519",
+        "verifies": true,
+        "gas": 8.515
+      },
+      {
+        "run": 2,
+        "tx": "https://testnet.nearblocks.io/txns/36QCKMJ1o7dNjctRnKbb6MbTZnGGhGH39v2tYGRYZVwt",
+        "final_after_ms": 7219,
+        "scheme": "Ed25519",
+        "verifies": true,
+        "gas": 8.516
+      },
+      {
+        "run": 3,
+        "tx": "https://testnet.nearblocks.io/txns/6UrR7x73Vs2Brvbtm3FR7AxQiYdZatk3fHHJjiTx4JXb",
+        "final_after_ms": 7419,
+        "scheme": "Ed25519",
+        "verifies": true,
+        "gas": 8.468
+      },
+      {
+        "run": 4,
+        "tx": "https://testnet.nearblocks.io/txns/Hcr4kT9wnzJGLRPRx17d952BxeNcrs4zAX8ToojWcrzD",
+        "final_after_ms": 8542,
+        "scheme": "Ed25519",
+        "verifies": true,
+        "gas": 8.515
+      },
+      {
+        "run": 5,
+        "tx": "https://testnet.nearblocks.io/txns/4s4ej11Ai8R3KuNwA215PMQSFhp5pAEAgRNCN34PuZv7",
+        "final_after_ms": 6793,
+        "scheme": "Ed25519",
+        "verifies": true,
+        "gas": 8.515
+      }
+    ],
+    "n": 5,
+    "median_final_ms": 7419
+  }
+}

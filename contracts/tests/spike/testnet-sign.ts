@@ -35,7 +35,9 @@ const ESPLORA = process.env.ESPLORA_API ?? "https://blockstream.info/testnet4/ap
 const SIGNER = "v1.signer-prod.testnet";
 const PARENT = process.env.BEARER_TESTNET_PARENT;
 if (!PARENT) throw new Error("Set BEARER_TESTNET_PARENT to a faucet-created testnet account.");
-const CONTRACT = `${process.env.BEARER_TESTNET_PREFIX ?? "v3a"}.${PARENT}`;
+// BEARER_CONTRACT_ID names a contract account that already exists (the locked deployment,
+// bearer.testnet); otherwise the contract is a subaccount of the parent.
+const CONTRACT = process.env.BEARER_CONTRACT_ID ?? `${process.env.BEARER_TESTNET_PREFIX ?? "v3a"}.${PARENT}`;
 const ALICE = `alice.${PARENT}`;
 const BOB = `bob.${PARENT}`;
 const RUNS = Number(process.env.SPIKE_RUNS ?? 5);
@@ -46,7 +48,8 @@ const ONE_YOCTO = 1n;
 const CREATE_DEPOSIT = 5n * 10n ** 22n; // 0.05 NEAR, as in the sandbox tests
 const WITHDRAW_DEPOSIT = 10n ** 22n; // 0.01 NEAR
 const BASE_SEPOLIA = 84532;
-const WASM = join(import.meta.dirname, "..", "..", "out", "bearer.wasm");
+// BEARER_WASM points setup at another build, e.g. the reproducible one in contracts/res.
+const WASM = process.env.BEARER_WASM ?? join(import.meta.dirname, "..", "..", "out", "bearer.wasm");
 const CREDS = join(homedir(), ".near-credentials", "testnet");
 
 /* ---------- accounts and RPC ---------- */

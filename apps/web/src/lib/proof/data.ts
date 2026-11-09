@@ -146,6 +146,18 @@ export const MARKET_SALE = {
 };
 
 /**
+ * The first funded withdrawal from the locked contract, through the owner's own wallet
+ * (docs/SPIKES.md, 2026-11-09).
+ */
+export const WALLET_WITHDRAWAL = {
+  tokenId: "5",
+  detail:
+    "The owner's wallet broke the seal and asked for a Base withdrawal in one NEAR transaction; 0.0002 ETH went to a separate address, confirmed on Base Sepolia in block 56,685,109",
+  nearTx: "https://testnet.nearblocks.io/txns/9ioTWzebJRgkTaRLG9ZVNQzFKdyX9RSqkxMKwjN4UKwf",
+  baseTx: "https://sepolia.basescan.org/tx/0x167897cae482d693f5a321ec459c3204270efcd735d11bb5ff95c0ea0ab65017",
+};
+
+/**
  * T10 on a real chain: two signed Base withdrawals for one nonce, from the locked contract
  * (contracts/tests/spike/reports/base-same-nonce-2026-11-09T18-29-49.254Z.json).
  */

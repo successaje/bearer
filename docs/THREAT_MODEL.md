@@ -79,6 +79,26 @@ market` (unit) and `contracts/tests/market.test.ts` (sandbox, against the locked
 | M9 | Admin or upgrade powers over the market, including its key holder acting as the owner of a listed vault (breaking its seal) | No admin, owner or upgrade methods; every key deleted (`spike:market lock`, same guards as Bearer's). The site shows the market's key count and code hash live | `spike:market lock` run on `bearer-market.testnet` 2026-11-09: 0 keys left, code hash `7joKh4WS…qt7P` = the reproducible build ([tx](https://testnet.nearblocks.io/txns/G8t9cc9xKa7ymc84hCtk8xeRG2JKBao8auFLKLg1SHVK)) | ✅ |
 | M10 | A buyer reads an observed balance as a guaranteed value | Listings show balances as observations, with source, time and confirmation status | UI review | policy |
 
+## Scheduled handover threats
+
+The schedule (`contracts/schedule`) holds a sealed vault until a chosen date, then hands it to a
+chosen recipient. Like the market it can't change Bearer's rules: a vault reaches it only through
+Bearer's sealed-only gate, and nothing in it breaks a seal. Tests: `cargo test -p schedule` (unit)
+and `contracts/tests/schedule.test.ts` (sandbox, against the locked Bearer wasm).
+
+| # | Attack | Defence | Test | Status |
+|---|---|---|---|---|
+| S1 | Fake a schedule by calling `nft_on_transfer` directly | Only the Bearer contract may call it | `only_bearer_can_schedule` (unit and sandbox) | ✅ |
+| S2 | Release before the date | `release` refuses until the block time reaches it | `release_waits_for_the_date` (unit and sandbox) | ✅ |
+| S3 | Release to someone other than the recipient | The recipient is fixed when scheduling; `release` takes no recipient, so anyone may call it | `anyone_can_release_on_the_date` | ✅ |
+| S4 | Cancel what was promised | Only the giver, only if they chose a cancellable schedule, only before the date | `irrevocable_schedule_cannot_be_cancelled`, `only_the_giver_can_cancel`, `no_cancelling_after_the_date` | ✅ |
+| S5 | The recipient's name isn't registered, so whoever registers it later gets the vault | `release` sends 1 yoctoNEAR first; if the account doesn't exist, the vault stays and the schedule waits | `missing_recipient_keeps_the_vault` (unit and sandbox) | ✅ |
+| S6 | The giver withdraws while the vault is scheduled | The schedule holds the vault and never breaks seals; only sealed vaults can be scheduled | `giver_cannot_withdraw_while_scheduled`, `opened_vault_cannot_be_scheduled` | ✅ |
+| S7 | Fill the schedule's storage for free | Each schedule holds a 0.01 NEAR deposit, checked against its storage and paid back with the release or the cancellation | `schedule_holds_the_deposit_and_covers_its_storage`, `scheduling_without_deposit_returns_the_vault` | ✅ |
+| S8 | A handover stops halfway | `release` and `cancel` refuse too little gas; callbacks never panic and put the schedule back to waiting | `failed_move_keeps_the_schedule` (unit) | ✅ |
+| S9 | A vault sent without a schedule is stuck | `return_unscheduled` sends it to the holder before the schedule; never a scheduled vault | `return_unscheduled` tests (sandbox) | ✅ |
+| S10 | Admin or upgrade powers over the schedule | No admin, owner or upgrade methods; keys deleted at the locked deploy | lock not yet run | partly |
+
 ## What you are trusting
 
 - **NEAR's MPC network** to sign only what the Bearer contract requests, and to keep its key shares safe.

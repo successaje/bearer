@@ -169,7 +169,7 @@ export interface Threat {
   chains?: string;
 }
 
-/** docs/THREAT_MODEL.md: rows T1–T17, then the market's M1–M10. */
+/** docs/THREAT_MODEL.md: rows T1–T17, the market's M1–M10, then the schedule's S1–S10. */
 export const THREATS: Threat[] = [
   {
     id: "T1",
@@ -358,6 +358,17 @@ export const THREATS: Threat[] = [
     tests: ["spike:market lock (bearer-market.testnet: 0 keys, 9 Nov)"],
     status: "proven",
   },
+  // The scheduled handover (contracts/schedule), rows S1–S10.
+  { id: "S1", attack: "Fake a schedule by calling the schedule's nft_on_transfer directly", defence: "Only the Bearer contract may call it", tests: ["only_bearer_can_schedule"], status: "proven" },
+  { id: "S2", attack: "Release a scheduled vault before its date", defence: "release refuses until the block time reaches the date", tests: ["release_waits_for_the_date"], status: "proven" },
+  { id: "S3", attack: "Release it to someone other than the recipient", defence: "The recipient is fixed when scheduling; release takes no recipient", tests: ["anyone_can_release_on_the_date"], status: "proven" },
+  { id: "S4", attack: "Cancel what was promised", defence: "Only the giver, only if cancellable, only before the date", tests: ["irrevocable_schedule_cannot_be_cancelled", "only_the_giver_can_cancel", "no_cancelling_after_the_date"], status: "proven" },
+  { id: "S5", attack: "The recipient's name isn't registered, so a squatter gets the vault", defence: "release checks the account exists first; otherwise the vault stays", tests: ["missing_recipient_keeps_the_vault"], status: "proven" },
+  { id: "S6", attack: "The giver withdraws while the vault is scheduled", defence: "The schedule holds the vault and never breaks seals", tests: ["giver_cannot_withdraw_while_scheduled", "opened_vault_cannot_be_scheduled"], status: "proven" },
+  { id: "S7", attack: "Fill the schedule's storage for free", defence: "Each schedule holds a 0.01 NEAR deposit, checked against its storage", tests: ["schedule_holds_the_deposit_and_covers_its_storage", "scheduling_without_deposit_returns_the_vault"], status: "proven" },
+  { id: "S8", attack: "A handover stops halfway", defence: "Gas floors; callbacks never panic and put the schedule back to waiting", tests: ["failed_move_keeps_the_schedule"], status: "proven" },
+  { id: "S9", attack: "A vault sent without a schedule is stuck", defence: "return_unscheduled sends it back to the holder before the schedule", tests: ["return_unscheduled tests"], status: "proven" },
+  { id: "S10", attack: "Admin or upgrade powers over the schedule", defence: "No admin or upgrade methods; keys deleted at the locked deploy", tests: ["lock not yet run"], status: "partly" },
   {
     id: "M10",
     attack: "A buyer reads an observed balance as a guaranteed value",

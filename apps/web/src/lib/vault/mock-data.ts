@@ -1,4 +1,4 @@
-import type { ChainTag, Finish, MarketListing, ObservedDeposit, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
+import type { ChainTag, Finish, Holdings, MarketListing, ObservedDeposit, TokenInfo, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
 import { vaultPath } from "@bearer/sdk";
 
 /** Simulated chain state for one vault: what an explorer would show at its addresses. */
@@ -27,13 +27,25 @@ export interface MockVault {
 }
 
 export interface MockState {
-  version: 4;
+  version: 5;
   nextId: number;
   vaults: Record<string, MockVault>;
   accounts: string[];
   /** The simulated market's listings, by token. Their vaults are held by MOCK_MARKET. */
   listings: Record<string, MarketListing>;
+  /** v2: NEAR, tokens and NFTs held for each vault. */
+  holdings: Record<string, Holdings>;
 }
+
+/** Simulated token contracts the demo knows. Real ones are read from their own ft_metadata. */
+export const MOCK_TOKENS: Record<string, TokenInfo> = {
+  "usdt.mock.testnet": { contract: "usdt.mock.testnet", symbol: "USDT", name: "Tether USD (simulated)", decimals: 6 },
+  "wnear.mock.testnet": { contract: "wnear.mock.testnet", symbol: "wNEAR", name: "Wrapped NEAR (simulated)", decimals: 24 },
+};
+/** A simulated NFT collection: any token id exists, titled "Ticket #id". */
+export const MOCK_NFT_CONTRACT = "tickets.mock.testnet";
+/** Storage the demo charges per held entry, from the vault's NEAR, like the contract (H6). */
+export const MOCK_ENTRY_STORAGE = 10n ** 21n;
 
 /** The simulated market contract (MARKET_CONTRACT in mock mode). */
 export const MOCK_MARKET = "market.testnet";
@@ -356,11 +368,27 @@ export function seedState(now: number): MockState {
     };
   }
 
+  const holdings: Record<string, Holdings> = {
+    // 42 also holds NEAR, a token and an NFT (v2).
+    "42": {
+      near: (2n * 10n ** 24n - 3n * MOCK_ENTRY_STORAGE).toString(),
+      tokens: [{ contract: "usdt.mock.testnet", amount: "250000000", pending: "0" }],
+      nfts: [{ contract: MOCK_NFT_CONTRACT, token_id: "12", pending: false }],
+    },
+    // 29 is opened, so its owner can withdraw what it holds.
+    "29": {
+      near: (5n * 10n ** 23n - 2n * MOCK_ENTRY_STORAGE).toString(),
+      tokens: [{ contract: "wnear.mock.testnet", amount: (15n * 10n ** 23n).toString(), pending: "0" }],
+      nfts: [],
+    },
+  };
+
   return {
-    version: 4,
+    version: 5,
     nextId: 64,
     vaults,
     accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", ATTACKER, "near.testnet", MOCK_MARKET],
     listings,
+    holdings,
   };
 }

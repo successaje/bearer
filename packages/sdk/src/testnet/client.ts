@@ -6,9 +6,12 @@ import type {
   ChainTag,
   ContractConfig,
   Finish,
+  Holdings,
   MarketConfig,
   MarketListing,
+  NftInfo,
   RecordedAttack,
+  TokenInfo,
   VaultView,
   WithdrawRequest,
   Withdrawal,
@@ -44,6 +47,8 @@ export interface TestnetClientOptions {
   contractId: string;
   /** The market contract (contracts/market) selling this contract's vaults, if any. */
   marketId?: string | null;
+  /** True for a v2 contract, which holds NEAR, tokens and NFTs for each vault (holdings.rs). */
+  holdings?: boolean;
   /** Attacks sent to this contract as real transactions; `runAttack` re-reads their outcome. */
   recordedAttacks?: RecordedAttack[];
   wallet: WalletAdapter;
@@ -224,6 +229,133 @@ export class TestnetBearerClient implements BearerClient {
     if (!w.signed_raw_tx) throw new Error("This withdrawal isn't signed yet.");
     await broadcastRaw(chainOf(w.params), w.signed_raw_tx, this.ep);
     return this.trackWithdrawal(tokenId, index);
+  }
+
+  /* ---------- v2: NEAR-side holdings ---------- */
+
+  get supportsHoldings() {
+    return !!this.opts.holdings;
+  }
+
+  private requireHoldings() {
+    if (!this.opts.holdings) throw new Error("This contract can't hold NEAR, tokens or NFTs; that needs version 2.");
+  }
+
+  async holdings(tokenId: string) {
+    this.requireHoldings();
+    return this.near.view<Holdings>(this.opts.contractId, "holdings", { token_id: tokenId });
+  }
+
+  async tokenInfo(contract: string): Promise<TokenInfo> {
+    const m = await this.near.view<{ symbol?: string; name?: string; decimals?: number }>(contract, "ft_metadata");
+    return { contract, symbol: m.symbol ?? null, name: m.name ?? null, decimals: m.decimals ?? 0 };
+  }
+
+  async nftInfo(contract: string, nftTokenId: string): Promise<NftInfo> {
+    const t = await this.near.view<{ metadata?: { title?: string | null; media?: string | null } } | null>(contract, "nft_token", {
+      token_id: nftTokenId,
+    });
+    if (!t) throw new Error(`${contract} has no NFT ${nftTokenId}.`);
+    return { contract, token_id: nftTokenId, title: t.metadata?.title ?? null, media: t.metadata?.media ?? null };
+  }
+
+  /** Re-reads holdings until `done` says the contract has settled the change (a few receipts). */
+  private async settle(tokenId: string, done: (h: Holdings) => boolean, failure: string) {
+    for (let i = 0; i < 20; i++) {
+      const h = await this.holdings(tokenId);
+      if (done(h)) return h;
+      await sleep(1000);
+    }
+    throw new Error(failure);
+  }
+
+  async depositNear(tokenId: string, yocto: string, signer: string) {
+    this.signerFor(signer);
+    this.requireHoldings();
+    await this.opts.wallet.send(this.opts.contractId, [{ methodName: "deposit_near", args: { token_id: tokenId }, gas: 30n * TGAS, deposit: BigInt(yocto) }]);
+    return this.holdings(tokenId);
+  }
+
+  async loadToken(tokenId: string, contract: string, amount: string, signer: string) {
+    this.signerFor(signer);
+    this.requireHoldings();
+    // ft_transfer_call returns how much the receiver used: 0 means the vault sent it all back.
+    const { returnValue } = await this.opts.wallet.send(contract, [
+      {
+        methodName: "ft_transfer_call",
+        args: { receiver_id: this.opts.contractId, amount, msg: tokenId },
+        gas: 100n * TGAS,
+        deposit: ONE_YOCTO,
+      },
+    ]);
+    if (String(returnValue) === "0") {
+      throw new Error("The vault returned the tokens: only its owner can load them, and it needs a little NEAR for storage.");
+    }
+    return this.holdings(tokenId);
+  }
+
+  async loadNft(tokenId: string, contract: string, nftTokenId: string, signer: string) {
+    this.signerFor(signer);
+    this.requireHoldings();
+    // nft_transfer_call resolves to false when the receiver sent the NFT back.
+    const { returnValue } = await this.opts.wallet.send(contract, [
+      {
+        methodName: "nft_transfer_call",
+        args: { receiver_id: this.opts.contractId, token_id: nftTokenId, msg: tokenId },
+        gas: 100n * TGAS,
+        deposit: ONE_YOCTO,
+      },
+    ]);
+    if (returnValue === false) {
+      throw new Error("The vault returned the NFT: only its owner can load one, it needs a little NEAR for storage, and vaults can't hold vaults.");
+    }
+    return this.holdings(tokenId);
+  }
+
+  async withdrawNear(tokenId: string, receiver: string, yocto: string, signer: string) {
+    this.signerFor(signer);
+    this.requireHoldings();
+    // The contract takes the amount off before sending; a failed transfer puts it back a block later.
+    await this.opts.wallet.send(this.opts.contractId, [
+      { methodName: "withdraw_near", args: { token_id: tokenId, receiver_id: receiver, amount: yocto }, gas: 50n * TGAS, deposit: ONE_YOCTO },
+    ]);
+    return this.holdings(tokenId);
+  }
+
+  async withdrawToken(tokenId: string, contract: string, receiver: string, amount: string, signer: string) {
+    this.signerFor(signer);
+    this.requireHoldings();
+    await this.opts.wallet.send(this.opts.contractId, [
+      {
+        methodName: "withdraw_token",
+        args: { token_id: tokenId, token_contract: contract, receiver_id: receiver, amount },
+        gas: 60n * TGAS,
+        deposit: ONE_YOCTO,
+      },
+    ]);
+    return this.settle(
+      tokenId,
+      (h) => (h.tokens.find((t) => t.contract === contract)?.pending ?? "0") === "0",
+      "The withdrawal hasn't settled yet.",
+    );
+  }
+
+  async withdrawNft(tokenId: string, contract: string, nftTokenId: string, receiver: string, signer: string) {
+    this.signerFor(signer);
+    this.requireHoldings();
+    await this.opts.wallet.send(this.opts.contractId, [
+      {
+        methodName: "withdraw_nft",
+        args: { token_id: tokenId, nft_contract: contract, nft_token_id: nftTokenId, receiver_id: receiver },
+        gas: 80n * TGAS,
+        deposit: ONE_YOCTO,
+      },
+    ]);
+    return this.settle(
+      tokenId,
+      (h) => !h.nfts.some((n) => n.contract === contract && n.token_id === nftTokenId && n.pending),
+      "The withdrawal hasn't settled yet.",
+    );
   }
 
   /* ---------- the market: escrow by transfer (docs/features/market.md) ---------- */

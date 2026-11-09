@@ -1,9 +1,9 @@
 "use client";
 
-import type { AttackKind, ChainTag, Finish, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
+import type { AttackKind, ChainTag, Finish, Holdings, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { IS_SIMULATED, MARKET_CONTRACT } from "@/lib/config";
+import { HOLDINGS, IS_SIMULATED, MARKET_CONTRACT } from "@/lib/config";
 import { getVaultClient } from "./client";
 import { fetchContractFacts } from "./contract-facts";
 
@@ -15,6 +15,7 @@ export const keys = {
   progress: (id: string, index: number) => ["progress", id, index] as const,
   account: (id: string) => ["account", id] as const,
   listings: ["listings"] as const,
+  holdings: (id: string) => ["holdings", id] as const,
   listing: (id: string) => ["listing", id] as const,
 };
 
@@ -123,6 +124,7 @@ function useRefresh() {
     void qc.invalidateQueries({ queryKey: keys.withdrawals(id) });
     void qc.invalidateQueries({ queryKey: keys.observe(id) });
     void qc.invalidateQueries({ queryKey: keys.listings });
+    void qc.invalidateQueries({ queryKey: keys.holdings(id) });
     void qc.invalidateQueries({ queryKey: keys.listing(id) });
   };
 }
@@ -160,6 +162,75 @@ export function useWithdraw() {
     mutationFn: async (v: { id: string; request: WithdrawRequest; signer: string }) =>
       (await getVaultClient()).withdraw(v.id, v.request, v.signer),
     onSuccess: (_w, v) => refresh(v.id),
+  });
+}
+
+/* ---------- v2: what a vault holds on NEAR ---------- */
+
+const settling = (h: Holdings) => h.tokens.some((t) => t.pending !== "0") || h.nfts.some((n) => n.pending);
+
+export function useHoldings(id: string) {
+  return useQuery({
+    queryKey: keys.holdings(id),
+    queryFn: async () => (await getVaultClient()).holdings(id),
+    enabled: HOLDINGS,
+    refetchInterval: (q) => (q.state.data && settling(q.state.data) ? 1_500 : POLL_MS),
+  });
+}
+
+export function useTokenInfo(contract: string | null) {
+  return useQuery({
+    queryKey: ["token-info", contract],
+    queryFn: async () => (await getVaultClient()).tokenInfo(contract as string),
+    enabled: Boolean(contract),
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
+export function useNftInfo(contract: string | null, nftTokenId: string | null) {
+  return useQuery({
+    queryKey: ["nft-info", contract, nftTokenId],
+    queryFn: async () => (await getVaultClient()).nftInfo(contract as string, nftTokenId as string),
+    enabled: Boolean(contract && nftTokenId),
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
+export type HoldingsAction =
+  | { kind: "deposit_near"; yocto: string }
+  | { kind: "load_token"; contract: string; amount: string }
+  | { kind: "load_nft"; contract: string; nftTokenId: string }
+  | { kind: "withdraw_near"; receiver: string; yocto: string }
+  | { kind: "withdraw_token"; contract: string; receiver: string; amount: string }
+  | { kind: "withdraw_nft"; contract: string; nftTokenId: string; receiver: string };
+
+export function useHoldingsAction() {
+  const qc = useQueryClient();
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async ({ id, action: a, signer }: { id: string; action: HoldingsAction; signer: string }) => {
+      const c = await getVaultClient();
+      switch (a.kind) {
+        case "deposit_near":
+          return c.depositNear(id, a.yocto, signer);
+        case "load_token":
+          return c.loadToken(id, a.contract, a.amount, signer);
+        case "load_nft":
+          return c.loadNft(id, a.contract, a.nftTokenId, signer);
+        case "withdraw_near":
+          return c.withdrawNear(id, a.receiver, a.yocto, signer);
+        case "withdraw_token":
+          return c.withdrawToken(id, a.contract, a.receiver, a.amount, signer);
+        case "withdraw_nft":
+          return c.withdrawNft(id, a.contract, a.nftTokenId, a.receiver, signer);
+      }
+    },
+    onSuccess: (h, v) => {
+      qc.setQueryData(keys.holdings(v.id), h);
+      refresh(v.id);
+    },
   });
 }
 

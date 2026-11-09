@@ -111,3 +111,19 @@ export function parseNear(input: string): string | null {
   const [whole, frac = ""] = t.split(".");
   return (BigInt(whole) * YOCTO + BigInt(frac.padEnd(24, "0"))).toString();
 }
+
+/** Base units → "1,234.5": `decimals` from the token, at most `digits` shown, trailing zeros dropped. */
+export function formatUnits(amount: string | bigint, decimals: number, digits = 6): string {
+  const v = BigInt(amount);
+  const unit = 10n ** BigInt(decimals);
+  const frac = decimals ? (v % unit).toString().padStart(decimals, "0").slice(0, digits).replace(/0+$/, "") : "";
+  return `${(v / unit).toLocaleString("en-US")}${frac ? `.${frac}` : ""}`;
+}
+
+/** "12.5" → base units, or null unless it's a plain number with at most `decimals` decimals. */
+export function parseUnits(input: string, decimals: number): string | null {
+  const t = input.trim();
+  if (!new RegExp(`^\\d+(\\.\\d{1,${Math.max(decimals, 1)}})?$`).test(t) || (decimals === 0 && t.includes("."))) return null;
+  const [whole, frac = ""] = t.split(".");
+  return (BigInt(whole) * 10n ** BigInt(decimals) + BigInt(frac.padEnd(decimals, "0") || "0")).toString();
+}

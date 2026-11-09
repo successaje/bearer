@@ -15,7 +15,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Callout, Skeleton } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
-import { IS_SIMULATED, MARKET_CONTRACT } from "@/lib/config";
+import { HOLDINGS, IS_SIMULATED, MARKET_CONTRACT } from "@/lib/config";
 import { useContractFacts, useListing, useNow, useObservation, useVault, useWithdrawals } from "@/lib/vault/hooks";
 import { formatDate, formatUsd, nsToMs, vaultNumber } from "@/lib/vault/format";
 import { fiveQuestions, isSealed, observedUsd, vaultReport, vaultStatus } from "@/lib/vault/report";
@@ -24,6 +24,7 @@ import { AttackLab } from "./attack-lab";
 import { BreakSealSheet } from "./break-seal-sheet";
 import { FiveQuestions } from "./five-questions";
 import { FundSheet } from "./fund-sheet";
+import { HoldingsPanel } from "./holdings-panel";
 import { ReceivedMoment, useJustReceived } from "./received-moment";
 import { RecipientChecklist } from "./recipient-checklist";
 import { SealPanel } from "./seal-panel";
@@ -275,6 +276,8 @@ export function VaultDetailView() {
               ? observations.map((o) => <SlotCard key={o.chain} obs={o} now={now} opened={!sealed} />)
               : [0, 1, 2].map((i) => <SlotCardSkeleton key={i} />)}
           </div>
+
+          {HOLDINGS ? <HoldingsPanel vault={vault} viewer={ready ? accountId : null} onConnect={() => openConnect()} /> : null}
 
           {!sealed || (withdrawals.data?.length ?? 0) > 0 ? (
             <>

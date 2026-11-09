@@ -18,6 +18,12 @@ export const MARKET_CONTRACT: string | null =
   process.env.NEXT_PUBLIC_MARKET_CONTRACT ||
   (NETWORK === "mock" ? "market.testnet" : BEARER_CONTRACT === "bearer.testnet" ? "bearer-market.testnet" : null);
 
+/**
+ * Whether the contract is v2, which holds NEAR, tokens and NFTs for each vault. The deployed
+ * bearer.testnet is v1; the simulated demo always has holdings.
+ */
+export const HOLDINGS = NETWORK === "mock" || process.env.NEXT_PUBLIC_HOLDINGS === "1";
+
 /** Code hash of the market's reproducible build (contracts/res/market.wasm), deployed and locked on bearer-market.testnet. */
 export const MARKET_CODE_HASH = process.env.NEXT_PUBLIC_MARKET_CODE_HASH || "7joKh4WSVFGb6EEsUpS6BeC1wtp3pepG2FQwBuAJqt7P";
 

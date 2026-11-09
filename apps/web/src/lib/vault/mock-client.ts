@@ -5,8 +5,11 @@ import type {
   ChainObservation,
   ChainTag,
   Finish,
+  Holdings,
   MarketConfig,
   MarketListing,
+  NftInfo,
+  TokenInfo,
   VaultView,
   Withdrawal,
   WithdrawalProgress,
@@ -17,7 +20,10 @@ import { validateAddress } from "@/lib/validation";
 import { CHAIN_META } from "./format";
 import {
   FEES,
+  MOCK_ENTRY_STORAGE,
   MOCK_LISTING_DEPOSIT,
+  MOCK_NFT_CONTRACT,
+  MOCK_TOKENS,
   MOCK_MARKET,
   mockAddresses,
   mockHex,
@@ -31,7 +37,7 @@ import {
 import { ATTACK_TESTS, VaultError } from "./errors";
 import { withdrawalAmount } from "./report";
 
-const STORAGE_KEY = "bearer:mock:v4";
+const STORAGE_KEY = "bearer:mock:v5";
 const CUSTODY_CAP = 16;
 const KEYS_DELAY_MS = 1_500;
 
@@ -64,7 +70,7 @@ export class MockBearerClient implements BearerClient {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as MockState;
-        if (parsed.version === 4) return (this.state = parsed);
+        if (parsed.version === 5) return (this.state = parsed);
       }
     } catch {
       // Private mode or corrupt storage: start fresh.
@@ -338,6 +344,127 @@ export class MockBearerClient implements BearerClient {
   async accountExists(accountId: string) {
     await jitter(200, 400);
     return this.load().accounts.includes(accountId);
+  }
+
+  /* ---------- v2 holdings: same rules as contracts/bearer/src/holdings.rs ---------- */
+
+  readonly supportsHoldings = true;
+
+  private held(tokenId: string): Holdings {
+    const state = this.load();
+    state.holdings[tokenId] ??= { near: "0", tokens: [], nfts: [] };
+    return state.holdings[tokenId];
+  }
+
+  /** New entries are paid from the vault's NEAR (H6). */
+  private chargeEntry(h: Holdings) {
+    if (BigInt(h.near) < MOCK_ENTRY_STORAGE) {
+      throw new VaultError("ERR_VAULT_NEAR_BELOW_STORAGE", "Add a little NEAR to the vault first: each token or NFT it holds uses some for storage.");
+    }
+    h.near = (BigInt(h.near) - MOCK_ENTRY_STORAGE).toString();
+  }
+
+  private openedForOwner(tokenId: string, signer: string) {
+    const v = this.vault(tokenId);
+    this.assertOwner(v, signer);
+    if (v.view.state.kind === "sealed") throw new VaultError("ERR_VAULT_SEALED", "Break the seal first. Nothing leaves a sealed vault.");
+  }
+
+  async holdings(tokenId: string) {
+    await jitter(120, 240);
+    this.vault(tokenId);
+    return clone(this.load().holdings[tokenId] ?? { near: "0", tokens: [], nfts: [] });
+  }
+
+  async tokenInfo(contract: string): Promise<TokenInfo> {
+    const t = MOCK_TOKENS[contract];
+    if (!t) throw new VaultError("ERR_UNKNOWN_TOKEN", `The simulated demo knows ${Object.keys(MOCK_TOKENS).join(" and ")}.`);
+    return t;
+  }
+
+  async nftInfo(contract: string, nftTokenId: string): Promise<NftInfo> {
+    if (contract !== MOCK_NFT_CONTRACT) throw new VaultError("ERR_UNKNOWN_NFT", `The simulated demo knows ${MOCK_NFT_CONTRACT}.`);
+    return { contract, token_id: nftTokenId, title: `Ticket #${nftTokenId}`, media: null };
+  }
+
+  async depositNear(tokenId: string, yocto: string, signer: string) {
+    void signer;
+    await jitter(900, 1300);
+    this.vault(tokenId);
+    if (BigInt(yocto) < 10n ** 22n) throw new VaultError("ERR_DEPOSIT", "Add at least 0.01 NEAR.");
+    const h = this.held(tokenId);
+    h.near = (BigInt(h.near) + BigInt(yocto)).toString();
+    this.save();
+    return clone(h);
+  }
+
+  async loadToken(tokenId: string, contract: string, amount: string, signer: string) {
+    await jitter(1100, 1500);
+    this.assertOwner(this.vault(tokenId), signer);
+    await this.tokenInfo(contract);
+    if (BigInt(amount) <= 0n) throw new VaultError("ERR_AMOUNT", "Enter an amount above zero.");
+    const h = this.held(tokenId);
+    const entry = h.tokens.find((t) => t.contract === contract);
+    if (entry) entry.amount = (BigInt(entry.amount) + BigInt(amount)).toString();
+    else {
+      if (h.tokens.length >= 8) throw new VaultError("ERR_TOO_MANY_TOKENS", "A vault holds at most 8 kinds of token.");
+      this.chargeEntry(h);
+      h.tokens.push({ contract, amount, pending: "0" });
+    }
+    this.save();
+    return clone(h);
+  }
+
+  async loadNft(tokenId: string, contract: string, nftTokenId: string, signer: string) {
+    await jitter(1100, 1500);
+    this.assertOwner(this.vault(tokenId), signer);
+    await this.nftInfo(contract, nftTokenId);
+    const h = this.held(tokenId);
+    if (h.nfts.some((n) => n.contract === contract && n.token_id === nftTokenId)) throw new VaultError("ERR_HELD", "The vault already holds that NFT.");
+    if (h.nfts.length >= 16) throw new VaultError("ERR_TOO_MANY_NFTS", "A vault holds at most 16 NFTs.");
+    this.chargeEntry(h);
+    h.nfts.push({ contract, token_id: nftTokenId, pending: false });
+    this.save();
+    return clone(h);
+  }
+
+  async withdrawNear(tokenId: string, receiver: string, yocto: string, signer: string) {
+    void receiver;
+    await jitter(1100, 1500);
+    this.openedForOwner(tokenId, signer);
+    const h = this.held(tokenId);
+    if (BigInt(yocto) <= 0n || BigInt(yocto) > BigInt(h.near)) throw new VaultError("ERR_AMOUNT", "That's more than the vault holds.");
+    h.near = (BigInt(h.near) - BigInt(yocto)).toString();
+    this.save();
+    return clone(h);
+  }
+
+  async withdrawToken(tokenId: string, contract: string, receiver: string, amount: string, signer: string) {
+    void receiver;
+    await jitter(1300, 1800);
+    this.openedForOwner(tokenId, signer);
+    const h = this.held(tokenId);
+    const entry = h.tokens.find((t) => t.contract === contract);
+    if (!entry || BigInt(amount) <= 0n || BigInt(amount) > BigInt(entry.amount)) throw new VaultError("ERR_AMOUNT", "That's more than the vault holds.");
+    entry.amount = (BigInt(entry.amount) - BigInt(amount)).toString();
+    if (entry.amount === "0") {
+      h.tokens = h.tokens.filter((t) => t !== entry);
+      h.near = (BigInt(h.near) + MOCK_ENTRY_STORAGE).toString();
+    }
+    this.save();
+    return clone(h);
+  }
+
+  async withdrawNft(tokenId: string, contract: string, nftTokenId: string, receiver: string, signer: string) {
+    void receiver;
+    await jitter(1300, 1800);
+    this.openedForOwner(tokenId, signer);
+    const h = this.held(tokenId);
+    if (!h.nfts.some((n) => n.contract === contract && n.token_id === nftTokenId)) throw new VaultError("ERR_NOT_HELD", "The vault doesn't hold that NFT.");
+    h.nfts = h.nfts.filter((n) => !(n.contract === contract && n.token_id === nftTokenId));
+    h.near = (BigInt(h.near) + MOCK_ENTRY_STORAGE).toString();
+    this.save();
+    return clone(h);
   }
 
   /* ---------- the simulated market: same rules as contracts/market ---------- */

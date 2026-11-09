@@ -228,6 +228,46 @@ export interface AttackResult {
   simulated: boolean;
 }
 
+/* ---------- v2: NEAR-side holdings (contracts/bearer/src/holdings.rs) ---------- */
+
+export interface TokenHolding {
+  /** The NEP-141 contract. Anyone can deploy one, so it is shown, not just a symbol (H7). */
+  contract: string;
+  /** Base units, available to withdraw. */
+  amount: string;
+  /** Base units sent but not yet confirmed by the token contract. */
+  pending: string;
+}
+
+export interface NftHolding {
+  contract: string;
+  token_id: string;
+  /** A withdrawal of it is in flight. */
+  pending: boolean;
+}
+
+/** What the contract holds for a vault on NEAR. Amounts in base units; NEAR in yoctoNEAR. */
+export interface Holdings {
+  near: string;
+  tokens: TokenHolding[];
+  nfts: NftHolding[];
+}
+
+/** A token contract's own description (NEP-148): shown next to its account, never instead of it. */
+export interface TokenInfo {
+  contract: string;
+  symbol: string | null;
+  name: string | null;
+  decimals: number;
+}
+
+export interface NftInfo {
+  contract: string;
+  token_id: string;
+  title: string | null;
+  media: string | null;
+}
+
 /* ---------- the market (contracts/market) ---------- */
 
 export type ListingState = { kind: "listed" } | { kind: "selling"; buyer: string } | { kind: "returning" };
@@ -274,6 +314,22 @@ export interface BearerClient {
 
   runAttack(kind: AttackKind, tokenId: string): Promise<AttackResult>;
   accountExists(accountId: string): Promise<boolean>;
+
+  /**
+   * v2 contracts only: NEAR, NEP-141 tokens and NEP-171 NFTs held for a vault. Loading tokens or
+   * NFTs is the owner's alone; withdrawing needs an opened vault. Each write resolves to the
+   * vault's holdings once the contract has settled it.
+   */
+  readonly supportsHoldings: boolean;
+  holdings(tokenId: string): Promise<Holdings>;
+  tokenInfo(contract: string): Promise<TokenInfo>;
+  nftInfo(contract: string, nftTokenId: string): Promise<NftInfo>;
+  depositNear(tokenId: string, yocto: string, signer: string): Promise<Holdings>;
+  loadToken(tokenId: string, contract: string, amount: string, signer: string): Promise<Holdings>;
+  loadNft(tokenId: string, contract: string, nftTokenId: string, signer: string): Promise<Holdings>;
+  withdrawNear(tokenId: string, receiver: string, yocto: string, signer: string): Promise<Holdings>;
+  withdrawToken(tokenId: string, contract: string, receiver: string, amount: string, signer: string): Promise<Holdings>;
+  withdrawNft(tokenId: string, contract: string, nftTokenId: string, receiver: string, signer: string): Promise<Holdings>;
 
   /** The market contract's account, or null where this deployment has none. */
   readonly marketId: string | null;

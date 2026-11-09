@@ -34,5 +34,10 @@ export function errorCopy(error: unknown): string {
   if (text.includes("ERR_OWN_LISTING")) return "You listed this vault. Delist it instead.";
   if (text.includes("ERR_NOT_SELLER")) return "Only the seller can delist this vault.";
   if (text.includes("ERR_PRICE")) return "The lowest price is 0.001 NEAR.";
+  if (text.includes("ERR_VAULT_NEAR_BELOW_STORAGE")) return "Add a little NEAR to the vault first: each token or NFT it holds uses some for storage.";
+  if (text.includes("ERR_TOO_MANY_TOKENS")) return "A vault holds at most 8 kinds of token.";
+  if (text.includes("ERR_TOO_MANY_NFTS")) return "A vault holds at most 16 NFTs.";
+  if (text.includes("ERR_NO_NESTED_VAULTS")) return "A vault can't hold another vault.";
+  if (text.includes("ERR_AMOUNT")) return "Check the amount: it must be above zero and no more than the vault holds.";
   return text;
 }

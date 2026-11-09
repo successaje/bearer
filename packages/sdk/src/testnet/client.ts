@@ -1,4 +1,5 @@
 import type {
+  AccountActivity,
   AttackKind,
   AttackResult,
   BearerClient,
@@ -7,6 +8,7 @@ import type {
   ContractConfig,
   Finish,
   HandoverSchedule,
+  MarketBalances,
   MarketConfig,
   MarketListing,
   RecordedAttack,
@@ -20,7 +22,8 @@ import type {
 import { broadcastRaw, btcParams, chainStatus, chainTxId, evmParams, solParams, txExplorer } from "./chains";
 import { TESTNET_ENDPOINTS, type TestnetEndpoints } from "./config";
 import { observeBtc, observeEvm, observeSol } from "./observe";
-import { NearRpc, jsonRpc } from "./rpc";
+import { NearRpc, getJson, jsonRpc } from "./rpc";
+import { custodyEvents } from "../activity";
 
 const TGAS = 10n ** 12n;
 const ONE_YOCTO = 1n;
@@ -399,6 +402,92 @@ export class TestnetBearerClient implements BearerClient {
       await sleep(1000);
     }
     throw new Error("The vault hasn't come back yet. Check the vault page in a moment.");
+  }
+
+  async marketBalances(accountId: string): Promise<MarketBalances> {
+    const market = this.market();
+    const [claimable, deposit] = await Promise.all([
+      this.near.view<string>(market, "claimable_of", { account_id: accountId }, "final"),
+      this.near.view<string>(market, "deposit_of", { account_id: accountId }, "final"),
+    ]);
+    return { claimable, deposit };
+  }
+
+  async claimPayout(signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.market(), [{ methodName: "claim", args: {}, gas: 50n * TGAS, deposit: ONE_YOCTO }]);
+    return this.marketBalances(signer);
+  }
+
+  async withdrawListingDeposit(signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.market(), [{ methodName: "withdraw_deposit", args: {}, gas: 50n * TGAS, deposit: ONE_YOCTO }]);
+    return this.marketBalances(signer);
+  }
+
+  /** Transactions never change, so each is read once, from an archival node. */
+  private txCache = new Map<string, Promise<{ method: string | null; deposit: string }>>();
+
+  private txCall(hash: string, signer: string) {
+    let hit = this.txCache.get(hash);
+    if (!hit) {
+      type Tx = { transaction: { actions: ({ FunctionCall?: { method_name: string; deposit: string } } | string)[] } };
+      hit = jsonRpc<Tx>(this.ep.nearArchival, "tx", { tx_hash: hash, sender_account_id: signer, wait_until: "NONE" }).then((r) => {
+        const call = r.transaction.actions.map((a) => (typeof a === "string" ? undefined : a.FunctionCall)).find(Boolean);
+        return { method: call?.method_name ?? null, deposit: call?.deposit ?? "0" };
+      });
+      hit.catch(() => this.txCache.delete(hash));
+      this.txCache.set(hash, hit);
+    }
+    return hit;
+  }
+
+  /**
+   * Which vaults moved through the account comes from NearBlocks' index (rate-limited, so two
+   * calls); what happened to each is read from its custody log on-chain. A sale's payout is the
+   * market's transfer to the seller, and its price is what the buyer attached to that transaction,
+   * read from an archival node. Throws if the index can't be read, so callers keep what they had.
+   */
+  async accountActivity(accountId: string): Promise<AccountActivity> {
+    const nb = this.ep.nearblocks;
+    const enc = encodeURIComponent(accountId);
+    type Move = { contract_account_id: string; token_id: string };
+    type Receipt = { predecessor_account_id: string; transaction_hash: string; actions: { action: string }[]; actions_agg: { deposit: string }; block: { block_timestamp: string } };
+    const [moves, receipts, owned, schedules] = await Promise.all([
+      getJson<{ data: Move[] }>(`${nb}/accounts/${enc}/nft-txns?limit=100`),
+      this.opts.marketId ? getJson<{ data: Receipt[] }>(`${nb}/accounts/${enc}/receipts?limit=100`).catch(() => null) : null,
+      this.listVaults(accountId),
+      this.opts.scheduleId ? this.schedules() : Promise.resolve([] as HandoverSchedule[]),
+    ]);
+    const ids = new Set(owned.map((v) => v.token_id));
+    for (const m of moves?.data ?? []) if (m.contract_account_id === this.opts.contractId) ids.add(m.token_id);
+    const vaults = await Promise.all([...ids].map((id) => this.getVault(id)));
+    const market = this.opts.marketId ?? null;
+    const events = vaults.flatMap((v) => (v ? custodyEvents(v, accountId, market, this.opts.scheduleId ?? null) : []));
+
+    // Match each sale to the market's payment to the seller, made in the same transaction a moment after the vault moved.
+    const payouts = (receipts?.data ?? [])
+      .filter((r) => r.predecessor_account_id === market && r.actions.some((a) => a.action === "TRANSFER"))
+      .map((r) => ({ tx: r.transaction_hash, atMs: Number(BigInt(r.block.block_timestamp) / 1_000_000n), amount: r.actions_agg.deposit }));
+    await Promise.all(
+      events
+        .filter((e) => e.kind === "sold")
+        .map(async (e) => {
+          const p = payouts.find((x) => x.atMs >= e.atMs - 5_000 && x.atMs <= e.atMs + 60_000);
+          if (!p) return;
+          const tx = e.counterparty ? await this.txCall(p.tx, e.counterparty).catch(() => null) : null;
+          e.paidYocto = p.amount;
+          e.tx = p.tx;
+          e.priceYocto = tx?.method === "buy" ? tx.deposit : null;
+        }),
+    );
+    for (const s of schedules) {
+      if (s.recipient !== accountId || s.state.kind !== "waiting") continue;
+      const atMs = Number(BigInt(s.scheduled_at_ns) / 1_000_000n);
+      events.push({ id: `scheduled_for_you:${s.token_id}:${s.scheduled_at_ns}`, kind: "scheduled_for_you", tokenId: s.token_id, atMs, counterparty: s.giver, byOthers: true, releaseAtMs: Number(BigInt(s.release_at_ns) / 1_000_000n) });
+    }
+    events.sort((a, b) => b.atMs - a.atMs);
+    return { events, source: "NearBlocks index and the contracts' own records", partial: !receipts && Boolean(market) };
   }
 
   /**

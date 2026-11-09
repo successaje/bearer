@@ -27,7 +27,7 @@ export interface MockVault {
 }
 
 export interface MockState {
-  version: 6;
+  version: 7;
   nextId: number;
   vaults: Record<string, MockVault>;
   accounts: string[];
@@ -35,6 +35,18 @@ export interface MockState {
   listings: Record<string, MarketListing>;
   /** Scheduled handovers, by token. Their vaults are held by MOCK_SCHEDULE. */
   schedules: Record<string, HandoverSchedule>;
+  /** Market sales, for prices and payouts: on testnet these come from the index. */
+  sales: MockSale[];
+}
+
+export interface MockSale {
+  tokenId: string;
+  seller: string;
+  buyer: string;
+  price: string;
+  /** What the market sent the seller: the price plus the listing deposit back. */
+  paid: string;
+  atMs: number;
 }
 
 /** The simulated schedule contract (SCHEDULE_CONTRACT in mock mode). */
@@ -363,6 +375,36 @@ export function seedState(now: number): MockState {
     };
   }
 
+  // 34: ada listed it for 1.5 NEAR and mira bought it two hours ago: the demo's sale notification.
+  const sales: MockSale[] = [];
+  {
+    const id = "34";
+    const created = now - 4 * DAY;
+    const listed = now - 1 * DAY;
+    const sold = now - 2 * HOUR;
+    const addresses = mockAddresses(id);
+    const view = mockView(id, "mira.testnet", created, addresses, { name: "Prize · Round 2", finish: "sage" });
+    view.custody = [
+      { account_id: "ada.testnet", since_ns: ns(created) },
+      { account_id: MOCK_MARKET, since_ns: ns(listed) },
+      { account_id: "mira.testnet", since_ns: ns(sold) },
+    ];
+    vaults[id] = {
+      view,
+      addresses,
+      ledger: {
+        btc: ledger([sats(0.0009), [deposit("34b", sats(0.0009), now - 3 * DAY)]]),
+        evm: ledger([0n, []]),
+        sol: ledger([0n, []]),
+      },
+      withdrawals: [],
+      progress: {},
+      keysAt: created,
+    };
+    const price = 15n * 10n ** 23n;
+    sales.push({ tokenId: id, seller: "ada.testnet", buyer: "mira.testnet", price: price.toString(), paid: (price + BigInt(MOCK_LISTING_DEPOSIT)).toString(), atMs: sold });
+  }
+
   // 21: ada's gift for theo, handed over in six months. Can't be cancelled.
   const schedules: Record<string, HandoverSchedule> = {};
   {
@@ -399,11 +441,12 @@ export function seedState(now: number): MockState {
   }
 
   return {
-    version: 6,
+    version: 7,
     nextId: 64,
     vaults,
     accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", ATTACKER, "near.testnet", MOCK_MARKET, MOCK_SCHEDULE],
     listings,
     schedules,
+    sales,
   };
 }

@@ -246,6 +246,49 @@ export interface HandoverSchedule {
   state: ScheduleState;
 }
 
+/* ---------- an account's activity: what happened to the vaults it held, sold or was sent ---------- */
+
+/**
+ * - `sold`: a vault you listed was bought; `received`: someone handed you one; `delivered`: handed
+ *   to you on its date; `scheduled_for_you`: someone scheduled one for you. These are other
+ *   people's doing (`byOthers`), which is what notifications count.
+ * - `bought`, `returned` (delisted, or a schedule cancelled), `listed`, `scheduled`, `sent`: your own.
+ */
+export type AccountEventKind = "sold" | "received" | "delivered" | "scheduled_for_you" | "bought" | "returned" | "listed" | "scheduled" | "sent";
+
+export interface AccountEvent {
+  /** Stable across reads: kind, vault and time. */
+  id: string;
+  kind: AccountEventKind;
+  tokenId: string;
+  atMs: number;
+  /** The buyer, seller, sender, recipient or giver, where there is one. */
+  counterparty: string | null;
+  byOthers: boolean;
+  /** Sales: what the buyer paid, and what the market sent the seller (the price plus the listing deposit back). */
+  priceYocto?: string | null;
+  paidYocto?: string | null;
+  /** The transaction that paid the seller, where it was found. */
+  tx?: string | null;
+  /** `scheduled_for_you`: on or after when. */
+  releaseAtMs?: number;
+}
+
+export interface AccountActivity {
+  /** Newest first. */
+  events: AccountEvent[];
+  /** Where it came from, as the UI names it. */
+  source: string;
+  /** True if the index couldn't be read, so only vaults the account holds now are covered. */
+  partial: boolean;
+}
+
+/** What the market holds for an account: bounced payouts to claim, and listing deposit not in use. */
+export interface MarketBalances {
+  claimable: string;
+  deposit: string;
+}
+
 /* ---------- the market (contracts/market) ---------- */
 
 export type ListingState = { kind: "listed" } | { kind: "selling"; buyer: string } | { kind: "returning" };
@@ -315,6 +358,14 @@ export interface BearerClient {
   buyVault(tokenId: string, priceYocto: string, signer: string): Promise<VaultView>;
   /** The seller takes the vault back, with the listing deposit. */
   delistVault(tokenId: string, signer: string): Promise<VaultView>;
+  marketBalances(accountId: string): Promise<MarketBalances>;
+  /** Collects payouts that bounced (the seller's account couldn't receive them at the time). */
+  claimPayout(signer: string): Promise<MarketBalances>;
+  /** Takes back listing deposit that no listing is using. */
+  withdrawListingDeposit(signer: string): Promise<MarketBalances>;
+
+  /** What happened to the vaults this account has held: sales, handovers, schedules. */
+  accountActivity(accountId: string): Promise<AccountActivity>;
 
   /** Simulated adapter only: pretend a deposit arrived. */
   simulateDeposit?(tokenId: string, chain: ChainTag): Promise<void>;

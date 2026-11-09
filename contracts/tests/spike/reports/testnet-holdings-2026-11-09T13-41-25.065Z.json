@@ -1,0 +1,142 @@
+{
+  "measured_at": "2026-11-09T13:41:24.818Z",
+  "contract": "bearer-v2.testnet",
+  "code_hash": "GahWS7vg3JVXqKuWLU5foD1aQGy2pwacN3pQnU4GdCCP",
+  "token_id": "2",
+  "assets": {
+    "token": "wrap.testnet",
+    "nft_contract": "bearer-assets.testnet",
+    "nft_token_id": "bearer-v2-2"
+  },
+  "loaded": {
+    "near": "48410000000000000000000",
+    "tokens": [
+      {
+        "contract": "wrap.testnet",
+        "amount": "20000000000000000000000",
+        "pending": "0"
+      }
+    ],
+    "nfts": [
+      {
+        "contract": "bearer-assets.testnet",
+        "token_id": "bearer-v2-2",
+        "pending": false
+      }
+    ]
+  },
+  "steps": [
+    {
+      "step": "create vault",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-v2.testnet.create_vault",
+      "tx": "https://testnet.nearblocks.io/txns/5enNkUDwbcc7JaL8ieoH4PaY9HXevJbTJGR8WBoUwjRU",
+      "tgas": 24.669,
+      "refused": null
+    },
+    {
+      "step": "add 0.05 NEAR",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-v2.testnet.deposit_near",
+      "tx": "https://testnet.nearblocks.io/txns/H6ZqzKEQVMK3fX6nzYtSf1Sthn8R3uhZfFiaDToM3a7X",
+      "tgas": 2.749,
+      "refused": null
+    },
+    {
+      "step": "wrap 0.02 NEAR into wNEAR",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "wrap.testnet.near_deposit",
+      "tx": "https://testnet.nearblocks.io/txns/EK8muUGhcAZq74oMn9xjdpsZ24TjrCwuoDDagJ4Ahqv5",
+      "tgas": 2.167,
+      "refused": null
+    },
+    {
+      "step": "load 0.02 wNEAR",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "wrap.testnet.ft_transfer_call",
+      "tx": "https://testnet.nearblocks.io/txns/4guBup7B9VVEdh5dzpK7qjjD2tQKVhWA6feVtdwXLYRN",
+      "tgas": 7.167,
+      "refused": null
+    },
+    {
+      "step": "mint a test NFT",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-assets.testnet.nft_mint",
+      "tx": "https://testnet.nearblocks.io/txns/DiyXFjeBw1jF47hAciRFv3CmCbFyvRuGF9ZaD1x1dWxc",
+      "tgas": 3.6,
+      "refused": null
+    },
+    {
+      "step": "load the NFT",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-assets.testnet.nft_transfer_call",
+      "tx": "https://testnet.nearblocks.io/txns/CsRHjP2tW2DwGUhnWa2aLrijLo1w8MhL8P2HMEgeNz7",
+      "tgas": 7.218,
+      "refused": null
+    },
+    {
+      "step": "owner withdraws while sealed",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-v2.testnet.withdraw_token",
+      "tx": "https://testnet.nearblocks.io/txns/37roMe3gAAa54usMCHsUpoTEE9wuPNFpZUc8PmsJ768R",
+      "tgas": 2.465,
+      "refused": "ERR_VAULT_SEALED"
+    },
+    {
+      "step": "alice hands the vault to bob",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-v2.testnet.nft_transfer",
+      "tx": "https://testnet.nearblocks.io/txns/CPAQ2besuDhqPpgFh1EUeXXg7NQFurgsUvWon6VdsGYc",
+      "tgas": 4.047,
+      "refused": null
+    },
+    {
+      "step": "bob breaks the seal",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-v2.testnet.break_seal",
+      "tx": "https://testnet.nearblocks.io/txns/8H5dGPMDHVU4VGVdfqeSmJ9wHj5KPvjyUnE1hebPy9XQ",
+      "tgas": 2.899,
+      "refused": null
+    },
+    {
+      "step": "former owner withdraws the NFT",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-v2.testnet.withdraw_nft",
+      "tx": "https://testnet.nearblocks.io/txns/3STBVpjVPhd4da4KgWYvfPMww8fNQhuj36iai45UPDMp",
+      "tgas": 2.468,
+      "refused": "ERR_NOT_OWNER"
+    },
+    {
+      "step": "bob withdraws the wNEAR",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-v2.testnet.withdraw_token",
+      "tx": "https://testnet.nearblocks.io/txns/6EqjYZsJtd7qVvmbUMqUNiFUUhWFrGyY7o66DMaUH4Sy",
+      "tgas": 7.871,
+      "refused": null
+    },
+    {
+      "step": "bob withdraws the NFT",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-v2.testnet.withdraw_nft",
+      "tx": "https://testnet.nearblocks.io/txns/9r955PT4va9QBi7Y6oRLyfRHDc9bnwozeqA6T2pP68Xz",
+      "tgas": 7.781,
+      "refused": null
+    },
+    {
+      "step": "bob withdraws all the NEAR",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-v2.testnet.withdraw_near",
+      "tx": "https://testnet.nearblocks.io/txns/Cr9PgEoZQ4UkGjYASMVQFEDKTYmc2YCJzxpZpscvAAvZ",
+      "tgas": 5.738,
+      "refused": null
+    }
+  ],
+  "after": {
+    "near": "0",
+    "tokens": [],
+    "nfts": []
+  },
+  "bob_received_wnear_yocto": "20000000000000000000000",
+  "nft_owner_after": "bob.bearer-1108-ffb3.testnet",
+  "vault_emptied": true
+}

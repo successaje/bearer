@@ -11,6 +11,7 @@
  *   node spike/testnet-sign.ts sol-withdraw <token> # sign a devnet transfer; airdrop and broadcast if possible
  *   CONFIRM_LOCK=<contract> node spike/testnet-sign.ts lock  # delete every key; only if the code is BEARER_WASM
  *   node spike/testnet-sign.ts attacks  # the attack lab's attacks as real transactions; each must be refused
+ *   node spike/testnet-sign.ts holdings # v2: load NEAR, wNEAR and an NFT, hand over, open, withdraw
  *
  * Needs BEARER_TESTNET_PARENT: a faucet-created testnet account whose key is in
  * ~/.near-credentials/testnet. Subaccount keys are written there too, never to the repo.
@@ -486,6 +487,92 @@ async function attacks() {
   if (!ok) throw new Error("an attack was not refused as expected");
 }
 
+/**
+ * v2 holdings on a real chain: alice loads NEAR, wNEAR (wrap.testnet, a real token) and an NFT
+ * from the test collection into a fresh vault; a withdrawal while sealed is refused; she hands the
+ * vault to bob, who opens it; her withdrawal as former owner is refused; bob takes everything out.
+ * Needs a v2 contract (BEARER_CONTRACT_ID) and the test collection (BEARER_ASSETS_ID).
+ */
+async function holdingsRun() {
+  const ASSETS = process.env.BEARER_ASSETS_ID ?? "bearer-assets.testnet";
+  const WRAP = "wrap.testnet";
+  const MILLI = 10n ** 21n;
+  const alice = account(ALICE);
+  const bob = account(BOB);
+  const steps: Record<string, unknown>[] = [];
+
+  /** Signs here and sends with send_tx, so a refusal comes back as an outcome, not a thrown error. */
+  async function tx(who: Account, receiverId: string, method: string, args: object, deposit: bigint, label: string, expect: string | null = null) {
+    const signed = await who.createSignedTransaction({ receiverId, actions: [actions.functionCall(method, args, 150n * TGAS, deposit)] });
+    const r = await rpc<Outcome>("send_tx", { signed_tx_base64: Buffer.from(signed.encode()).toString("base64"), wait_until: "FINAL" });
+    const failures = [r.status.Failure, ...r.receipts_outcome.map((x) => x.outcome.status.Failure)].filter(Boolean);
+    // The contract's own code first; NEAR wraps it in ActionError/FunctionCallError.
+    const text = JSON.stringify(failures);
+    const code = failures.length ? (text.match(/ERR_[A-Z_]+/)?.[0] ?? text.match(/[A-Za-z ]+not registered|[A-Za-z]+Error/)?.[0] ?? "failed") : null;
+    const step = { step: label, by: who.accountId, call: `${receiverId}.${method}`, tx: explorer(r.transaction.hash), tgas: gasReport(r).total_tgas, refused: code };
+    steps.push(step);
+    console.log(`${label}: ${code ? `refused, ${code}` : "ok"} · ${step.tgas} Tgas · ${step.tx}`);
+    if (expect !== null ? code !== expect : code) throw new Error(`${label}: expected ${expect ?? "success"}, got ${code ?? "success"}`);
+    return r;
+  }
+  const holdings = (id: string) =>
+    view<{ near: string; tokens: { contract: string; amount: string; pending: string }[]; nfts: { contract: string; token_id: string }[] }>(CONTRACT, "holdings", { token_id: id });
+  const wnear = (who: string) => view<string>(WRAP, "ft_balance_of", { account_id: who });
+
+  // A fresh vault, with its keys from the signer.
+  const created = await tx(alice, CONTRACT, "create_vault", { name: "v2 holdings run", finish: "obsidian" }, CREATE_DEPOSIT, "create vault");
+  const tokenId = JSON.parse(Buffer.from(created.status.SuccessValue ?? "", "base64").toString());
+  for (let i = 0; i < 30 && !(await view<VaultView>(CONTRACT, "vault", { token_id: tokenId })).keys; i++) await sleep(1000);
+
+  // Load: NEAR from anyone, then (owner only) wNEAR and an NFT.
+  await tx(alice, CONTRACT, "deposit_near", { token_id: tokenId }, 50n * MILLI, "add 0.05 NEAR");
+  for (const who of [ALICE, CONTRACT, BOB]) {
+    if (!(await view<unknown>(WRAP, "storage_balance_of", { account_id: who }))) {
+      await tx(alice, WRAP, "storage_deposit", { account_id: who, registration_only: true }, 2n * MILLI, `register ${who.split(".")[0]} with wrap.testnet`);
+    }
+  }
+  await tx(alice, WRAP, "near_deposit", {}, 20n * MILLI, "wrap 0.02 NEAR into wNEAR");
+  await tx(alice, WRAP, "ft_transfer_call", { receiver_id: CONTRACT, amount: (20n * MILLI).toString(), msg: tokenId }, ONE_YOCTO, "load 0.02 wNEAR");
+  const nft = `bearer-v2-${tokenId}`;
+  await tx(alice, ASSETS, "nft_mint", { token_id: nft, receiver_id: ALICE }, 10n * MILLI, "mint a test NFT");
+  await tx(alice, ASSETS, "nft_transfer_call", { receiver_id: CONTRACT, token_id: nft, msg: tokenId }, ONE_YOCTO, "load the NFT");
+  const loaded = await holdings(tokenId);
+  console.log(`holdings: ${JSON.stringify(loaded)}`);
+
+  // Nothing leaves a sealed vault, even for its owner (H2).
+  await tx(alice, CONTRACT, "withdraw_token", { token_id: tokenId, token_contract: WRAP, receiver_id: ALICE, amount: (20n * MILLI).toString() }, ONE_YOCTO, "owner withdraws while sealed", "ERR_VAULT_SEALED");
+
+  // Hand over, open, and the former owner can't take anything (H3).
+  await tx(alice, CONTRACT, "nft_transfer", { receiver_id: BOB, token_id: tokenId }, ONE_YOCTO, "alice hands the vault to bob");
+  await tx(bob, CONTRACT, "break_seal", { token_id: tokenId }, ONE_YOCTO, "bob breaks the seal");
+  await tx(alice, CONTRACT, "withdraw_nft", { token_id: tokenId, nft_contract: ASSETS, nft_token_id: nft, receiver_id: ALICE }, ONE_YOCTO, "former owner withdraws the NFT", "ERR_NOT_OWNER");
+
+  // bob takes everything out.
+  const bobWnearBefore = BigInt(await wnear(BOB));
+  await tx(bob, CONTRACT, "withdraw_token", { token_id: tokenId, token_contract: WRAP, receiver_id: BOB, amount: (20n * MILLI).toString() }, ONE_YOCTO, "bob withdraws the wNEAR");
+  await tx(bob, CONTRACT, "withdraw_nft", { token_id: tokenId, nft_contract: ASSETS, nft_token_id: nft, receiver_id: BOB }, ONE_YOCTO, "bob withdraws the NFT");
+  const near = BigInt((await holdings(tokenId)).near);
+  await tx(bob, CONTRACT, "withdraw_near", { token_id: tokenId, receiver_id: BOB, amount: near.toString() }, ONE_YOCTO, "bob withdraws all the NEAR");
+
+  const after = await holdings(tokenId);
+  const bobWnear = BigInt(await wnear(BOB)) - bobWnearBefore;
+  const nftOwner = (await view<{ owner_id: string }>(ASSETS, "nft_token", { token_id: nft })).owner_id;
+  console.log(`after: ${JSON.stringify(after)} · bob +${bobWnear} wNEAR (yocto) · NFT owner ${nftOwner}`);
+  saveReport("testnet-holdings", {
+    measured_at: new Date().toISOString(),
+    contract: CONTRACT,
+    code_hash: (await viewAccount(CONTRACT)).code_hash,
+    token_id: tokenId,
+    assets: { token: WRAP, nft_contract: ASSETS, nft_token_id: nft },
+    loaded,
+    steps,
+    after,
+    bob_received_wnear_yocto: bobWnear.toString(),
+    nft_owner_after: nftOwner,
+    vault_emptied: after.near === "0" && !after.tokens.length && !after.nfts.length,
+  });
+}
+
 /** create_vault must refuse gas that can't cover the key requests, and work at the floor. */
 async function gasFloor() {
   const alice = account(ALICE);
@@ -872,7 +959,8 @@ else if (cmd === "btc-withdraw") await btcWithdraw(process.argv[3] ?? "");
 else if (cmd === "sol-withdraw") await solWithdraw(process.argv[3] ?? "");
 else if (cmd === "lock") await lock();
 else if (cmd === "attacks") await attacks();
+else if (cmd === "holdings") await holdingsRun();
 else {
-  console.log("usage: node spike/testnet-sign.ts setup|run|redeploy|gas-floor|broadcast|btc-joined|btc-vault|btc-withdraw|sol-withdraw|lock|attacks");
+  console.log("usage: node spike/testnet-sign.ts setup|run|redeploy|gas-floor|broadcast|btc-joined|btc-vault|btc-withdraw|sol-withdraw|lock|attacks|holdings");
   process.exitCode = 1;
 }

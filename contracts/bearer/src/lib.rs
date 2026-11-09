@@ -13,6 +13,7 @@ mod holdings;
 mod mpc;
 mod seal;
 mod solana;
+mod staking;
 mod transfer;
 mod vault;
 mod withdraw_btc;
@@ -21,6 +22,7 @@ mod withdraw_sol;
 
 pub use evm::EvmWithdrawParams;
 pub use holdings::{Holdings, NftHolding, TokenHolding};
+pub use staking::{StakingState, Unstaking, VaultStake, VaultStakeView};
 pub use vault::{ChainTag, Custody, DerivedKeys, Finish, Vault, VaultState};
 pub use withdraw_evm::{Withdrawal, WithdrawalParams, WithdrawalStatus};
 
@@ -64,6 +66,7 @@ enum StorageKey {
     Vaults,
     Withdrawals,
     Holdings,
+    Stakes,
 }
 
 #[near(serializers = [borsh, json])]
@@ -103,6 +106,23 @@ pub struct Contract {
     config: Config,
     /// NEAR, NEP-141 tokens and NEP-171 NFTs held for each vault (v2, holdings.rs).
     holdings: LookupMap<TokenId, Holdings>,
+    /// The staking pool and unstaking batches (v2, staking.rs).
+    staking: StakingState,
+    /// Each vault's shares of the stake and its unstake requests.
+    stakes: LookupMap<TokenId, VaultStake>,
+}
+
+/// The state before staking, for `migrate_add_staking`.
+#[near(serializers = [borsh])]
+struct ContractBeforeStaking {
+    tokens: NonFungibleToken,
+    metadata: LazyOption<NFTContractMetadata>,
+    signer_id: AccountId,
+    next_token_id: u64,
+    vaults: LookupMap<TokenId, Vault>,
+    withdrawals: LookupMap<String, Withdrawal>,
+    config: Config,
+    holdings: LookupMap<TokenId, Holdings>,
 }
 
 #[near(serializers = [json])]
@@ -139,7 +159,14 @@ impl Contract {
     #[init]
     /// `base_uri`: where wallets fetch each token's `media` (`{base_uri}/{token_id}.svg`), a page
     /// that draws the vault's current seal. Optional; without it tokens carry no media.
-    pub fn new(signer_id: AccountId, config: Config, base_uri: Option<String>) -> Self {
+    /// `staking_pool`: the one NEAR staking pool vaults can stake with (Y1). Optional; without it
+    /// staking is off.
+    pub fn new(
+        signer_id: AccountId,
+        config: Config,
+        base_uri: Option<String>,
+        staking_pool: Option<AccountId>,
+    ) -> Self {
         require!(config.max_btc_inputs > 0, "ERR_CONFIG");
         Self {
             tokens: NonFungibleToken::new(
@@ -167,6 +194,30 @@ impl Contract {
             withdrawals: LookupMap::new(StorageKey::Withdrawals),
             config,
             holdings: LookupMap::new(StorageKey::Holdings),
+            staking: StakingState::new(staking_pool),
+            stakes: LookupMap::new(StorageKey::Stakes),
+        }
+    }
+
+    /// Adds staking to a contract deployed before it, keeping every vault. Only the account itself
+    /// can call it, so it gives nothing beyond what that account's key already allows, and nothing
+    /// once the account is locked.
+    #[private]
+    #[init(ignore_state)]
+    pub fn migrate_add_staking(staking_pool: AccountId) -> Self {
+        let old: ContractBeforeStaking =
+            env::state_read().unwrap_or_else(|| env::panic_str("ERR_NO_STATE"));
+        Self {
+            tokens: old.tokens,
+            metadata: old.metadata,
+            signer_id: old.signer_id,
+            next_token_id: old.next_token_id,
+            vaults: old.vaults,
+            withdrawals: old.withdrawals,
+            config: old.config,
+            holdings: old.holdings,
+            staking: StakingState::new(Some(staking_pool)),
+            stakes: LookupMap::new(StorageKey::Stakes),
         }
     }
 

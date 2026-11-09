@@ -127,9 +127,12 @@ impl Contract {
         self.holdings_of(&token_id).near
     }
 
-    /// Everything the contract holds for a vault on NEAR.
+    /// Everything the contract holds for a vault on NEAR, besides its stake (`stake_of`). `near`
+    /// includes NEAR back from the staking pool.
     pub fn holdings(&self, token_id: TokenId) -> Holdings {
-        self.holdings_of(&token_id)
+        let mut h = self.holdings_of(&token_id);
+        h.near = h.near.saturating_add(self.ready_unstaked(&token_id));
+        h
     }
 
     /// Sends NEAR from an opened vault. Owner only; attach 1 yoctoNEAR.
@@ -138,7 +141,7 @@ impl Contract {
         assert_one_yocto();
         self.opened_for_owner(&token_id);
         self.require_gas(Gas::from_tgas(0));
-        let mut h = self.holdings_of(&token_id);
+        let mut h = self.settle_unstaked(&token_id);
         require!(!amount.is_zero() && h.near >= amount, "ERR_AMOUNT");
         h.near = h.near.saturating_sub(amount);
         self.holdings.insert(&token_id, &h);

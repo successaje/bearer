@@ -1,0 +1,12 @@
+[package]
+name = "mock-pool"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Sandbox-only NEAR staking pool with the standard pool's interface and rules, plus test switches"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { workspace = true }

@@ -736,4 +736,9 @@ describe("custody and privileges", () => {
       ].sort(),
     );
   });
+
+  it("declares the standards it implements (NEP-330), and no approvals", async () => {
+    const meta = await view<{ standards: { standard: string }[] }>("contract_source_metadata", {});
+    expect(meta.standards.map((s) => s.standard).sort()).toEqual(["nep171", "nep177", "nep181", "nep297", "nep330"]);
+  });
 });

@@ -78,7 +78,17 @@ pub struct Config {
     pub mpc_sign_deposit: NearToken,
 }
 
-#[near(contract_state)]
+// NEP-330 source metadata: cargo-near fills in the version, link and build info; these are the
+// standards the contract implements (no NEP-178 approvals, on purpose: T6).
+#[near(
+    contract_state,
+    contract_metadata(
+        standard(standard = "nep171", version = "1.0.0"),
+        standard(standard = "nep177", version = "2.0.0"),
+        standard(standard = "nep181", version = "1.0.0"),
+        standard(standard = "nep297", version = "1.0.0"),
+    )
+)]
 #[derive(PanicOnDefault)]
 pub struct Contract {
     tokens: NonFungibleToken,

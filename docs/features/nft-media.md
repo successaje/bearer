@@ -44,3 +44,7 @@ inside an `<img>` and in wallets that sanitise SVG.
 - In mock mode the server can't see the browser's mock state, so these routes serve the seeded
   demo vaults (42, 17, 29, 63, 51).
 - `cache-control: max-age=30` keeps wallets close to the live state without hammering the RPC.
+- The Open Graph image applies to every page under `/v/[id]` (certificate and hand-over too), and
+  it reads the vault's live state, so those pages can't be prerendered. `app/v/[id]/layout.tsx`
+  marks them all per-request with `await connection()` inside `<Suspense>`. Without it, Next.js
+  reports "URL data in `generateMetadata()`" on each child page.

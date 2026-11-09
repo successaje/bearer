@@ -10,12 +10,14 @@ import { CopyButton } from "@/components/ui/copy-button";
 import { Input, Label } from "@/components/ui/primitives";
 import { BEARER_CONTRACT, IS_SIMULATED, SIGNER_CONTRACT } from "@/lib/config";
 import { deriveVault, EPSILON_PREFIX, type Derived } from "@/lib/derive/derive";
-import { CHAIN_META, truncateMiddle } from "@/lib/vault/format";
+import { CHAIN_META, truncateMiddle, vaultNumber } from "@/lib/vault/format";
 import { cn } from "@/lib/utils";
 
 const RPC = process.env.NEXT_PUBLIC_NEAR_RPC || "https://test.rpc.fastnear.com";
 /** The simulated demo's keys are made up, so this page always reads a real deployment. */
 const LIVE_CONTRACT = IS_SIMULATED ? process.env.NEXT_PUBLIC_PROOF_CONTRACT || "v3a.bearer-1108-ffb3.testnet" : BEARER_CONTRACT;
+/** A vault that exists on the live deployment: No. 0004, opened by the first Bitcoin withdrawal. */
+const REAL_VAULT = "4";
 
 async function view<T>(account: string, method: string, args: object): Promise<T> {
   const res = await fetch(RPC, {
@@ -46,15 +48,18 @@ const pause = (ms: number) => new Promise((r) => setTimeout(r, window.matchMedia
 export function DeriveView() {
   const params = useSearchParams();
   const [contract, setContract] = useState(params.get("contract") ?? LIVE_CONTRACT);
-  const [tokenId, setTokenId] = useState(params.get("vault") ?? "4");
+  const [tokenId, setTokenId] = useState(params.get("vault") ?? REAL_VAULT);
   const [step, setStep] = useState(0);
   const [run, setRun] = useState<Partial<Run>>({});
   const [error, setError] = useState<string | null>(null);
+  /** The vault number the contract didn't know, so the form can offer a real one. */
+  const [missing, setMissing] = useState<string | null>(null);
   const busy = step > 0 && step < 6;
 
-  async function start(e?: FormEvent) {
+  async function start(e?: FormEvent, id = tokenId.trim()) {
     e?.preventDefault();
     setError(null);
+    setMissing(null);
     setRun({});
     setStep(1);
     try {
@@ -65,7 +70,7 @@ export function DeriveView() {
       setRun({ roots: roots as [string, string] });
       await pause(500);
       setStep(2);
-      const derived = deriveVault(contract.trim(), tokenId.trim(), roots[0], roots[1]);
+      const derived = deriveVault(contract.trim(), id, roots[0], roots[1]);
       setRun((r) => ({ ...r, derived }));
       await pause(600);
       setStep(3);
@@ -74,12 +79,16 @@ export function DeriveView() {
       await pause(600);
       setStep(5);
       const [vault, ...signer] = await Promise.all([
-        view<VaultView | null>(contract.trim(), "vault", { token_id: tokenId.trim() }),
+        view<VaultView | null>(contract.trim(), "vault", { token_id: id }),
         ...derived.map((d) =>
           view<string>(SIGNER_CONTRACT, "derived_public_key", { path: d.path, predecessor: contract.trim(), domain_id: d.chain === "sol" ? 1 : 0 }),
         ),
       ]);
-      if (!vault) throw new Error(`There's no vault ${tokenId} on ${contract}.`);
+      if (!vault) {
+        setMissing(id);
+        setStep(0);
+        return;
+      }
       setRun((r) => ({ ...r, vault, signer }));
       await pause(400);
       setStep(6);
@@ -124,6 +133,27 @@ export function DeriveView() {
           at the end, what the contract and the signer say, to compare.
         </p>
         {error ? <p className="rounded-control border border-danger/30 bg-danger/[0.07] p-3 text-[13px] text-danger">{error}</p> : null}
+        {missing ? (
+          <div role="status" className="rounded-control border border-line bg-surface p-3 text-[13px] leading-relaxed text-fg-2">
+            <p>
+              There&apos;s no vault {missing} on <code className="font-mono text-[12.5px]">{contract}</code>.
+              {IS_SIMULATED ? " The simulated demo's vaults live only in this browser, with made-up keys." : null}
+            </p>
+            {missing !== REAL_VAULT ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setTokenId(REAL_VAULT);
+                  void start(undefined, REAL_VAULT);
+                }}
+                className="mt-2 inline-flex items-center gap-1 font-medium text-accent hover:underline"
+              >
+                Derive {vaultNumber(REAL_VAULT)}, a real one
+                <ArrowRight className="size-3.5" />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </form>
 
       <ol className="flex min-w-0 flex-col">
@@ -240,10 +270,13 @@ export function DeriveView() {
                   )}
                 </p>
               </div>
-              <a href={`/v/${tokenId}`} className="mt-4 inline-flex items-center gap-1.5 text-[14px] font-medium text-accent hover:underline">
-                Open vault No. {tokenId.padStart(4, "0")}
-                <ArrowRight className="size-4" />
-              </a>
+              {/* The simulated app can't open a testnet vault, so the link only appears against the real chain. */}
+              {!IS_SIMULATED ? (
+                <a href={`/v/${tokenId}`} className="mt-4 inline-flex items-center gap-1.5 text-[14px] font-medium text-accent hover:underline">
+                  Open vault {vaultNumber(tokenId)}
+                  <ArrowRight className="size-4" />
+                </a>
+              ) : null}
             </>
           ) : null}
         </Step>

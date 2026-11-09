@@ -239,14 +239,14 @@ function HeadlineRun() {
       <p className="mt-2 text-[20px] font-semibold leading-snug tracking-[-0.02em]">Bitcoin that changed hands without a Bitcoin transaction</p>
       <ol className="mt-4 flex flex-col gap-3">
         {steps.map((s, i) => (
-          <li key={i} className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-start gap-3">
+          <li key={i} className="grid grid-cols-[28px_minmax(0,1fr)] items-start gap-x-3 gap-y-1 sm:grid-cols-[28px_minmax(0,1fr)_auto]">
             {s.chain === "near" ? (
               <span className="inline-flex size-7 items-center justify-center rounded-full bg-raised font-mono text-[11px] font-semibold text-fg-2">N</span>
             ) : (
               <ChainIcon chain={s.chain} className="size-7" />
             )}
             <p className="pt-1 text-[14px] leading-relaxed text-fg-2">{s.text}</p>
-            <a href={s.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 pt-1 font-mono text-[12.5px] text-accent hover:underline">
+            <a href={s.href} target="_blank" rel="noreferrer" className="col-start-2 inline-flex items-center gap-1 font-mono text-[12.5px] text-accent hover:underline sm:col-start-auto sm:pt-1">
               {s.label} <ArrowUpRight className="size-3.5" />
             </a>
           </li>

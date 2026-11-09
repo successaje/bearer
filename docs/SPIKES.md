@@ -3,6 +3,25 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-09 · Two signatures for one nonce on Base Sepolia (T10)
+
+Vault No. 0001 on `bearer.testnet` (opened, held by bob's test account) got 0.0005 Base Sepolia
+ETH from the owner. `BEARER_CONTRACT_ID=bearer.testnet pnpm spike:testnet same-nonce 1` then:
+
+1. requested two `withdraw_evm` for nonce 0, paying the vault's own address 1,000 and 2,000 gwei
+   (withdrawals 15 and 16, [signed](https://testnet.nearblocks.io/txns/45FpKwNt4KrjSLJiudXC94tEoFpupx6cMxKWHq5199Qj)
+   [twice](https://testnet.nearblocks.io/txns/7bW2Nvxza4zZhMyMAb1eGkpLnESdvd6Ns3398TtNDahE)), as a
+   retry after a timeout could leave them;
+2. broadcast both at once. Base Sepolia accepted the first and confirmed it in block 56,635,535
+   ([0xcda9…ed00](https://sepolia.basescan.org/tx/0xcda94fc2657424ccc34d972c4015e517f12a75bfaca0aeeeea52d7b89ffded00));
+   it refused the second (`0xec7e7f86…8b60`, "replacement transaction underpriced");
+3. 17 s later the second, read again from the contract's public view, was sent again: "nonce too
+   low: next nonce 1, tx nonce 0". It can never confirm.
+
+The vault's nonce went from 0 to 1, and its balance fell by the fee only (126,000,000,095 wei),
+since it paid itself. N = 1. Report:
+[`base-same-nonce-2026-11-09T18-29-49.254Z.json`](../contracts/tests/spike/reports/base-same-nonce-2026-11-09T18-29-49.254Z.json).
+
 ## 2026-11-09 · A sealed handover: time to final and cost
 
 `BEARER_CONTRACT_ID=bearer.testnet pnpm spike:testnet handover 7 6` handed sealed vault No. 0007

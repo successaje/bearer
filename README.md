@@ -117,7 +117,12 @@ other chain accepts it, not a payout to a separate person.
   - Bitcoin: 1–4 joined inputs, verified.
   - Solana: signed and verified.
 
-  None was broadcast: these vaults hold no funds yet.
+  These weren't broadcast: those vaults held no funds.
+- **Two signatures for one nonce, on a real chain (T10).** Vault No. 0001 requested two Base
+  withdrawals for the same nonce, as a retry could leave them, and both were broadcast together.
+  Base Sepolia confirmed one
+  ([0xcda9…ed00](https://sepolia.basescan.org/tx/0xcda94fc2657424ccc34d972c4015e517f12a75bfaca0aeeeea52d7b89ffded00))
+  and refused the other; sent again afterwards, it got "nonce too low".
 - **Five attacks, sent as real transactions, all refused.** A former owner withdrawing and breaking
   a seal, an opened vault transferred, a sealed vault withdrawn, a raw `sign` call. Each got its
   expected error and none reached the signer. The attack lab on the site re-reads these
@@ -273,8 +278,8 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   wallet on the live site (9 Nov); transfer, opening, withdrawal and buying are proven with
   key-backed test accounts but not yet through a wallet.
 - A funded withdrawal from the final contract to a separate recipient.
-- More adversarial tests: the `nft_transfer_call` return path (T6) and duplicate signatures on real
-  chains (T10, so far shown on a simulated ledger).
+- More adversarial tests: the `nft_transfer_call` return path (T6), and duplicate Bitcoin spends on
+  testnet4 (T10 is shown on Base Sepolia, and for Bitcoin on a simulated ledger).
 - An independent security review before anything on mainnet.
 
 ## Sustainability

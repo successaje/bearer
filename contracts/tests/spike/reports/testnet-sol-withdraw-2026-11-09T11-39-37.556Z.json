@@ -1,0 +1,97 @@
+{
+  "measured_at": "2026-11-09T11:39:25.770Z",
+  "contract": "bearer.testnet",
+  "token_id": "1",
+  "sol_address": "Fet45A9Y5NLAuT9vUEgsJ6KseNawHGGZzPh22BdCkmij",
+  "rpc": "https://api.devnet.solana.com",
+  "airdrop": {
+    "error": "Error: requestAirdrop: {\"code\":410,\"message\":\"The RPC faucet is closed on this cluster. Request test SOL at https://faucet.solana.com\"}"
+  },
+  "balance_lamports": 0,
+  "params": {
+    "recent_blockhash": "3NhbqdCMzJNjcsxyFRd9KGSFWyNjcbwwkjbM7WnArUPy",
+    "to": "Fet45A9Y5NLAuT9vUEgsJ6KseNawHGGZzPh22BdCkmij",
+    "lamports": "1000"
+  },
+  "status": "signed",
+  "error": null,
+  "near_tx": "https://testnet.nearblocks.io/txns/8u45c5XbVDE3UstTnHEHjwsK3gnuusgAF2bQfFXFZnHu",
+  "signed_visible_after_ms": 7698,
+  "gas": {
+    "total_tgas": 14.618,
+    "receipts": [
+      {
+        "executor": "bearer.testnet",
+        "tgas": 3.061,
+        "failed": false
+      },
+      {
+        "executor": "v1.signer-prod.testnet",
+        "tgas": 4.458,
+        "failed": false
+      },
+      {
+        "executor": "v1.signer-prod.testnet",
+        "tgas": 3.522,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      },
+      {
+        "executor": "bearer.testnet",
+        "tgas": 2.368,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      }
+    ]
+  },
+  "verified_with_web3js": true,
+  "simulation": {
+    "context": {
+      "apiVersion": "4.4.0",
+      "slot": 520369683
+    },
+    "value": {
+      "accounts": null,
+      "err": "AccountNotFound",
+      "fee": null,
+      "innerInstructions": null,
+      "loadedAccountsDataSize": 0,
+      "loadedAddresses": {
+        "readonly": [],
+        "writable": []
+      },
+      "logs": [],
+      "postBalances": [
+        0,
+        1
+      ],
+      "postTokenBalances": [],
+      "preBalances": [
+        0,
+        1
+      ],
+      "preTokenBalances": [],
+      "replacementBlockhash": null,
+      "returnData": null,
+      "unitsConsumed": 0
+    }
+  }
+}

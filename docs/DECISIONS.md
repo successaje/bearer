@@ -3,6 +3,12 @@
 **For:** anyone wondering why Bearer is built the way it is.
 Newest first. Each entry: date, decision, reason, alternatives considered.
 
+## 2026-11-09 · The committed contract is the reproducible build
+
+- **Decision:** `contracts/res/bearer.wasm` is the output of `cargo near build reproducible-wasm --manifest-path contracts/bearer/Cargo.toml` at commit `71f194e`, run with the official cargo-near 0.22.0 binary (release checksum verified) in the image pinned in `contracts/bearer/Cargo.toml` (`sourcescan/cargo-near:0.22.0-rust-1.98.1`, by digest). Two builds from fresh clones gave the same bytes, sha256 `05b27506…8619`, code hash `PEsHBVDK…Vq1S`. `contracts/build.sh` stays for tests and development (`contracts/out/`). The contract's NEP-330 metadata now names its standards: NEP-171, 177, 181 and 297 besides 330 (no NEP-178 approvals, T6).
+- **Reason:** brief 4.10 and D5: anyone can rebuild the deployed code byte for byte and compare hashes, and the metadata says how (image, command, commit), so explorers and verifiers can check it without asking us. cargo-near 0.22 passes `--cfg near` (panic messages survive: `ERR_GAS` on testnet) and runs a current wasm-opt, which fixes both reasons for the earlier `cargo` build.
+- **Alternatives:** compiling cargo-near from source (filled the disk); keeping the `build.sh` output (not reproducible; `build_info` empty).
+
 ## 2026-11-09 · Hosting: Vercel, built locally and deployed prebuilt
 
 - **Decision:** the web app runs on Vercel at `https://bearer-near.vercel.app` (project `bearer`, the owner's personal scope), in testnet mode. `scripts/deploy-web.sh` pulls the project's production settings and env vars, builds at the repo root with `apps/web` as the root and Node 22, refuses a build that still points at `localhost:3000`, and deploys the output with `vercel deploy --prebuilt --prod`. Production env vars on the project: `NEXT_PUBLIC_NETWORK=testnet`, `NEXT_PUBLIC_BEARER_CONTRACT`, `NEXT_PUBLIC_SITE_URL`. `NEXT_PUBLIC_REPO_URL` is left out while the repository is private.
@@ -12,7 +18,7 @@ Newest first. Each entry: date, decision, reason, alternatives considered.
 ## 2026-11-09 · `demo:dry` with committed wasm and simulated ledgers
 
 - **Decision:** `pnpm demo:dry` deploys `contracts/res/bearer.wasm` and `mock_signer.wasm` (committed, with `SHA256SUMS`) to a local `near-sandbox`, and simulates the three chains as ledgers that really apply each signed transaction. It is plain JavaScript (`contracts/tests/demo/dry.mjs`) so it runs on Node 20.
-- **Reason:** brief 6.4: a judge with only Node and pnpm sees the story and every attack, and T10 needs a ledger that refuses a second spend. Today's `res/` wasm comes from `contracts/build.sh`; the locked deploy replaces it with the reproducible build (cargo-near) and its hash.
+- **Reason:** brief 6.4: a judge with only Node and pnpm sees the story and every attack, and T10 needs a ledger that refuses a second spend. Since 2026-11-09 the `res/` wasm is the reproducible build (see that entry).
 - **Alternatives:** only the sandbox tests (no story for a judge); testnet only (needs funds).
 
 ## 2026-11-08 · Solana transfers hand-rolled; recent blockhash only

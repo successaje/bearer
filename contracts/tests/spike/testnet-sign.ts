@@ -396,8 +396,16 @@ async function measure(report: Record<string, unknown>) {
 
 /** Redeploys the current wasm in place. Only for unlocked spike accounts with an unchanged state layout. */
 async function redeploy() {
-  await account(CONTRACT).deployContract(readFileSync(WASM));
-  console.log(`redeployed ${CONTRACT} ${(await viewAccount(CONTRACT)).code_hash}`);
+  const wasm = readFileSync(WASM);
+  await account(CONTRACT).deployContract(wasm);
+  // Views read final state, which trails the deploy by a block or two.
+  const expected = base58(createHash("sha256").update(wasm).digest());
+  let hash = "";
+  for (let i = 0; i < 20 && hash !== expected; i++) {
+    if (i) await sleep(1000);
+    hash = (await viewAccount(CONTRACT)).code_hash;
+  }
+  console.log(`redeployed ${CONTRACT} ${hash} (${hash === expected ? "matches" : `expected ${expected}`} ${WASM})`);
 }
 
 /** create_vault must refuse gas that can't cover the key requests, and work at the floor. */

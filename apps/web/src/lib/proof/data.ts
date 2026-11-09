@@ -145,6 +145,24 @@ export const MARKET_SALE = {
   source: `${REPORTS}/testnet-market-sale-2026-11-09T12-21-46.716Z.json`,
 };
 
+/**
+ * T10 on a real chain: two signed Base withdrawals for one nonce, from the locked contract
+ * (contracts/tests/spike/reports/base-same-nonce-2026-11-09T18-29-49.254Z.json).
+ */
+export const SAME_NONCE = {
+  tokenId: "1",
+  nonce: 0,
+  detail:
+    "Two Base withdrawals signed for the same nonce, as a retry could leave them, broadcast together. Base Sepolia confirmed one in block 56,635,535 and refused the other; sent again afterwards, it got “nonce too low”",
+  confirmed: "https://sepolia.basescan.org/tx/0xcda94fc2657424ccc34d972c4015e517f12a75bfaca0aeeeea52d7b89ffded00",
+  refusedHash: "0xec7e7f860048c298ddfa502c01d1925e2f4e786d84354afc0d83334e702f8b60",
+  signedTxs: [
+    "https://testnet.nearblocks.io/txns/45FpKwNt4KrjSLJiudXC94tEoFpupx6cMxKWHq5199Qj",
+    "https://testnet.nearblocks.io/txns/7bW2Nvxza4zZhMyMAb1eGkpLnESdvd6Ns3398TtNDahE",
+  ],
+  source: `${REPORTS}/base-same-nonce-2026-11-09T18-29-49.254Z.json`,
+};
+
 /** Withdrawals that left NEAR and reached the other chain. */
 export const LANDED: Landed[] = [
   {
@@ -257,8 +275,11 @@ export const THREATS: Threat[] = [
     id: "T10",
     attack: "Two signatures exist after a retry",
     defence: "Both pay the same owner and spend the same coins or nonce; at most one confirms",
-    tests: ["pnpm demo:dry step 7 (a simulated ledger accepts one of two spends; not yet on real chains)"],
-    status: "partly",
+    tests: [
+      "spike:testnet same-nonce on bearer.testnet: two signed Base withdrawals for nonce 0, Base Sepolia confirmed one and refused the other (9 Nov)",
+      "pnpm demo:dry step 7 (Bitcoin: a simulated ledger accepts one of two spends of a coin)",
+    ],
+    status: "proven",
   },
   {
     id: "T11",

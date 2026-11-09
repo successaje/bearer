@@ -9,7 +9,7 @@ import { LiveChecks } from "@/components/proof/live-checks";
 import { ThreatTable } from "@/components/proof/threat-table";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Eyebrow } from "@/components/ui/primitives";
-import { LANDED, LATENCY, MARKET_SALE, MEASURED_ON, PROOF_SIGNER, RUN_IT, SPIKE_CONTRACT, THREATS } from "@/lib/proof/data";
+import { LANDED, LATENCY, MARKET_SALE, MEASURED_ON, PROOF_SIGNER, RUN_IT, SAME_NONCE, SPIKE_CONTRACT, THREATS } from "@/lib/proof/data";
 import { vaultNumber } from "@/lib/vault/format";
 import { cn } from "@/lib/utils";
 
@@ -52,8 +52,8 @@ export default function ProofPage() {
       <Section
         id="signing"
         n="02"
-        title="Signed by NEAR's MPC network"
-        sub={`Every bar is one real request on testnet, timed from submitting the NEAR transaction, on the spike contract (${SPIKE_CONTRACT}). Click a time to see its transaction.`}
+        title="Timed on testnet"
+        sub={`Every bar is one real transaction on testnet, timed from submitting it. The handover ran on bearer.testnet and needs no signature; the withdrawals were signed by NEAR's MPC network on the spike contract (${SPIKE_CONTRACT}). Click a time to see its transaction.`}
       >
         <LatencyChart />
       </Section>
@@ -100,6 +100,25 @@ export default function ProofPage() {
             <a href={MARKET_SALE.buyTx} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
               purchase <ArrowUpRight className="size-3.5" />
             </a>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-col gap-3 rounded-panel border border-line bg-surface p-5 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <p className="text-[15px] font-semibold">Two signatures, one nonce (T10)</p>
+            <p className="mt-1.5 text-[13.5px] leading-relaxed text-fg-2">
+              On the locked contract, <span className="font-mono">bearer.testnet</span>, vault {vaultNumber(SAME_NONCE.tokenId)}:{" "}
+              {SAME_NONCE.detail}. Refused: <span className="break-all font-mono text-[12.5px]">{SAME_NONCE.refusedHash}</span>
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-4 font-mono text-[12.5px]">
+            <a href={SAME_NONCE.confirmed} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
+              confirmed <ArrowUpRight className="size-3.5" />
+            </a>
+            {SAME_NONCE.signedTxs.map((href, i) => (
+              <a key={href} href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
+                signed {i + 1} <ArrowUpRight className="size-3.5" />
+              </a>
+            ))}
           </div>
         </div>
       </Section>

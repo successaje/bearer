@@ -14,6 +14,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
       { label: "My vaults", href: "/vaults" },
       { label: "Verify a vault", href: "/verify" },
       { label: "How it works", href: "/how" },
+      { label: "Proof", href: "/proof" },
     ],
   },
   {

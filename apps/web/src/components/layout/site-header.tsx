@@ -15,6 +15,7 @@ export const NAV_LINKS = [
   { href: "/vaults", label: "My vaults" },
   { href: "/verify", label: "Verify" },
   { href: "/how", label: "How it works" },
+  { href: "/proof", label: "Proof" },
 ] as const;
 
 function NetworkPill({ className }: { className?: string }) {

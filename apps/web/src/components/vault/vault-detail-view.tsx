@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, Eye, History, Link2, PackageOpen, Send } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Eye, History, Link2, PackageOpen, ScrollText, Send } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -177,6 +177,13 @@ export function VaultDetailView() {
               )}
             </div>
           ) : null}
+          <Link
+            href={`/v/${vault.token_id}/certificate`}
+            className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-fg-2 transition-colors hover:text-fg"
+          >
+            <ScrollText className="size-4" />
+            Print a bearer certificate
+          </Link>
           {isOwner && !vault.keys ? (
             <p className="mt-3 text-[12.5px] text-fg-3" aria-live="polite">
               Waiting for NEAR&apos;s signer to derive this vault&apos;s keys…

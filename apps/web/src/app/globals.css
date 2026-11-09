@@ -442,3 +442,25 @@
     animation: none !important;
   }
 }
+
+/* ---------- Bearer certificate (print) ---------- */
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .certificate {
+    width: 297mm !important;
+    height: 210mm !important;
+    aspect-ratio: auto;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

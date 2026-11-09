@@ -107,7 +107,7 @@ function MobileMenu() {
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-bg/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-line bg-bg/80 backdrop-blur-xl print:hidden">
       <div className="mx-auto flex h-16 max-w-[1200px] items-center gap-6 px-5 md:px-8">
         <Logo />
         <nav aria-label="Main" className="hidden items-center gap-0.5 md:flex">

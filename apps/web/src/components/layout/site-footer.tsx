@@ -71,7 +71,7 @@ function Perforation() {
 
 export function SiteFooter() {
   return (
-    <footer className="mt-24 md:mt-32">
+    <footer className="mt-24 md:mt-32 print:hidden">
       <Perforation />
       <div className="overflow-hidden bg-gold text-ink">
         <div className="mx-auto max-w-[1200px] px-5 pt-12 md:px-8 md:pt-16">

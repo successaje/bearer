@@ -50,12 +50,31 @@ export function sealSvg(opened: boolean, x: number, y: number, size: number, idP
   </g>`;
 }
 
-export function cardSvg(vault: VaultView): string {
+/**
+ * The words on the card and their colours. Renderers with no system fonts (the Open Graph image,
+ * rasterised on a Linux server) draw these themselves over `cardSvg(vault, { text: false })`.
+ */
+export function cardText(vault: VaultView) {
   const look = LOOKS[vault.finish] ?? LOOKS.obsidian;
   const opened = vault.state.kind === "opened";
-  const name = esc((vault.name ?? `Vault ${vault.token_id}`).slice(0, 32));
-  const serial = `No. ${vault.token_id.padStart(4, "0")}`;
-  const state = opened ? "OPENED · CAN'T CHANGE HANDS" : "SEALED · 0 SIGNATURES EVER REQUESTED";
+  return {
+    opened,
+    name: (vault.name ?? `Vault ${vault.token_id}`).slice(0, 32),
+    serial: `No. ${vault.token_id.padStart(4, "0")}`,
+    state: opened ? "OPENED · CAN'T CHANGE HANDS" : "SEALED · 0 SIGNATURES EVER REQUESTED",
+    text: look.text,
+    muted: look.muted,
+    /** The state pill: its tint as "r,g,b", and its text colour. */
+    pill: { rgb: opened ? "143,129,90" : "31,157,85", color: opened ? look.muted : "#2BB673" },
+  };
+}
+
+export function cardSvg(vault: VaultView, { text = true }: { text?: boolean } = {}): string {
+  const look = LOOKS[vault.finish] ?? LOOKS.obsidian;
+  const words = cardText(vault);
+  const opened = words.opened;
+  const name = esc(words.name);
+  const { serial, state, pill } = words;
   const fill =
     look.kind === "radial"
       ? `<radialGradient id="bg" cx="0" cy="0" r="1.3" gradientUnits="objectBoundingBox">${stops(look.stops)}</radialGradient>`
@@ -74,13 +93,17 @@ export function cardSvg(vault: VaultView): string {
     <g fill="none" stroke="${look.rings}" stroke-width="1">${rings}</g>
   </g>
   <rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" rx="30.5" fill="none" stroke="${look.text}" stroke-opacity="0.14"/>
-  <text x="37" y="58" font-family="${SANS}" font-size="16.8" font-weight="600" letter-spacing="4.4" fill="${look.muted}">BEARER</text>
+  ${text ? `<text x="37" y="58" font-family="${SANS}" font-size="16.8" font-weight="600" letter-spacing="4.4" fill="${look.muted}">BEARER</text>` : ""}
   ${sealSvg(opened, W - 37 - 69, 30, 69)}
-  <text x="37" y="${H * 0.55}" font-family="${SANS}" font-size="32" font-weight="500" fill="${look.text}">${name}</text>
+  ${
+    text
+      ? `<text x="37" y="${H * 0.55}" font-family="${SANS}" font-size="32" font-weight="500" fill="${look.text}">${name}</text>
   <text x="37" y="${H * 0.55 + 30}" font-family="${MONO}" font-size="18" fill="${look.muted}">${serial}</text>
   <g transform="translate(37 ${H - 70})">
-    <rect width="${pillW}" height="34" rx="17" fill="${opened ? "#8F815A" : "#1F9D55"}" fill-opacity="0.18" stroke="${opened ? "#8F815A" : "#1F9D55"}" stroke-opacity="0.55"/>
-    <text x="16" y="22" font-family="${MONO}" font-size="12.5" font-weight="600" letter-spacing="1.2" fill="${opened ? look.muted : "#2BB673"}">${state}</text>
-  </g>
+    <rect width="${pillW}" height="34" rx="17" fill="rgb(${pill.rgb})" fill-opacity="0.18" stroke="rgb(${pill.rgb})" stroke-opacity="0.55"/>
+    <text x="16" y="22" font-family="${MONO}" font-size="12.5" font-weight="600" letter-spacing="1.2" fill="${pill.color}">${state}</text>
+  </g>`
+      : ""
+  }
 </svg>`;
 }

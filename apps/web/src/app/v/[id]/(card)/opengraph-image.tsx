@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { cardSvg } from "@/lib/nft/card-svg";
+import { cardSvg, cardText } from "@/lib/nft/card-svg";
 import { loadVault } from "@/lib/nft/load";
 
 export const alt = "A Bearer vault: its card and its seal";
@@ -11,7 +11,10 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const { id } = await params;
   const vault = await loadVault(id);
   const opened = vault?.state.kind === "opened";
-  const card = vault ? `data:image/svg+xml;base64,${Buffer.from(cardSvg(vault)).toString("base64")}` : null;
+  // The server that rasterises this has no system fonts, so the SVG brings the shapes and the
+  // card's words are drawn below with the image renderer's own font.
+  const card = vault ? `data:image/svg+xml;base64,${Buffer.from(cardSvg(vault, { text: false })).toString("base64")}` : null;
+  const words = vault ? cardText(vault) : null;
   return new ImageResponse(
     (
       <div
@@ -36,8 +39,34 @@ export default async function Image({ params }: { params: Promise<{ id: string }
             {vault ? "Check the live seal before you accept it." : "Native Bitcoin, Base and Solana, on NEAR."}
           </div>
         </div>
-        {card ? (
-          <img src={card} width={540} height={340} alt="" style={{ borderRadius: 28, boxShadow: "0 40px 80px rgba(0,0,0,0.6)" }} />
+        {card && words ? (
+          // The card is 600 × 378 in the SVG, drawn here at 0.9 scale.
+          <div style={{ display: "flex", position: "relative", width: 540, height: 340, borderRadius: 28, boxShadow: "0 40px 80px rgba(0,0,0,0.6)" }}>
+            <img src={card} width={540} height={340} alt="" style={{ position: "absolute", top: 0, left: 0 }} />
+            <div style={{ position: "absolute", left: 33, top: 37, fontSize: 15, fontWeight: 600, letterSpacing: 4, lineHeight: 1, color: words.muted }}>BEARER</div>
+            <div style={{ position: "absolute", left: 33, top: 164, fontSize: 29, fontWeight: 500, lineHeight: 1, color: words.text }}>{words.name}</div>
+            <div style={{ position: "absolute", left: 33, top: 201, fontSize: 16, lineHeight: 1, color: words.muted }}>{words.serial}</div>
+            <div
+              style={{
+                position: "absolute",
+                left: 33,
+                top: 277,
+                height: 31,
+                display: "flex",
+                alignItems: "center",
+                padding: "0 14px",
+                borderRadius: 16,
+                border: `1px solid rgba(${words.pill.rgb},0.55)`,
+                backgroundColor: `rgba(${words.pill.rgb},0.18)`,
+                fontSize: 11.5,
+                fontWeight: 600,
+                letterSpacing: 1.1,
+                color: words.pill.color,
+              }}
+            >
+              {words.state}
+            </div>
+          </div>
         ) : null}
       </div>
     ),

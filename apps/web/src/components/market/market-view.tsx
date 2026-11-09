@@ -86,7 +86,7 @@ function Grid({ children }: { children: ReactNode }) {
   return <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{children}</div>;
 }
 
-function ListingCard({ listing, now }: { listing: MarketListing; now: number }) {
+export function ListingCard({ listing, now }: { listing: MarketListing; now: number }) {
   const vault = useVault(listing.token_id).data;
   const obs = useObservation(vault).data;
   const name = vault?.name ?? `Vault ${listing.token_id}`;

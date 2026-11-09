@@ -8,7 +8,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
 import { formatUsd } from "@/lib/vault/format";
-import { useNow, useVaultSummaries, useVaults } from "@/lib/vault/hooks";
+import { ListingCard } from "@/components/market/market-view";
+import { useListings, useNow, useVaultSummaries, useVaults } from "@/lib/vault/hooks";
 import { observedUsd, vaultStatus, type VaultStatus } from "@/lib/vault/report";
 import { cn } from "@/lib/utils";
 import { VaultTile } from "./vault-tile";
@@ -29,6 +30,9 @@ export function MyVaultsView() {
   const summaries = useVaultSummaries(vaults.data);
   const now = useNow(5000);
   const [filter, setFilter] = useState<Filter>("all");
+  // A listed vault is held by the market, not by you, so it isn't in `vaults`; show it separately.
+  const listings = useListings();
+  const listed = (listings.data ?? []).filter((l) => l.seller === accountId);
 
   if (!ready) return <Frame><GridSkeleton /></Frame>;
 
@@ -63,7 +67,7 @@ export function MyVaultsView() {
     );
   }
 
-  if (summaries.length === 0) {
+  if (summaries.length === 0 && listed.length === 0) {
     return (
       <Frame header={<Header count={0} />}>
         <EmptyState
@@ -86,10 +90,10 @@ export function MyVaultsView() {
   const shown = rows.filter((r) => active.match(r.status));
 
   return (
-    <Frame header={<Header count={rows.length} />}>
-      <Stats rows={rows} />
+    <Frame header={<Header count={rows.length} listed={listed.length} />}>
+      {rows.length ? <Stats rows={rows} /> : null}
 
-      <div className="mt-9 flex flex-wrap items-center justify-between gap-3">
+      <div className={cn("mt-9 flex flex-wrap items-center justify-between gap-3", !rows.length && "hidden")}>
         <div role="group" aria-label="Filter vaults" className="flex flex-wrap gap-1 rounded-[12px] border border-line bg-surface p-1">
           {FILTERS.map((f) => {
             const on = filter === f.id;
@@ -129,7 +133,23 @@ export function MyVaultsView() {
           </Link>
         ) : null}
       </div>
-      {shown.length === 0 ? <p className="mt-2 text-[14px] text-fg-3">No vaults match this filter.</p> : null}
+      {shown.length === 0 && rows.length ? <p className="mt-2 text-[14px] text-fg-3">No vaults match this filter.</p> : null}
+
+      {listed.length ? (
+        <section aria-labelledby="listed" className="mt-14">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="listed" className="text-[22px] font-semibold tracking-[-0.025em]">
+              On the market <span className="tabular text-fg-3">{listed.length}</span>
+            </h2>
+            <p className="text-[13px] text-fg-3">The market holds these, sealed, until they sell or you delist them.</p>
+          </div>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {listed.map((l) => (
+              <ListingCard key={l.token_id} listing={l} now={now} />
+            ))}
+          </div>
+        </section>
+      ) : null}
     </Frame>
   );
 }
@@ -143,13 +163,15 @@ function Frame({ header, children }: { header?: React.ReactNode; children: React
   );
 }
 
-function Header({ count }: { count: number | null }) {
+function Header({ count, listed = 0 }: { count: number | null; listed?: number }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-5">
       <div>
         <h1 className="text-[36px] font-semibold leading-tight tracking-[-0.035em]">My vaults</h1>
         <p className="mt-1.5 text-[15px] text-fg-2">
-          {count === null ? "Loading your vaults…" : `${count} vault${count === 1 ? "" : "s"} you hold on NEAR testnet.`}
+          {count === null
+            ? "Loading your vaults…"
+            : `${count} vault${count === 1 ? "" : "s"} you hold on NEAR testnet${listed ? `, and ${listed} on the market` : ""}.`}
         </p>
       </div>
       <Link href="/create" className={buttonVariants({ variant: "primary" })}>

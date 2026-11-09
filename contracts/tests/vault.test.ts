@@ -257,6 +257,7 @@ beforeAll(async () => {
         withdraw_deposit: WITHDRAW_DEPOSIT.toString(),
         mpc_sign_deposit: "1",
       },
+      base_uri: "https://bearer.example/nft",
     },
   });
 });
@@ -324,6 +325,22 @@ describe("create_vault", () => {
     });
     for (let i = 0; i < 20 && !(await vault(id)).keys; i++) await new Promise((r) => setTimeout(r, 500));
     expect((await vault(id)).keys).not.toBeNull();
+  });
+});
+
+describe("token media", () => {
+  it("points each token at a live image of its seal (brief 3.3 #9)", async () => {
+    const id = await createVault(alice);
+    const meta = await view<{ base_uri: string | null }>("nft_metadata", {});
+    const token = await view<{ metadata: { media: string | null; extra: string } }>("nft_token", { token_id: id });
+    expect(meta.base_uri).toBe("https://bearer.example/nft");
+    expect(token.metadata.media).toBe(`${id}.svg`);
+    expect(JSON.parse(token.metadata.extra).state).toBe("sealed");
+    await breakSeal(alice, id);
+    const opened = await view<{ metadata: { media: string | null; extra: string } }>("nft_token", { token_id: id });
+    // Same media URL; the image itself changes because it reads the chain.
+    expect(opened.metadata.media).toBe(`${id}.svg`);
+    expect(JSON.parse(opened.metadata.extra).state).toBe("opened");
   });
 });
 

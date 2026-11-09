@@ -187,6 +187,8 @@ async function setup() {
           withdraw_deposit: WITHDRAW_DEPOSIT.toString(),
           mpc_sign_deposit: "1",
         },
+        // Where wallets fetch each token's live image: the web app's /nft route.
+        base_uri: process.env.BEARER_MEDIA_BASE_URI ?? null,
       },
       gas: 30n * TGAS,
     });

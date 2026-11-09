@@ -257,7 +257,7 @@ export function VaultDetailView() {
           </div>
 
           <div className="mt-11">
-            <TechnicalDetails vault={vault} />
+            <TechnicalDetails vault={vault} facts={facts.data} />
           </div>
         </div>
       </div>

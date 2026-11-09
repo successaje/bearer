@@ -4,6 +4,7 @@ import { Check, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { CopyButton } from "@/components/ui/copy-button";
 import { BEARER_CONTRACT, CODE_HASH, IS_SIMULATED, REPO_URL, SIGNER_CONTRACT } from "@/lib/config";
+import type { ContractFacts } from "@/lib/vault/contract-facts";
 import { truncateMiddle } from "@/lib/vault/format";
 
 function Row({ term, children }: { term: string; children: React.ReactNode }) {
@@ -15,7 +16,7 @@ function Row({ term, children }: { term: string; children: React.ReactNode }) {
   );
 }
 
-export function TechnicalDetails({ vault }: { vault: VaultView }) {
+export function TechnicalDetails({ vault, facts }: { vault: VaultView; facts?: ContractFacts }) {
   const hash = CODE_HASH.match(/.{1,4}/g) ?? [];
   const snippet = `import { contracts, chainAdapters } from "chainsig.js";
 
@@ -37,15 +38,27 @@ for (const [chain, path] of Object.entries(${JSON.stringify(vault.paths)})) {
             <span className="font-mono">{BEARER_CONTRACT}</span>
           </Row>
           <Row term="Code hash">
-            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="break-all font-mono">
-                {hash.slice(0, 3).join(" ")} … {hash.slice(-2).join(" ")}
+            {IS_SIMULATED ? (
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="break-all font-mono">
+                  {hash.slice(0, 3).join(" ")} … {hash.slice(-2).join(" ")}
+                </span>
+                <span className="inline-flex items-center gap-1 text-[12.5px] text-ok">
+                  <Check aria-hidden className="size-3.5" strokeWidth={2.5} />
+                  Matches the reproducible build
+                </span>
               </span>
-              <span className="inline-flex items-center gap-1 text-[12.5px] text-ok">
-                <Check aria-hidden className="size-3.5" strokeWidth={2.5} />
-                Matches the reproducible build
+            ) : facts?.codeHash ? (
+              // The chain's answer only: there is no published reproducible build to compare with yet.
+              <span className="flex flex-col gap-1">
+                <span className="break-all font-mono">{facts.codeHash}</span>
+                <span className="text-[12.5px] text-fg-3">
+                  Read from NEAR testnet. The reproducible build to compare it with comes with the locked deployment.
+                </span>
               </span>
-            </span>
+            ) : (
+              <span className="text-fg-3">Reading from NEAR testnet…</span>
+            )}
           </Row>
           <Row term="MPC signer">
             <span className="font-mono">{SIGNER_CONTRACT}</span>

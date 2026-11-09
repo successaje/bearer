@@ -9,7 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldMessage, Input, Label } from "@/components/ui/primitives";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { errorCopy } from "@/lib/vault/errors";
-import { useAccountExists, useTransfer } from "@/lib/vault/hooks";
+import { useAccountExists, useContractFacts, useTransfer } from "@/lib/vault/hooks";
 import { CHAIN_META, formatAmount, formatUsd, vaultNumber } from "@/lib/vault/format";
 import { isSealed, observedUsd } from "@/lib/vault/report";
 import { validateNearAccount } from "@/lib/validation";
@@ -45,6 +45,7 @@ export function TransferSheet({
   const [receiver, setReceiver] = useState("");
   const [done, setDone] = useState<VaultView | null>(null);
   const transfer = useTransfer();
+  const locked = useContractFacts().data?.locked ?? null;
 
   function close(o: boolean) {
     onOpenChange(o);
@@ -110,7 +111,7 @@ export function TransferSheet({
                 {[
                   ["Sealed", isSealed(vault)],
                   ["0 signatures ever requested", vault.signatures_requested === 0],
-                  ["Contract locked", true],
+                  [locked === null ? "Contract locked (checking…)" : "Contract locked", locked === true],
                 ].map(([label, ok]) => (
                   <li key={String(label)} className="flex items-center gap-2.5 px-3.5 py-1.5">
                     {ok ? <Check className="size-3.5 text-ok" strokeWidth={3} aria-label="Passed" /> : <X className="size-3.5 text-danger" strokeWidth={3} aria-label="Not passed" />}

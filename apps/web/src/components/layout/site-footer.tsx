@@ -35,6 +35,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
             { label: "Threat model", href: `${REPO_URL}/blob/main/docs/THREAT_MODEL.md`, external: true },
           ]
         : [{ label: "Threat model", href: "/how#trust" }]),
+      { label: "Derive it yourself", href: "/derive" },
       { label: "Bearer contract", href: explorer.nearAccount(BEARER_CONTRACT), external: true },
       { label: "MPC signer", href: explorer.nearAccount(SIGNER_CONTRACT), external: true },
     ],

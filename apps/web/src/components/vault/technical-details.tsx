@@ -3,7 +3,7 @@ import { CHAIN_TAGS } from "@bearer/sdk";
 import { Check, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { CopyButton } from "@/components/ui/copy-button";
-import { BEARER_CONTRACT, CODE_HASH, REPO_URL, SIGNER_CONTRACT } from "@/lib/config";
+import { BEARER_CONTRACT, CODE_HASH, IS_SIMULATED, REPO_URL, SIGNER_CONTRACT } from "@/lib/config";
 import { truncateMiddle } from "@/lib/vault/format";
 
 function Row({ term, children }: { term: string; children: React.ReactNode }) {
@@ -88,7 +88,13 @@ for (const [chain, path] of Object.entries(${JSON.stringify(vault.paths)})) {
 
         <div className="mt-6">
           <div className="flex items-center justify-between">
-            <p className="text-[13.5px] font-medium">Derive the addresses yourself</p>
+            <p className="text-[13.5px] font-medium">
+              Derive the addresses yourself{" "}
+              {/* A simulated vault's keys are made up and it isn't on testnet, so send people to a real one. */}
+              <a href={IS_SIMULATED ? "/derive" : `/derive?vault=${vault.token_id}`} className="ml-1 font-normal text-accent hover:underline">
+                {IS_SIMULATED ? "or check a real testnet vault in your browser →" : "or in your browser →"}
+              </a>
+            </p>
             <CopyButton value={snippet} label="Copy the derivation snippet" size="sm" />
           </div>
           <pre className="mt-2 overflow-x-auto rounded-control border border-line bg-[#0b0b0f] p-4 font-mono text-[12px] leading-relaxed text-[#d4d4d8]">

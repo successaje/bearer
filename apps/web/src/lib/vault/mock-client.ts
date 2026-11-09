@@ -5,6 +5,7 @@ import type {
   ChainObservation,
   ChainTag,
   Finish,
+  HandoverSchedule,
   MarketConfig,
   MarketListing,
   VaultView,
@@ -19,6 +20,8 @@ import {
   FEES,
   MOCK_LISTING_DEPOSIT,
   MOCK_MARKET,
+  MOCK_SCHEDULE,
+  MOCK_SCHEDULE_DEPOSIT,
   mockAddresses,
   mockHex,
   mockView,
@@ -31,7 +34,7 @@ import {
 import { ATTACK_TESTS, VaultError } from "./errors";
 import { withdrawalAmount } from "./report";
 
-const STORAGE_KEY = "bearer:mock:v4";
+const STORAGE_KEY = "bearer:mock:v6";
 const CUSTODY_CAP = 16;
 const KEYS_DELAY_MS = 1_500;
 
@@ -64,7 +67,7 @@ export class MockBearerClient implements BearerClient {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as MockState;
-        if (parsed.version === 4) return (this.state = parsed);
+        if (parsed.version === 6) return (this.state = parsed);
       }
     } catch {
       // Private mode or corrupt storage: start fresh.
@@ -338,6 +341,73 @@ export class MockBearerClient implements BearerClient {
   async accountExists(accountId: string) {
     await jitter(200, 400);
     return this.load().accounts.includes(accountId);
+  }
+
+  /* ---------- the simulated schedule: same rules as contracts/schedule ---------- */
+
+  readonly scheduleId = MOCK_SCHEDULE;
+
+  async schedules() {
+    await jitter(150, 300);
+    return clone(Object.values(this.load().schedules));
+  }
+
+  async getSchedule(tokenId: string) {
+    await jitter(100, 200);
+    return clone(this.load().schedules[tokenId] ?? null);
+  }
+
+  async scheduleHandover(tokenId: string, recipient: string, releaseAtMs: number, cancellable: boolean, signer: string) {
+    await jitter(1200, 1800);
+    const v = this.vault(tokenId);
+    this.assertOwner(v, signer);
+    if (v.view.state.kind !== "sealed") throw new VaultError("ERR_VAULT_OPENED", "Opened vaults can't change hands, so they can't be scheduled.");
+    if (recipient === signer) throw new VaultError("ERR_RECIPIENT", "Choose someone else to hand it to.");
+    if (releaseAtMs < Date.now() + 60_000) throw new VaultError("ERR_DATE_TOO_SOON", "Pick a time at least a minute from now.");
+    const s: HandoverSchedule = {
+      token_id: tokenId,
+      giver: signer,
+      recipient,
+      release_at_ns: ns(releaseAtMs),
+      cancellable,
+      scheduled_at_ns: ns(Date.now()),
+      deposit: MOCK_SCHEDULE_DEPOSIT,
+      state: { kind: "waiting" },
+    };
+    this.moveTo(v, MOCK_SCHEDULE);
+    this.load().schedules[tokenId] = s;
+    this.save();
+    return clone(s);
+  }
+
+  async releaseHandover(tokenId: string, signer: string) {
+    void signer;
+    await jitter(1500, 2200);
+    const s = this.load().schedules[tokenId];
+    if (!s) throw new VaultError("ERR_NOT_SCHEDULED", "This vault isn't scheduled.");
+    if (Date.now() * 1e6 < Number(s.release_at_ns)) throw new VaultError("ERR_TOO_EARLY", "It can't be handed over before its date.");
+    if (!this.load().accounts.includes(s.recipient)) {
+      throw new VaultError("ERR_RECIPIENT_MISSING", `${s.recipient} doesn't exist on NEAR yet, so the vault stays scheduled until it does.`);
+    }
+    const v = this.vault(tokenId);
+    this.moveTo(v, s.recipient);
+    delete this.load().schedules[tokenId];
+    this.save();
+    return this.publicView(v);
+  }
+
+  async cancelHandover(tokenId: string, signer: string) {
+    await jitter(1200, 1800);
+    const s = this.load().schedules[tokenId];
+    if (!s) throw new VaultError("ERR_NOT_SCHEDULED", "This vault isn't scheduled.");
+    if (s.giver !== signer) throw new VaultError("ERR_NOT_GIVER", `Only ${s.giver} can cancel it.`);
+    if (!s.cancellable) throw new VaultError("ERR_NOT_CANCELLABLE", "This handover was scheduled so that nobody can cancel it.");
+    if (Date.now() * 1e6 >= Number(s.release_at_ns)) throw new VaultError("ERR_TOO_LATE", "The date has passed, so it can only be handed over now.");
+    const v = this.vault(tokenId);
+    this.moveTo(v, signer);
+    delete this.load().schedules[tokenId];
+    this.save();
+    return this.publicView(v);
   }
 
   /* ---------- the simulated market: same rules as contracts/market ---------- */

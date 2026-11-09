@@ -34,5 +34,11 @@ export function errorCopy(error: unknown): string {
   if (text.includes("ERR_OWN_LISTING")) return "You listed this vault. Delist it instead.";
   if (text.includes("ERR_NOT_SELLER")) return "Only the seller can delist this vault.";
   if (text.includes("ERR_PRICE")) return "The lowest price is 0.001 NEAR.";
+  if (text.includes("ERR_TOO_EARLY")) return "It can't be handed over before its date.";
+  if (text.includes("ERR_TOO_LATE")) return "The date has passed, so it can only be handed over now.";
+  if (text.includes("ERR_NOT_CANCELLABLE")) return "This handover was scheduled so that nobody can cancel it.";
+  if (text.includes("ERR_NOT_GIVER")) return "Only the person who scheduled it can cancel it.";
+  if (text.includes("ERR_DATE_TOO_SOON")) return "Pick a time at least a minute from now.";
+  if (text.includes("ERR_IN_PROGRESS")) return "A handover or cancellation is already settling. Try again in a moment.";
   return text;
 }

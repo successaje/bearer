@@ -6,6 +6,7 @@ import type {
   ChainTag,
   ContractConfig,
   Finish,
+  HandoverSchedule,
   MarketConfig,
   MarketListing,
   RecordedAttack,
@@ -44,6 +45,8 @@ export interface TestnetClientOptions {
   contractId: string;
   /** The market contract (contracts/market) selling this contract's vaults, if any. */
   marketId?: string | null;
+  /** The schedule contract (contracts/schedule) that hands this contract's vaults over on a date, if any. */
+  scheduleId?: string | null;
   /** Attacks sent to this contract as real transactions; `runAttack` re-reads their outcome. */
   recordedAttacks?: RecordedAttack[];
   wallet: WalletAdapter;
@@ -69,6 +72,7 @@ export class TestnetBearerClient implements BearerClient {
   private readonly ep: TestnetEndpoints;
   private config: Promise<ContractConfig> | null = null;
   private marketCfg: Promise<MarketConfig> | null = null;
+  private scheduleDeposit: Promise<string> | null = null;
 
   constructor(private readonly opts: TestnetClientOptions) {
     this.ep = { ...TESTNET_ENDPOINTS, ...opts.endpoints };
@@ -224,6 +228,87 @@ export class TestnetBearerClient implements BearerClient {
     if (!w.signed_raw_tx) throw new Error("This withdrawal isn't signed yet.");
     await broadcastRaw(chainOf(w.params), w.signed_raw_tx, this.ep);
     return this.trackWithdrawal(tokenId, index);
+  }
+
+  /* ---------- scheduled handover: escrow until a date (contracts/schedule) ---------- */
+
+  get scheduleId() {
+    return this.opts.scheduleId ?? null;
+  }
+
+  private scheduler() {
+    if (!this.opts.scheduleId) throw new Error("This deployment has no scheduled handover.");
+    return this.opts.scheduleId;
+  }
+
+  async schedules() {
+    if (!this.opts.scheduleId) return [];
+    return this.near.view<HandoverSchedule[]>(this.opts.scheduleId, "schedules", { from_index: 0, limit: 100 });
+  }
+
+  async getSchedule(tokenId: string) {
+    if (!this.opts.scheduleId) return null;
+    return this.near.view<HandoverSchedule | null>(this.opts.scheduleId, "schedule", { token_id: tokenId });
+  }
+
+  async scheduleHandover(tokenId: string, recipient: string, releaseAtMs: number, cancellable: boolean, signer: string) {
+    this.signerFor(signer);
+    const scheduler = this.scheduler();
+    this.scheduleDeposit ??= this.near.view<{ schedule_deposit: string }>(scheduler, "get_config").then((c) => c.schedule_deposit);
+    const [deposit, balance] = await Promise.all([this.scheduleDeposit, this.near.view<string>(scheduler, "deposit_of", { account_id: signer })]);
+    const releaseAtNs = (BigInt(Math.floor(releaseAtMs)) * 1_000_000n).toString();
+    // nft_transfer_call forwards only 1 yoctoNEAR, so the schedule deposit is paid first.
+    const send = {
+      receiverId: this.opts.contractId,
+      calls: [
+        {
+          methodName: "nft_transfer_call",
+          args: { receiver_id: scheduler, token_id: tokenId, msg: JSON.stringify({ recipient, release_at_ns: releaseAtNs, cancellable }) },
+          gas: 100n * TGAS,
+          deposit: ONE_YOCTO,
+        },
+      ],
+    };
+    const pay = { receiverId: scheduler, calls: [{ methodName: "deposit_for_schedule", args: {}, gas: 30n * TGAS, deposit: BigInt(deposit) }] };
+    const results = await this.sendAll(BigInt(balance) >= BigInt(deposit) ? [send] : [pay, send]);
+    if (results.at(-1)?.returnValue === false) {
+      throw new Error("The schedule sent the vault back: the date must be at least a minute away, and the recipient can't be you.");
+    }
+    for (let i = 0; i < 20; i++) {
+      const s = await this.getSchedule(tokenId);
+      if (s) return s;
+      await sleep(1000);
+    }
+    throw new Error("The vault was sent, but its schedule hasn't appeared yet. Check the vault page in a moment.");
+  }
+
+  async releaseHandover(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    const s = await this.getSchedule(tokenId);
+    if (!s) throw new Error("This vault isn't scheduled.");
+    await this.opts.wallet.send(this.scheduler(), [{ methodName: "release", args: { token_id: tokenId }, gas: 100n * TGAS, deposit: 0n }]);
+    // The schedule checks the recipient's account first, then moves the vault.
+    for (let i = 0; i < 20; i++) {
+      const vault = await this.getVault(tokenId);
+      if (vault?.owner_id === s.recipient) return vault;
+      const now = await this.getSchedule(tokenId);
+      if (i > 2 && now?.state.kind === "waiting") {
+        throw new Error(`${s.recipient} doesn't exist on NEAR yet, so the vault stays scheduled until it does.`);
+      }
+      await sleep(1000);
+    }
+    throw new Error("The handover hasn't settled yet. Check the vault page in a moment.");
+  }
+
+  async cancelHandover(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.scheduler(), [{ methodName: "cancel", args: { token_id: tokenId }, gas: 80n * TGAS, deposit: ONE_YOCTO }]);
+    for (let i = 0; i < 20; i++) {
+      const vault = await this.getVault(tokenId);
+      if (vault?.owner_id === signer) return vault;
+      await sleep(1000);
+    }
+    throw new Error("The vault hasn't come back yet. Check the vault page in a moment.");
   }
 
   /* ---------- the market: escrow by transfer (docs/features/market.md) ---------- */

@@ -228,6 +228,24 @@ export interface AttackResult {
   simulated: boolean;
 }
 
+/* ---------- scheduled handover (contracts/schedule) ---------- */
+
+export type ScheduleState = { kind: "waiting" } | { kind: "releasing" } | { kind: "cancelling" };
+
+/** A sealed vault held by the schedule contract until `release_at_ns`, then handed to `recipient`. */
+export interface HandoverSchedule {
+  token_id: string;
+  giver: string;
+  recipient: string;
+  /** Nanoseconds since the Unix epoch: anyone can release it on or after this. */
+  release_at_ns: string;
+  /** Whether the giver may take it back before the date. */
+  cancellable: boolean;
+  scheduled_at_ns: string;
+  deposit: string;
+  state: ScheduleState;
+}
+
 /* ---------- the market (contracts/market) ---------- */
 
 export type ListingState = { kind: "listed" } | { kind: "selling"; buyer: string } | { kind: "returning" };
@@ -274,6 +292,17 @@ export interface BearerClient {
 
   runAttack(kind: AttackKind, tokenId: string): Promise<AttackResult>;
   accountExists(accountId: string): Promise<boolean>;
+
+  /** The schedule contract's account, or null where this deployment has none. */
+  readonly scheduleId: string | null;
+  schedules(): Promise<HandoverSchedule[]>;
+  getSchedule(tokenId: string): Promise<HandoverSchedule | null>;
+  /** Sends a sealed vault to the schedule for `recipient`, to be handed over on or after `releaseAtMs`. */
+  scheduleHandover(tokenId: string, recipient: string, releaseAtMs: number, cancellable: boolean, signer: string): Promise<HandoverSchedule>;
+  /** Anyone may, on or after the date; resolves once the vault is the recipient's. */
+  releaseHandover(tokenId: string, signer: string): Promise<VaultView>;
+  /** The giver takes it back before the date, if they made it cancellable. */
+  cancelHandover(tokenId: string, signer: string): Promise<VaultView>;
 
   /** The market contract's account, or null where this deployment has none. */
   readonly marketId: string | null;

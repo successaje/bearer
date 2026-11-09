@@ -9,7 +9,8 @@ import { Skeleton } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
 import { formatUsd } from "@/lib/vault/format";
 import { ListingCard } from "@/components/market/market-view";
-import { useListings, useNow, useVaultSummaries, useVaults } from "@/lib/vault/hooks";
+import { ScheduleCard } from "@/components/schedule/schedule-card";
+import { useListings, useNow, useSchedules, useVaultSummaries, useVaults } from "@/lib/vault/hooks";
 import { observedUsd, vaultStatus, type VaultStatus } from "@/lib/vault/report";
 import { cn } from "@/lib/utils";
 import { VaultTile } from "./vault-tile";
@@ -33,6 +34,10 @@ export function MyVaultsView() {
   // A listed vault is held by the market, not by you, so it isn't in `vaults`; show it separately.
   const listings = useListings();
   const listed = (listings.data ?? []).filter((l) => l.seller === accountId);
+  // Scheduled vaults are held by the schedule contract: the giver's, and the ones on their way to you.
+  const schedules = useSchedules().data ?? [];
+  const scheduledByMe = schedules.filter((x) => x.giver === accountId);
+  const comingToMe = schedules.filter((x) => x.recipient === accountId);
 
   if (!ready) return <Frame><GridSkeleton /></Frame>;
 
@@ -67,7 +72,7 @@ export function MyVaultsView() {
     );
   }
 
-  if (summaries.length === 0 && listed.length === 0) {
+  if (summaries.length === 0 && listed.length === 0 && scheduledByMe.length === 0 && comingToMe.length === 0) {
     return (
       <Frame header={<Header count={0} />}>
         <EmptyState
@@ -90,7 +95,7 @@ export function MyVaultsView() {
   const shown = rows.filter((r) => active.match(r.status));
 
   return (
-    <Frame header={<Header count={rows.length} listed={listed.length} />}>
+    <Frame header={<Header count={rows.length} listed={listed.length} scheduled={scheduledByMe.length} />}>
       {rows.length ? <Stats rows={rows} /> : null}
 
       <div className={cn("mt-9 flex flex-wrap items-center justify-between gap-3", !rows.length && "hidden")}>
@@ -135,6 +140,38 @@ export function MyVaultsView() {
       </div>
       {shown.length === 0 && rows.length ? <p className="mt-2 text-[14px] text-fg-3">No vaults match this filter.</p> : null}
 
+      {comingToMe.length ? (
+        <section aria-labelledby="coming" className="mt-14">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="coming" className="text-[22px] font-semibold tracking-[-0.025em]">
+              Coming to you <span className="tabular text-fg-3">{comingToMe.length}</span>
+            </h2>
+            <p className="text-[13px] text-fg-3">Scheduled for you by someone else. They arrive sealed on their date.</p>
+          </div>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {comingToMe.map((x) => (
+              <ScheduleCard key={x.token_id} schedule={x} viewer={accountId} now={now} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {scheduledByMe.length ? (
+        <section aria-labelledby="scheduled" className="mt-14">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="scheduled" className="text-[22px] font-semibold tracking-[-0.025em]">
+              Scheduled by you <span className="tabular text-fg-3">{scheduledByMe.length}</span>
+            </h2>
+            <p className="text-[13px] text-fg-3">Held, sealed, until their date. Nobody can withdraw meanwhile, you included.</p>
+          </div>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {scheduledByMe.map((x) => (
+              <ScheduleCard key={x.token_id} schedule={x} viewer={accountId} now={now} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {listed.length ? (
         <section aria-labelledby="listed" className="mt-14">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -163,7 +200,7 @@ function Frame({ header, children }: { header?: React.ReactNode; children: React
   );
 }
 
-function Header({ count, listed = 0 }: { count: number | null; listed?: number }) {
+function Header({ count, listed = 0, scheduled = 0 }: { count: number | null; listed?: number; scheduled?: number }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-5">
       <div>
@@ -171,7 +208,7 @@ function Header({ count, listed = 0 }: { count: number | null; listed?: number }
         <p className="mt-1.5 text-[15px] text-fg-2">
           {count === null
             ? "Loading your vaults…"
-            : `${count} vault${count === 1 ? "" : "s"} you hold on NEAR testnet${listed ? `, and ${listed} on the market` : ""}.`}
+            : `${count} vault${count === 1 ? "" : "s"} you hold on NEAR testnet${[listed ? `${listed} on the market` : "", scheduled ? `${scheduled} scheduled` : ""].filter(Boolean).map((x) => `, ${x}`).join("")}.`}
         </p>
       </div>
       <Link href="/create" className={buttonVariants({ variant: "primary" })}>

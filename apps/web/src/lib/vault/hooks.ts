@@ -15,6 +15,8 @@ export const keys = {
   progress: (id: string, index: number) => ["progress", id, index] as const,
   account: (id: string) => ["account", id] as const,
   listings: ["listings"] as const,
+  schedules: ["schedules"] as const,
+  schedule: (id: string) => ["schedule", id] as const,
   listing: (id: string) => ["listing", id] as const,
 };
 
@@ -123,6 +125,8 @@ function useRefresh() {
     void qc.invalidateQueries({ queryKey: keys.withdrawals(id) });
     void qc.invalidateQueries({ queryKey: keys.observe(id) });
     void qc.invalidateQueries({ queryKey: keys.listings });
+    void qc.invalidateQueries({ queryKey: keys.schedules });
+    void qc.invalidateQueries({ queryKey: keys.schedule(id) });
     void qc.invalidateQueries({ queryKey: keys.listing(id) });
   };
 }
@@ -160,6 +164,41 @@ export function useWithdraw() {
     mutationFn: async (v: { id: string; request: WithdrawRequest; signer: string }) =>
       (await getVaultClient()).withdraw(v.id, v.request, v.signer),
     onSuccess: (_w, v) => refresh(v.id),
+  });
+}
+
+/* ---------- scheduled handover ---------- */
+
+export function useSchedules() {
+  return useQuery({ queryKey: keys.schedules, queryFn: async () => (await getVaultClient()).schedules(), refetchInterval: POLL_MS });
+}
+
+export function useSchedule(id: string) {
+  return useQuery({ queryKey: keys.schedule(id), queryFn: async () => (await getVaultClient()).getSchedule(id), refetchInterval: POLL_MS });
+}
+
+export function useScheduleHandover() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; recipient: string; releaseAtMs: number; cancellable: boolean; signer: string }) =>
+      (await getVaultClient()).scheduleHandover(v.id, v.recipient, v.releaseAtMs, v.cancellable, v.signer),
+    onSuccess: (_s, v) => refresh(v.id),
+  });
+}
+
+export function useReleaseHandover() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).releaseHandover(v.id, v.signer),
+    onSettled: (_r, _e, v) => refresh(v.id),
+  });
+}
+
+export function useCancelHandover() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).cancelHandover(v.id, v.signer),
+    onSuccess: (_r, v) => refresh(v.id),
   });
 }
 

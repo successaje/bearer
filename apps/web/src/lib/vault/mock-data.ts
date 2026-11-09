@@ -1,4 +1,4 @@
-import type { ChainTag, Finish, MarketListing, ObservedDeposit, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
+import type { ChainTag, Finish, HandoverSchedule, MarketListing, ObservedDeposit, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
 import { vaultPath } from "@bearer/sdk";
 
 /** Simulated chain state for one vault: what an explorer would show at its addresses. */
@@ -27,13 +27,20 @@ export interface MockVault {
 }
 
 export interface MockState {
-  version: 4;
+  version: 6;
   nextId: number;
   vaults: Record<string, MockVault>;
   accounts: string[];
   /** The simulated market's listings, by token. Their vaults are held by MOCK_MARKET. */
   listings: Record<string, MarketListing>;
+  /** Scheduled handovers, by token. Their vaults are held by MOCK_SCHEDULE. */
+  schedules: Record<string, HandoverSchedule>;
 }
+
+/** The simulated schedule contract (SCHEDULE_CONTRACT in mock mode). */
+export const MOCK_SCHEDULE = "schedule.testnet";
+/** 0.01 NEAR, as on the testnet schedule. */
+export const MOCK_SCHEDULE_DEPOSIT = (10n ** 22n).toString();
 
 /** The simulated market contract (MARKET_CONTRACT in mock mode). */
 export const MOCK_MARKET = "market.testnet";
@@ -356,11 +363,47 @@ export function seedState(now: number): MockState {
     };
   }
 
+  // 21: ada's gift for theo, handed over in six months. Can't be cancelled.
+  const schedules: Record<string, HandoverSchedule> = {};
+  {
+    const id = "21";
+    const created = now - 3 * DAY;
+    const addresses = mockAddresses(id);
+    const view = mockView(id, MOCK_SCHEDULE, created, addresses, { name: "For your next chapter", finish: "ivory" });
+    view.custody = [
+      { account_id: "ada.testnet", since_ns: ns(created) },
+      { account_id: MOCK_SCHEDULE, since_ns: ns(now - 2 * DAY) },
+    ];
+    vaults[id] = {
+      view,
+      addresses,
+      ledger: {
+        btc: ledger([sats(0.0025), [deposit("21b", sats(0.0025), now - 3 * DAY + 4 * HOUR)]]),
+        evm: ledger([0n, []]),
+        sol: ledger([lamports(0.5), [deposit("21s", lamports(0.5), now - DAY)]]),
+      },
+      withdrawals: [],
+      progress: {},
+      keysAt: created,
+    };
+    schedules[id] = {
+      token_id: id,
+      giver: "ada.testnet",
+      recipient: "theo.testnet",
+      release_at_ns: ns(now + 182 * DAY),
+      cancellable: false,
+      scheduled_at_ns: ns(now - 2 * DAY),
+      deposit: MOCK_SCHEDULE_DEPOSIT,
+      state: { kind: "waiting" },
+    };
+  }
+
   return {
-    version: 4,
+    version: 6,
     nextId: 64,
     vaults,
-    accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", ATTACKER, "near.testnet", MOCK_MARKET],
+    accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", ATTACKER, "near.testnet", MOCK_MARKET, MOCK_SCHEDULE],
     listings,
+    schedules,
   };
 }

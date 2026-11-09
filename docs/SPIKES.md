@@ -3,6 +3,23 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-09 · v2 staking with a real pool
+
+`bearer-v2.testnet` was migrated in place to the staking build (3 vaults kept) and stakes with
+`stakely_v2.pool.f863973.m0`: standard pool code, no access keys, a 3% fee. In `pnpm spike:staking
+run`:
+- **Staking.** alice staked 0.6 NEAR from a sealed vault (No. 0004) in 17.4 Tgas. The pool then
+  showed the contract staking 0.6 NEAR less 5 yoctoNEAR of rounding.
+- **Refused:**
+  - a stranger staking it;
+  - alice withdrawing while it was sealed;
+  - alice unstaking after handing it to bob.
+- **Unstaking.** bob's first unstake (0.2 NEAR, 16.9 Tgas) went straight to the pool, unlocking at
+  epoch 5434. His second (0.1 NEAR) queued, and the pool's unstaked balance didn't change. An early
+  withdrawal was refused (`ERR_NOT_UNLOCKED`).
+
+N = 1. Details and links: [docs/features/staking.md](features/staking.md).
+
 ## 2026-11-09 · First vaults created and listed through a browser wallet
 
 The owner used their own testnet account, `finishr.testnet`, on https://bearer-near.vercel.app

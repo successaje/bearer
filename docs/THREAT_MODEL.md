@@ -97,6 +97,27 @@ sealed and leave only after opening, by the owner. Tests: `contracts/tests/holdi
 | H7 | A fake token pretends to be a known one | Holdings are shown by contract account, not by symbol | UI review | policy |
 | H8 | Two withdrawals take the same tokens | Amounts in flight are pending and can't be withdrawn again | `double_withdrawal` | ✅ |
 
+## Staking threats (v2, branch `v2`, not on the hosted site)
+
+The owner of a v2 vault, sealed or opened, can stake its NEAR with the contract's one staking
+pool (`contracts/bearer/src/staking.rs`). No signature is involved, so the seal rule is untouched:
+staked NEAR is either at that pool or back in the vault, where H2 and H3 apply. Tests:
+`cargo test -p bearer staking` (unit) and `contracts/tests/staking.test.ts` (sandbox, against a
+mock pool with the standard pool's rules); a testnet run on `bearer-v2.testnet` with
+`stakely_v2.pool.f863973.m0` (docs/features/staking.md).
+
+| # | Attack | Defence | Test | Status |
+|---|---|---|---|---|
+| Y1 | Stake a vault's NEAR with a pool the attacker controls, then hand the vault on | One pool, fixed when the contract is created; no method changes it (`migrate_add_staking` is `#[private]`: only the account's own key, none once locked). The testnet pool is the standard pool code with no access keys | `the pool is the one fixed at creation, and nobody else can migrate` (sandbox), `no_pool_no_staking` (unit); testnet: the pool has 0 keys | ✅ |
+| Y2 | Someone else stakes or unstakes a vault, to lock up its NEAR | Only the vault's owner can stake or unstake | `only_owner_can_stake`, `only_owner_can_unstake` (unit and sandbox); testnet: a stranger's stake refused, `ERR_NOT_OWNER` | ✅ |
+| Y3 | The former owner keeps the stake after handing the vault on | Shares belong to the vault, not the account; they move with it | `stakes from a sealed vault, and the stake moves with the vault` (sandbox); testnet: alice's unstake after the handover refused, `ERR_NOT_OWNER` | ✅ |
+| Y4 | Take staked NEAR out of a sealed vault | Unstaked NEAR comes back into the vault's NEAR; leaving the vault still needs an opened vault and its owner | `unstaked NEAR still needs an opened vault to leave it` (sandbox); testnet: withdrawing from the sealed, staked vault refused, `ERR_VAULT_SEALED` | ✅ |
+| Y5 | One vault takes another's rewards or principal | Shares priced at the pool's stake read after `ping`, minus what's queued to leave; new shares rounded down, burned shares rounded up | `rewards_stay_with_earlier_stakes` (unit), `rewards stay with the vaults that earned them` (sandbox, with a simulated reward) | ✅ |
+| Y6 | Keep restarting everyone's 4-epoch unlock by unstaking again and again | The pool restarts the wait for the whole account on each `unstake`, so requests are batched: the contract unstakes at the pool only when nothing is unlocking, and withdraws a batch before unstaking the next. A request waits at most two unlock periods | `unstaking_is_batched_and_comes_back_into_the_vault` (unit), `batches requests so one vault can't keep restarting everyone's unlock` (sandbox); testnet: bob's second request queued and the pool's unstaked balance didn't change | ✅ |
+| Y7 | A pool call fails halfway, or two interleave | One pool call at a time (`ERR_STAKING_BUSY`); callbacks never panic, always release it, and put NEAR that didn't reach the pool back in the vault | `one_pool_call_at_a_time`, `failed_stake_puts_the_near_back`, `failed_price_read_puts_the_near_back`, `a_refused_unstake_changes_nothing`, `a_refused_batch_stays_queued` (unit), `failed_stake_keeps_the_near` (sandbox) | ✅ |
+| Y8 | Staking is read as a guaranteed return | The site says rewards vary and aren't guaranteed, and how long unstaking takes; amounts are read from the pool's own view | UI review | policy |
+| Y9 | Fill the contract's storage with stake records | Each vault's fixed-size record is paid from its own NEAR when created and refunded when emptied | `stake_credits_shares_and_pays_its_record` (unit), sandbox storage checks | ✅ |
+
 ## What you are trusting
 
 - **NEAR's MPC network** to sign only what the Bearer contract requests, and to keep its key shares safe.

@@ -3,7 +3,21 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
-## 2026-11-09 · `bearer.testnet`: the final contract, reproducibly built, deployed and checked (not locked yet)
+## 2026-11-09 · `bearer.testnet` locked
+
+With the owner's go-ahead, `CONFIRM_LOCK=bearer.testnet BEARER_CONTRACT_ID=bearer.testnet
+BEARER_WASM=../res/bearer.wasm pnpm spike:testnet lock` checked that the deployed code hash was
+the reproducible build's (`PEsHBVDK…Vq1S`), then deleted the account's only access key, a
+full-access key, in one transaction ([tx](https://testnet.nearblocks.io/txns/J87dPH7D1LG7PLwvyzqwFbBKMsQ7pAd7Nxfn1DrvsaVT)).
+Afterwards `view_access_key_list` returns no keys, read from both `test.rpc.fastnear.com` and
+`rpc.testnet.near.org`; the code hash, settings, `base_uri` and the four vaults are unchanged.
+Nobody can change the code, settings or `base_uri` again, or move the account's NEAR. Report:
+[`testnet-lock-2026-11-09T11-42-33.968Z.json`](../contracts/tests/spike/reports/testnet-lock-2026-11-09T11-42-33.968Z.json).
+
+The hosted site now reads this contract; its measured runs and landed withdrawals stay labelled as
+the spike contract's.
+
+## 2026-11-09 · `bearer.testnet`: the final contract, reproducibly built, deployed and checked
 
 `bearer.testnet` was created through NEAR's testnet faucet service (10 NEAR), initialised with
 the spike's settings and `base_uri` `https://bearer-near.vercel.app/nft` (each token's media is
@@ -17,7 +31,7 @@ the site's live image of its seal), then redeployed in place with the reproducib
 | Rebuilt | twice, each from a fresh clone in a fresh container: identical bytes |
 | On chain | code hash `PEsHBVDKpZ3fdpmfsJekrt52amLARnwRLWNXLQDVq1S` = base58(sha256(wasm)); `contract_source_metadata` names the image, command, commit and standards (NEP-171, 177, 181, 297, 330) |
 
-It still has one full-access key: locking waits for the owner's yes. Same signer
+Locked afterwards (above). Same signer
 (`v1.signer-prod.testnet` 3.18.0) and RPC as the spike; same test accounts. Checks on the
 reproducible build:
 

@@ -1,0 +1,14 @@
+{
+  "measured_at": "2026-11-09T11:42:33.958Z",
+  "contract": "bearer.testnet",
+  "code_hash": "PEsHBVDKpZ3fdpmfsJekrt52amLARnwRLWNXLQDVq1S",
+  "wasm": "../res/bearer.wasm",
+  "deleted_keys": [
+    {
+      "public_key": "ed25519:323dQdP9pK1NVmfMJAt5dce4mQ9Twt8kHPKufBAmNUFD",
+      "full_access": true
+    }
+  ],
+  "tx": "https://testnet.nearblocks.io/txns/J87dPH7D1LG7PLwvyzqwFbBKMsQ7pAd7Nxfn1DrvsaVT",
+  "keys_after": 0
+}

@@ -54,14 +54,17 @@ adapter (brief 4.12) and wires the app to it:
 
 - Connecting a real wallet through near-connect's picker and signing in the browser. The headless
   checks can't log into a wallet; the adapter's write path is proven with keys instead.
-- The live attack lab: it needs a demo attacker account, which this build doesn't configure, so
-  it explains that instead of running.
+- A live attack lab: it would need accounts the site doesn't hold (a former owner, an attacker).
+  On testnet the lab lists each attack with the test that proves it, and the homepage says the
+  interactive lab runs in the simulated demo.
 
 ## Try it
 
 ```bash
-NEXT_PUBLIC_NETWORK=testnet NEXT_PUBLIC_BEARER_CONTRACT=v3a.bearer-1108-ffb3.testnet pnpm dev
+NEXT_PUBLIC_NETWORK=testnet NEXT_PUBLIC_BEARER_CONTRACT=bearer.testnet pnpm dev
 ```
 
-Open `/v/2` (an opened vault with Base, Bitcoin and Solana withdrawals) or `/v/4` (sealed, with a
-Bitcoin deposit). Connect a testnet wallet to create or transfer.
+On the locked contract, open `/v/1` (opened, with Base, Bitcoin and Solana signatures) or `/v/2`
+(sealed). Its test signatures used made-up Bitcoin inputs and unfunded addresses, so broadcasting
+them is refused. With `v3a.bearer-1108-ffb3.testnet` instead, `/v/2` and `/v/4` show the
+withdrawals that landed. Connect a testnet wallet to create or transfer.

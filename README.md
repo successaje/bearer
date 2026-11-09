@@ -6,10 +6,11 @@ can break the seal. Nobody before them can.**
 Hand someone Bitcoin like you'd hand them a sealed envelope. Testnet prototype, built for the NEAR
 Hackathon (Nov 2026). Not audited; not financial advice.
 
-**Live on testnet: [bearer-near.vercel.app](https://bearer-near.vercel.app)**, against the spike
-contract `v3a.bearer-1108-ffb3.testnet` (not locked yet). Start with
-[/proof](https://bearer-near.vercel.app/proof) or the vault behind the first Bitcoin withdrawal,
-[No. 0004](https://bearer-near.vercel.app/v/4).
+**Live on testnet: [bearer-near.vercel.app](https://bearer-near.vercel.app)**, against the
+locked contract `bearer.testnet` (reproducible build, no access keys). Start with
+[/proof](https://bearer-near.vercel.app/proof), which checks the lock and the code hash from your
+browser, or vault [No. 0001](https://bearer-near.vercel.app/v/1), opened, with signatures for all
+three chains.
 
 ## The problem
 
@@ -28,7 +29,7 @@ it later: checking ownership at transfer time can't cancel a signature that alre
 - **Break the seal to withdraw.** In the same transaction as the first withdrawal; after that the
   vault can never change hands, so every signature it produces pays its owner.
 - **Check before you accept.** Every vault has a public page: seal state, signatures ever
-  requested, custody history, observed balances with their sources, and an attack lab.
+  requested, custody history, observed balances with their sources, and the attacks the contract refuses.
 
 ## The one rule
 
@@ -56,9 +57,10 @@ Everything below was measured on testnet against NEAR's real MPC signer (`v1.sig
 | Bitcoin testnet4 | 1–4 inputs joined into one callback, 6.5–8.4 s (one run each) | **Confirmed** in block 159,948: [`ce01f9ff…58b6`](https://mempool.space/testnet4/tx/ce01f9fffdf0f362641a4f6882257295ae63de6146c5a3478704ef809bf958b6), after a transfer and a seal break in one NEAR transaction |
 | Solana devnet | 2 of 2, 7.7 s and 8.3 s (N = 2) | **Finalized** in slot 520,280,234: [`jQCk6nNL…grmt`](https://explorer.solana.com/tx/jQCk6nNLGvbAfkrxGizGhvqiUpnUZeA4b58tU3SEFdNA3La2g5PqTY6uod3zWMJk7yB9wfvZebVzFa73oEdgrmt?cluster=devnet) |
 
-The final contract, `bearer.testnet`, runs the reproducible build (two rebuilds, identical bytes)
-and passed the same checks. Not done yet: locking it (it still has its full-access key). The
-hosted site runs against the spike contract until then.
+These ran on the spike contract, `v3a.bearer-1108-ffb3.testnet`. The final contract,
+`bearer.testnet`, runs the reproducible build (two rebuilds, identical bytes), passed the same
+checks, and is locked: its last access key was deleted on 9 Nov 2026
+([tx](https://testnet.nearblocks.io/txns/J87dPH7D1LG7PLwvyzqwFbBKMsQ7pAd7Nxfn1DrvsaVT)), so nobody can change it. Its own withdrawals land once its vaults hold funds.
 
 ## Try it
 
@@ -72,7 +74,7 @@ pnpm test:contracts      # unit tests, then sandbox tests against a mock MPC sig
 To run the web app against the real testnet contract, with NEAR wallets through near-connect:
 
 ```bash
-NEXT_PUBLIC_NETWORK=testnet NEXT_PUBLIC_BEARER_CONTRACT=v3a.bearer-1108-ffb3.testnet pnpm dev
+NEXT_PUBLIC_NETWORK=testnet NEXT_PUBLIC_BEARER_CONTRACT=bearer.testnet pnpm dev
 ```
 
 `demo:dry` runs a real NEAR sandbox with the committed contract (`contracts/res/`) and a mock MPC
@@ -102,7 +104,7 @@ pnpm spike:testnet run         # create, transfer, 5 × break-and-withdraw on Ba
 
 | Page | What it's for |
 |---|---|
-| `/v/[id]` | A vault's public page: seal, observed balances, custody, signatures, the attack lab |
+| `/v/[id]` | A vault's public page: seal, observed balances, custody, signatures, the attacks it refuses (an interactive lab in mock mode) |
 | `/v/[id]/handover` | Hand a vault over in person: a QR code for the recipient, and the card flips when the transfer lands |
 | `/v/[id]/certificate` | A printable bearer certificate, one A4 page, with a QR code to the live seal |
 | `/proof` | Live checks against NEAR testnet, every measured number, and the threat table |
@@ -147,7 +149,7 @@ transaction publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 ## What you're trusting
 
 - NEAR's MPC network, to sign only what the Bearer contract requests.
-- The Bearer contract's code (open source; to be locked with no full-access keys).
+- The Bearer contract's code (open source, reproducibly built, locked with no access keys).
 - Each chain's normal fees and finality.
 - Public data sources for the balances the UI shows (Blockstream Esplora, Base Sepolia RPC,
   Solana devnet RPC), labelled with source and time; the contract never relies on them.

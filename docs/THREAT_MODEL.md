@@ -3,7 +3,7 @@
 **For:** anyone deciding whether to accept, hold or build on a Bearer vault, and the judges checking our claims.
 **After reading** you'll know every way we know of that someone could try to keep or take a vault's coins, what stops each one, and which test proves it.
 
-Status: 2026-11-08. Rows are marked ✅ once their test passes (`contracts/tests`, `cargo test`). "Base, Bitcoin, Solana" means proven for each chain's `withdraw_*` in the sandbox.
+Status: 2026-11-09. Rows are marked ✅ once their test passes (`contracts/tests`, `cargo test`). "Base, Bitcoin, Solana" means proven for each chain's `withdraw_*` in the sandbox.
 
 ## The rule everything rests on
 
@@ -47,7 +47,7 @@ An opened vault's owner is fixed forever. Every signature the contract requests 
 | T8 | Collide derivation paths to sign for another vault | Paths built only by the contract from sequential IDs and fixed chain tags | `paths_unique_per_vault_and_chain` (unit) | ✅ |
 | T9 | MPC timeout or error leaves the vault in a bad state | Callback never panics; record `Failed`; vault stays `Opened`; retry allowed | `failed_signature_stays_opened and failed_signature_can_retry`, `a failed Bitcoin signature fails the whole withdrawal, which can be retried`, `a failed or wrong-key Ed25519 signature fails the withdrawal` (sandbox) | ✅ Base, Bitcoin, Solana |
 | T10 | Two signatures exist after a retry | Both pay the same owner and spend the same coins or nonce; at most one confirms | `pnpm demo:dry` step 7: two signed Bitcoin spends of one coin, the simulated ledger accepts one and refuses the other; a re-sent Base transfer fails on its used nonce | ✅ (simulated ledger) |
-| T11 | Admin or upgrade powers | No admin, owner, pause, upgrade or raw-sign methods; full-access keys deleted; code hash published | `no_privileged_methods` (sandbox: the wasm exports exactly the expected methods), `spike:testnet lock` (deletes every key; refuses unless the deployed code is the given build; not yet run on `bearer.testnet`) | ✅ partly |
+| T11 | Admin or upgrade powers | No admin, owner, pause, upgrade or raw-sign methods; full-access keys deleted; code hash published | `no_privileged_methods` (sandbox: the wasm exports exactly the expected methods), `spike:testnet lock` (deletes every key; refuses unless the deployed code is the given build). Run on `bearer.testnet` 2026-11-09: 0 keys left, code hash `PEsHBVDK…Vq1S` = the reproducible build ([tx](https://testnet.nearblocks.io/txns/J87dPH7D1LG7PLwvyzqwFbBKMsQ7pAd7Nxfn1DrvsaVT)) | ✅ |
 | T12 | Storage drain | Every state-growing call pays for its storage; custody log capped at 16 | `create_deposit_covers_max_vault` (sandbox); withdrawals enforce `ERR_WITHDRAW_DEPOSIT_BELOW_STORAGE` in-contract | ✅ partly |
 | T13 | Stale claim link after a transfer or opening (if claim links ship) | Every transfer and `break_seal` deletes the key; `claim` requires `Sealed` | `claim_key_deleted_on_transfer`, `claim_rejected_after_open` | |
 | T14 | Off-chain payment risk (seller takes payment and never transfers) | Out of scope for v1: Bearer guarantees what you *receive* is sealed and yours, not that a counterparty pays | README and How page copy | |

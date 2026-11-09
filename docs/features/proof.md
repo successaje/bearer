@@ -31,9 +31,11 @@ of an eval dashboard (braintrust.dev's bars, Bearer's gold):
 - Every measured number is generated from the committed spike reports in
   `contracts/tests/spike/reports` (the file is named in each series' `source`); nothing was typed
   in by hand. When a report changes, regenerate `apps/web/src/lib/proof/data.ts`'s runs from it.
-- The live "Contract locked" card says **Not locked yet** today: the spike deployment
-  (`v3a.bearer-1108-ffb3.testnet`) still has a full-access key. It turns green only when the
-  locked deploy removes it (brief 4.10). Point `NEXT_PUBLIC_PROOF_CONTRACT` at the locked account.
+- The live checks read `bearer.testnet` (override with `NEXT_PUBLIC_PROOF_CONTRACT`). "Contract
+  locked" is green only while it has no access keys, and "Code identity" only while its code hash
+  equals the reproducible build's (`CODE_HASH` in `apps/web/src/lib/config.ts`); anything else
+  shows as a warning. The measured runs and landed withdrawals happened on the spike contract
+  (`v3a.bearer-1108-ffb3.testnet`), and the page says so.
 - Statuses come from the threat model; a row is Proven only when its test passes. Partly and Not
   yet are shown as plainly as Proven.
 - Latency includes up to half a second of polling, as docs/SPIKES.md says.

@@ -53,7 +53,7 @@ Newest first. Each entry: date, decision, reason, alternatives considered.
 
 ## 2026-11-08 · A dedicated testnet account for Bearer
 
-- **Decision:** Bearer's testnet accounts live under `bearer-1108-ffb3.testnet` (faucet-created). The spike contract is `v3a.`; later deploys use fresh `v3b.`, `v3c.` … subaccounts. Keys stay in `~/.near-credentials`; `.env` holds names only.
+- **Decision:** Bearer's testnet accounts live under `bearer-1108-ffb3.testnet` (faucet-created). The spike contract is `v3a.`; later deploys use fresh `v3b.`, `v3c.` … subaccounts. (The final contract became `bearer.testnet`, created through the faucet on 2026-11-09 and locked.) Keys stay in `~/.near-credentials`; `.env` holds names only.
 - **Reason:** keeps Bearer separate from the sibling project's accounts (Q-015 disclosure) and follows brief 4.10: never upgrade a locked contract.
 - **Alternatives:** reuse the sibling project's account (mixes the two projects on-chain).
 

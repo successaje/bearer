@@ -11,7 +11,7 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { Account, PublicKey, actions } from "near-api-js";
 
 const RPC = process.env.NEAR_RPC ?? "https://test.rpc.fastnear.com";
@@ -227,7 +227,7 @@ async function lock() {
     waitUntil: "FINAL",
   })) as unknown as Outcome;
   const after = await keyList();
-  const report = { measured_at: new Date().toISOString(), contract: MARKET, code_hash, wasm: MARKET_WASM, deleted_keys: ordered.map((k) => k.public_key), tx: explorer(r.transaction.hash), keys_after: after.keys.length };
+  const report = { measured_at: new Date().toISOString(), contract: MARKET, code_hash, wasm: relative(join(import.meta.dirname, "..", "..", ".."), MARKET_WASM), deleted_keys: ordered.map((k) => k.public_key), tx: explorer(r.transaction.hash), keys_after: after.keys.length };
   console.log(JSON.stringify(report, null, 2));
   saveReport("testnet-market-lock", report);
   if (after.keys.length) throw new Error(`${MARKET} still has ${after.keys.length} key(s)`);

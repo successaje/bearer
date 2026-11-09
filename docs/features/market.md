@@ -1,8 +1,9 @@
 # Feature: the market
 
 **Route:** `/market`, plus List for sale and a For sale panel on vault pages · **Contract:**
-`contracts/market`, deployed as `bearer-market.testnet` · **Status:** merged into main on
-2026-11-09; first real sale on testnet the same day
+`contracts/market`, deployed and locked as `bearer-market.testnet` · **Status:** merged into main
+on 2026-11-09; first real sale on testnet and locked the same day. `/market` shows the listings;
+`/market/how` explains the rest
 
 **For:** whoever decides whether this ships, and anyone checking that buying a vault is safe.
 How a sale works, which checks protect each side, what was tested, and what isn't done yet.
@@ -60,7 +61,7 @@ To change a price, the seller delists and lists again.
 | At purchase, the seller still owns the vault, it's still sealed, at the agreed price | Escrow: the market holds the vault, and Bearer's gate re-checks "sealed and held here" in the receipt that moves it. Exact price only (`ERR_WRONG_PRICE`) |
 | Payment and transfer complete safely; failed payouts or refunds are handled; no assumed rollbacks | Vault first, money second; explicit refund and claimable paths (M3, M4, M5) |
 | Balances shown with source, last-check time and confirmation status, as observations | The buy review and listing cards list each chain's confirmed and pending amounts, the data source and when it was read, and say they're observations, not guarantees |
-| Contract, signing and admin-key risks are clear | The buy review checks both contracts' locks live. While the market account still has a key it says so, because whoever holds that key could act as the owner of a listed vault. It also says sealed doesn't mean risk-free and that nothing is audited |
+| Contract, signing and admin-key risks are clear | Both contracts are locked, and the buy review checks both locks live; while any key remained it would say so, because whoever held one could act as the owner of a listed vault. It also says sealed doesn't mean risk-free and that nothing is audited |
 
 ## Storage
 
@@ -98,12 +99,13 @@ delisting. Unused balance can be withdrawn (`withdraw_deposit`).
   page also at 375 px (no horizontal scroll). In testnet mode it reads the real sale from the chain:
   vault No. 0004's history shows "Listed on the market" and "Bought by bob".
 
+- **Locked** (M9), with the owner's go-ahead. `spike:market lock` checked that the code was the
+  reproducible build, then deleted the account's only key ([tx](https://testnet.nearblocks.io/txns/G8t9cc9xKa7ymc84hCtk8xeRG2JKBao8auFLKLg1SHVK)); two RPCs then reported no
+  keys. Nobody can change the market or act as its account. `/market/how` reads the key count and
+  code hash live.
+
 ## Not done yet
 
-- **Locking the market** (M9). `bearer-market.testnet` still has its full-access key, and whoever
-  holds it could act as the owner of a listed vault. The site says so wherever it matters. The guarded
-  command is ready: `CONFIRM_LOCK=bearer-market.testnet pnpm spike:market lock` (in
-  `contracts/tests`). It needs the owner's yes.
 - Buying and listing through a real browser wallet. The flow is proven with key-backed accounts; the
   near-connect path needs a human with a testnet wallet.
 - Payment between people outside the market is still out of scope (T14). Inside it, the contract

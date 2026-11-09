@@ -1,0 +1,11 @@
+{
+  "measured_at": "2026-11-09T13:01:47.724Z",
+  "contract": "bearer-market.testnet",
+  "code_hash": "7joKh4WSVFGb6EEsUpS6BeC1wtp3pepG2FQwBuAJqt7P",
+  "wasm": "contracts/res/market.wasm",
+  "deleted_keys": [
+    "ed25519:8aKCFTmAqPCVnrzcTjryyM1rrHNrPjhfQNDpAUcrUgq6"
+  ],
+  "tx": "https://testnet.nearblocks.io/txns/G8t9cc9xKa7ymc84hCtk8xeRG2JKBao8auFLKLg1SHVK",
+  "keys_after": 0
+}

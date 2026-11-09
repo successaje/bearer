@@ -31,7 +31,7 @@ shows are the chain's, not a copy.
 `579df21`: two builds from a clean checkout gave identical bytes (sha256 `641ce46c…71ce`); on-chain
 code hash `7joKh4WS…qt7P`, which matches. It was initialised with `nft_contract = bearer.testnet` and
 a 0.01 NEAR listing deposit ([tx](https://testnet.nearblocks.io/txns/WoVQHNTwGGRzMUqPdcNrh8QzdMikeVneAaDN1Zt3JHZ)).
-It still has its full-access key (M9).
+It was locked after the sale (below), so nothing about it can change.
 
 | Step | Result |
 |---|---|
@@ -52,6 +52,12 @@ cd contracts/tests
 pnpm spike:market setup
 pnpm spike:market sale 4 0.1
 ```
+
+**Locked**, with the owner's go-ahead: `CONFIRM_LOCK=bearer-market.testnet pnpm spike:market lock`
+checked the deployed code hash against `contracts/res/market.wasm`, then deleted the only key, a
+full-access key ([tx](https://testnet.nearblocks.io/txns/G8t9cc9xKa7ymc84hCtk8xeRG2JKBao8auFLKLg1SHVK)). `view_access_key_list` returns no keys on both
+`rpc.testnet.near.org` and `test.rpc.fastnear.com`. Report:
+[`testnet-market-lock-2026-11-09T13-01-47.736Z.json`](../contracts/tests/spike/reports/testnet-market-lock-2026-11-09T13-01-47.736Z.json).
 
 ## 2026-11-09 · `bearer.testnet` locked
 

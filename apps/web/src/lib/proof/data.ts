@@ -355,8 +355,8 @@ export const THREATS: Threat[] = [
     id: "M9",
     attack: "The market account's key holder acts as the owner of a listed vault",
     defence: "No admin or upgrade methods; full-access keys deleted at the locked deploy; until then the site shows the key count",
-    tests: ["spike:market lock (not yet run)"],
-    status: "partly",
+    tests: ["spike:market lock (bearer-market.testnet: 0 keys, 9 Nov)"],
+    status: "proven",
   },
   {
     id: "M10",

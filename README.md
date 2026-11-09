@@ -120,6 +120,8 @@ other chain accepts it, not a payout to a separate person.
 - **One market sale.** Vault No. 0004 for 0.1 NEAR, alice to bob
   ([purchase](https://testnet.nearblocks.io/txns/GCuy9zAFHGeN8ZsjgvUyaF8Uzz4xvW4UvNessKMMYv6F)). It
   arrived sealed with 0 signatures, and alice received exactly the price plus her listing deposit.
+  The market contract (`bearer-market.testnet`) is reproducibly built and locked too
+  ([tx](https://testnet.nearblocks.io/txns/G8t9cc9xKa7ymc84hCtk8xeRG2JKBao8auFLKLg1SHVK)).
 
 A signature, a self-transfer or one sale is not proof of every possible withdrawal, or of the full
 flow in a browser wallet. What's left is listed under [What comes next](#what-comes-next).
@@ -222,9 +224,8 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 - **Testnet prototype, not audited.**
 - **Trust.** It relies on NEAR, its MPC signing network, the deployed contracts and each external
-  chain's normal operation. Bearer's contract is open source, reproducibly built and locked.
-- **The market isn't locked yet.** Until it is, whoever holds its key could act as the owner of a
-  listed vault. The site shows this wherever a listing appears.
+  chain's normal operation. Both contracts, Bearer's and the market's, are open source,
+  reproducibly built and locked.
 - **Opened is final.** Once opened, a vault can't be transferred or sealed again.
 - **Balances.** The ones shown come from public data sources (Blockstream Esplora, Base Sepolia RPC,
   Solana devnet RPC), with their source, time and confirmation status. They can lag or be
@@ -243,7 +244,6 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - A funded withdrawal from the final contract to a separate recipient.
 - More adversarial tests: the `nft_transfer_call` return path (T6) and duplicate signatures on real
   chains (T10, so far shown on a simulated ledger).
-- Lock the market contract.
 - An independent security review before anything on mainnet.
 
 ## Repository

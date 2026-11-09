@@ -12,6 +12,7 @@
     "lint": "pnpm --filter web lint",
     "typecheck": "pnpm --filter web typecheck",
     "build:contracts": "contracts/build.sh",
-    "test:contracts": "cargo test --manifest-path contracts/Cargo.toml && pnpm --filter @bearer/contract-tests test"
+    "test:contracts": "cargo test --manifest-path contracts/Cargo.toml && pnpm --filter @bearer/contract-tests test",
+    "demo:dry": "pnpm --filter @bearer/contract-tests demo:dry"
   }
 }

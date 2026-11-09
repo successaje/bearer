@@ -3,6 +3,12 @@
 **For:** anyone wondering why Bearer is built the way it is.
 Newest first. Each entry: date, decision, reason, alternatives considered.
 
+## 2026-11-09 · `demo:dry` with committed wasm and simulated ledgers
+
+- **Decision:** `pnpm demo:dry` deploys `contracts/res/bearer.wasm` and `mock_signer.wasm` (committed, with `SHA256SUMS`) to a local `near-sandbox`, and simulates the three chains as ledgers that really apply each signed transaction. It is plain JavaScript (`contracts/tests/demo/dry.mjs`) so it runs on Node 20.
+- **Reason:** brief 6.4: a judge with only Node and pnpm sees the story and every attack, and T10 needs a ledger that refuses a second spend. Today's `res/` wasm comes from `contracts/build.sh`; the locked deploy replaces it with the reproducible build (cargo-near) and its hash.
+- **Alternatives:** only the sandbox tests (no story for a judge); testnet only (needs funds).
+
 ## 2026-11-08 · Solana transfers hand-rolled; recent blockhash only
 
 - **Decision:** `withdraw_sol` builds a legacy message with exactly one SystemProgram transfer (the vault signs and pays the fee) in `contracts/bearer/src/solana.rs`; the callback checks the MPC's Ed25519 signature with `env::ed25519_verify`. `payload_hashes` holds the SHA-256 of the message (the signer signs the message itself, which is inside `signed_raw_tx`).

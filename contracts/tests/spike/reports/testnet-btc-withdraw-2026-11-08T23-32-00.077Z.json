@@ -1,0 +1,76 @@
+{
+  "measured_at": "2026-11-08T23:31:44.287Z",
+  "contract": "v3a.bearer-1108-ffb3.testnet",
+  "token_id": "4",
+  "btc_address": "tb1qf6fqncrezc8qu8lpg5pqqssv3jaxkxkpjkxqjp",
+  "nft_transfer": "https://testnet.nearblocks.io/txns/BdKaeEoa14LRBG2W9YXAPEZVwVihUTMiQSUHusWTiHjk",
+  "params": {
+    "inputs": [
+      {
+        "txid": "408c696c0f5b892b03500e08905fca15657fa12d457aa157108212331a2994aa",
+        "vout": 0,
+        "value_sat": "265715"
+      }
+    ],
+    "to_address": "tb1qf6fqncrezc8qu8lpg5pqqssv3jaxkxkpjkxqjp",
+    "amount_sat": "132716",
+    "fee_sat": "282"
+  },
+  "fee_rate_sat_vb": 2,
+  "status": "signed",
+  "error": null,
+  "near_tx": "https://testnet.nearblocks.io/txns/hVm36gP4mzWCETMMtuXEg33hGCnuj1aAdrzxeF9iW9F",
+  "signed_visible_after_ms": 6480,
+  "gas": {
+    "total_tgas": 17.368,
+    "receipts": [
+      {
+        "executor": "v3a.bearer-1108-ffb3.testnet",
+        "tgas": 5.403,
+        "failed": false
+      },
+      {
+        "executor": "v1.signer-prod.testnet",
+        "tgas": 4.272,
+        "failed": false
+      },
+      {
+        "executor": "v1.signer-prod.testnet",
+        "tgas": 3.463,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      },
+      {
+        "executor": "v3a.bearer-1108-ffb3.testnet",
+        "tgas": 2.816,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      }
+    ]
+  },
+  "verified_with_bitcoinjs": true,
+  "vsize": 141,
+  "broadcast_status": 200,
+  "broadcast_response": "ce01f9fffdf0f362641a4f6882257295ae63de6146c5a3478704ef809bf958b6",
+  "txid": "ce01f9fffdf0f362641a4f6882257295ae63de6146c5a3478704ef809bf958b6",
+  "explorer": "https://mempool.space/testnet4/tx/ce01f9fffdf0f362641a4f6882257295ae63de6146c5a3478704ef809bf958b6",
+  "explorer_alt": "https://blockstream.info/testnet4/tx/ce01f9fffdf0f362641a4f6882257295ae63de6146c5a3478704ef809bf958b6"
+}

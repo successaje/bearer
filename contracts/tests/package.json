@@ -6,7 +6,8 @@
     "pretest": "../build.sh",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "spike:testnet": "node --env-file-if-exists=../../.env spike/testnet-sign.ts"
+    "spike:testnet": "node --env-file-if-exists=../../.env spike/testnet-sign.ts",
+    "demo:dry": "node demo/dry.mjs"
   },
   "devDependencies": {
     "@noble/curves": "2.4.0",

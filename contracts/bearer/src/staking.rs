@@ -393,6 +393,8 @@ impl Contract {
         stake.shares = U128(stake.shares.0 + shares.0);
         self.stakes.insert(&token_id, &stake);
         self.staking.total_shares = U128(self.staking.total_shares.0 + shares.0);
+        // Keeps `stake_of`'s estimate current until the next reading (the pool may keep a few yocto).
+        self.staking.last_pool_stake = self.staking.last_pool_stake.saturating_add(amount);
         self.staking.busy = false;
         events::emit("staked", json!({ "token_id": token_id, "amount": amount, "shares": shares }));
     }
@@ -490,6 +492,7 @@ impl Contract {
             self.staking.unbonding_epoch = env::epoch_height();
             self.staking.queued = self.staking.queued.saturating_sub(amount);
             self.staking.batch += 1;
+            self.staking.last_pool_stake = self.staking.last_pool_stake.saturating_sub(amount);
         }
         self.staking.busy = false;
         events::emit(
@@ -704,6 +707,7 @@ mod tests {
         staked(&mut c, "alice.test", &id, 2, 0);
         let s = c.stake_of(id.clone()).unwrap();
         assert_eq!(s.shares, U128(2 * NEAR));
+        assert_eq!(s.staked_estimate, NearToken::from_near(2));
         assert!(!c.staking.busy);
         let after = c.holdings(id).near;
         // Two NEAR staked, and a little more for the record's storage (Y9).
@@ -757,6 +761,9 @@ mod tests {
         c.on_batch_unstaked(NearToken::from_near(1));
         assert_eq!(c.staking.unbonding, NearToken::from_near(1));
         assert_eq!(c.staking.batch, 2);
+        // The estimate follows the stake that left the pool: 4 staked, 1 unstaked.
+        assert_eq!(c.stake_of(a.clone()).unwrap().staked_estimate, NearToken::from_near(1));
+        assert_eq!(c.stake_of(b.clone()).unwrap().staked_estimate, NearToken::from_near(2));
         assert_eq!(c.stake_of(a.clone()).unwrap().unlocks_at_epoch, Some(10 + UNLOCK_EPOCHS));
 
         // Bob unstakes everything while that batch unlocks: it waits, so alice's wait doesn't restart (Y6).

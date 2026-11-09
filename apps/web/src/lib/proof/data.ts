@@ -241,8 +241,8 @@ export const THREATS: Threat[] = [
     id: "T10",
     attack: "Two signatures exist after a retry",
     defence: "Both pay the same owner and spend the same coins or nonce; at most one confirms",
-    tests: ["sim_double_signature_only_one_confirms (to do)"],
-    status: "open",
+    tests: ["pnpm demo:dry step 7 (a simulated ledger accepts one of two spends; not yet on real chains)"],
+    status: "partly",
   },
   {
     id: "T11",

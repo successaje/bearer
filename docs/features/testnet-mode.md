@@ -1,6 +1,6 @@
 # Feature: testnet mode (the live adapter)
 
-**Branch:** `feat/testnet-mode` · **Switch:** `NEXT_PUBLIC_NETWORK=testnet` · **Status:** ready to review; wallet signing needs a human to try
+**Branch:** `feat/testnet-mode` · **Switch:** `NEXT_PUBLIC_NETWORK=testnet` · **Status:** merged into main on 2026-11-09; wallet signing still needs a human to try
 
 **For:** whoever decides whether this ships. What changes when the web app runs against the real
 contract, what was verified, and what still needs a person with a wallet.

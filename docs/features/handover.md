@@ -1,6 +1,6 @@
 # Feature: hand-over mode
 
-**Branch:** `feat/handover` · **Route:** `/v/[id]/handover` · **Status:** ready to review
+**Branch:** `feat/handover` · **Route:** `/v/[id]/handover` · **Status:** merged into main on 2026-11-09
 
 **For:** whoever decides whether this ships. What it does, how it stays honest, and how to demo it
 with two phones.

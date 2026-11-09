@@ -1,6 +1,6 @@
 # Feature: a living token image, and link previews
 
-**Branch:** `feat/nft-media` · **Routes:** `/nft/[id].svg`, `/v/[id]/opengraph-image` · **Status:** ready to review (one small contract change)
+**Branch:** `feat/nft-media` · **Routes:** `/nft/[id].svg`, `/v/[id]/opengraph-image` · **Status:** merged into main on 2026-11-09 (one small contract change)
 
 **For:** whoever decides whether this ships. What wallets and chat apps will show, the contract
 change behind it, and how it was checked.

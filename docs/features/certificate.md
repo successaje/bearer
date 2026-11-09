@@ -1,6 +1,6 @@
 # Feature: printable bearer certificate
 
-**Branch:** `feat/certificate` · **Route:** `/v/[id]/certificate` · **Status:** ready to review
+**Branch:** `feat/certificate` · **Route:** `/v/[id]/certificate` · **Status:** merged into main on 2026-11-09
 
 **For:** whoever decides whether this ships. What it is, why it fits Bearer, how to try it, and
 what it deliberately does not claim.

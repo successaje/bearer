@@ -63,6 +63,12 @@ pnpm dev                 # the web app at localhost:3000, in mock mode (everythi
 pnpm test:contracts      # unit tests, then sandbox tests against a mock MPC signer
 ```
 
+To run the web app against the real testnet contract, with NEAR wallets through near-connect:
+
+```bash
+NEXT_PUBLIC_NETWORK=testnet NEXT_PUBLIC_BEARER_CONTRACT=v3a.bearer-1108-ffb3.testnet pnpm dev
+```
+
 `demo:dry` runs a real NEAR sandbox with the committed contract (`contracts/res/`) and a mock MPC
 signer. The three chains are simulated ledgers that apply each signed transaction (checking the
 signature, spending coins or nonces, refusing anything spent twice); their lines start with
@@ -77,12 +83,25 @@ pnpm spike:testnet setup       # needs BEARER_TESTNET_PARENT in .env (a faucet-c
 pnpm spike:testnet run         # create, transfer, 5 × break-and-withdraw on Base, 5 × Ed25519
 ```
 
+## The web app
+
+| Page | What it's for |
+|---|---|
+| `/v/[id]` | A vault's public page: seal, observed balances, custody, signatures, the attack lab |
+| `/v/[id]/handover` | Hand a vault over in person: a QR code for the recipient, and the card flips when the transfer lands |
+| `/v/[id]/certificate` | A printable bearer certificate, one A4 page, with a QR code to the live seal |
+| `/proof` | Live checks against NEAR testnet, every measured number, and the threat table |
+| `/derive` | Recompute a vault's three addresses in the browser from the MPC root keys |
+| `/nft/[id].svg` | The vault NFT's image, drawn from its live state: seal intact, or broken once opened |
+
+Each one is described in [docs/features](docs/features).
+
 ## How NEAR is used
 
 | NEAR feature | Where | What it does in Bearer |
 |---|---|---|
 | Chain Signatures (`v1.signer-prod.testnet`, domains 0 and 1) | `contracts/bearer/src/withdraw_{evm,btc,sol}.rs` | Each vault controls native Bitcoin, Base and Solana addresses; the contract signs only withdrawals it builds, only for opened vaults, only for their owner |
-| NEP-171 + NEP-177 | `contracts/bearer/src/lib.rs`, `transfer.rs` | The vault is a standard NFT; every transfer path goes through one seal gate |
+| NEP-171 + NEP-177 | `contracts/bearer/src/lib.rs`, `transfer.rs` | The vault is a standard NFT; every transfer path goes through one seal gate. With `base_uri` set, its media is a live image of its seal |
 | NEP-297 events | `events.rs` | Indexable history: created, transferred, opened, withdrawals requested, signed or failed |
 | Yield/resume (through the signer) | the `on_*_signed` callbacks | Asynchronous signatures inside one user action; Bitcoin joins one request per input into one callback |
 | Cross-contract views | `create_vault` | The signer's derived keys are fetched and stored at creation |
@@ -121,12 +140,12 @@ transaction publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 ## Repository
 
 ```text
-apps/web            Next.js app (mock mode today)
+apps/web            Next.js app: a simulated demo, or the testnet contract with NEAR wallets
 contracts/bearer    the NEAR contract (near-sdk 5.30)
 contracts/mock-signer   an MPC signer stand-in for the sandbox
 contracts/tests     sandbox tests (near-sandbox) and testnet spikes
 packages/sdk        shared types and the client interface
-docs                architecture, threat model, decisions, spikes
+docs                architecture, threat model, decisions, spikes, and one page per web feature
 ```
 
 ## Limitations
@@ -140,8 +159,8 @@ docs                architecture, threat model, decisions, spikes
 ## Hackathon disclosure
 
 Built for the NEAR Hackathon (window starting 2026-10-19). Libraries: near-sdk, near-contract-standards,
-k256 and ed25519-dalek (mock signer), Next.js, React, TanStack Query, Radix, viem, bitcoinjs-lib,
-@noble and @scure, @solana/web3.js. AI tools: Claude Code (Anthropic) was used throughout for code,
+k256 and ed25519-dalek (mock signer), Next.js, React, TanStack Query, Radix, near-connect
+(@hot-labs), qrcode.react, viem, bitcoinjs-lib, @noble and @scure, @solana/web3.js. AI tools: Claude Code (Anthropic) was used throughout for code,
 tests and documentation. The same team lead also submitted **Sudo by Contract**, an independent
 project. The two share no code.
 

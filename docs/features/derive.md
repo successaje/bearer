@@ -1,6 +1,6 @@
 # Feature: derive it yourself
 
-**Branch:** `feat/derive` · **Route:** `/derive?vault=N` (linked from each vault's Technical details and the footer) · **Status:** ready to review
+**Branch:** `feat/derive` · **Route:** `/derive?vault=N` (linked from each vault's Technical details and the footer) · **Status:** merged into main on 2026-11-09
 
 **For:** whoever decides whether this ships. What the page proves, the exact formula, and how it
 was checked.

@@ -1,6 +1,6 @@
 # Feature: the proof page
 
-**Branch:** `feat/proof` · **Route:** `/proof` (linked in the header and footer) · **Status:** ready to review
+**Branch:** `feat/proof` · **Route:** `/proof` (linked in the header and footer) · **Status:** merged into main on 2026-11-09
 
 **For:** whoever decides whether this ships. What the page shows, where every number comes from,
 and how to keep it honest.

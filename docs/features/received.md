@@ -1,6 +1,6 @@
 # Feature: the receiving moment
 
-**Branch:** `feat/received` · **Where:** the vault page, once per hand-over · **Status:** ready to review
+**Branch:** `feat/received` · **Where:** the vault page, once per hand-over · **Status:** merged into main on 2026-11-09
 
 **For:** whoever decides whether this ships. What the new holder sees, and why it is shaped the
 way it is.

@@ -54,9 +54,9 @@ adapter (brief 4.12) and wires the app to it:
 
 - Connecting a real wallet through near-connect's picker and signing in the browser. The headless
   checks can't log into a wallet; the adapter's write path is proven with keys instead.
-- A live attack lab: it would need accounts the site doesn't hold (a former owner, an attacker).
-  On testnet the lab lists each attack with the test that proves it, and the homepage says the
-  interactive lab runs in the simulated demo.
+- Sending attacks from the visitor's own wallet. Instead, the five attacks were sent once to
+  `bearer.testnet` as real transactions by the test accounts (`pnpm spike:testnet attacks`), and
+  the lab's Check buttons re-read each one's outcome from an archival RPC in the browser.
 
 ## Try it
 

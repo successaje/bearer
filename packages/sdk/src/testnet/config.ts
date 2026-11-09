@@ -4,6 +4,8 @@ import type { ChainTag } from "../types";
 export interface TestnetEndpoints {
   /** NEAR JSON-RPC. rpc.testnet.near.org is deprecated and rate-limits; FastNEAR doesn't. */
   near: string;
+  /** Archival NEAR JSON-RPC: regular nodes forget transactions after a few epochs. */
+  nearArchival: string;
   /** Esplora REST API for Bitcoin testnet4. */
   esplora: string;
   /** Base Sepolia JSON-RPC. */
@@ -14,6 +16,7 @@ export interface TestnetEndpoints {
 
 export const TESTNET_ENDPOINTS: TestnetEndpoints = {
   near: "https://test.rpc.fastnear.com",
+  nearArchival: "https://archival-rpc.testnet.fastnear.com",
   esplora: "https://blockstream.info/testnet4/api",
   evm: "https://sepolia.base.org",
   solana: "https://api.devnet.solana.com",

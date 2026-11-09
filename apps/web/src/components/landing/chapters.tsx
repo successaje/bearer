@@ -256,7 +256,7 @@ export function Chapters() {
               [<FileCheck2 key="i" />, "Each refusal is a sandbox test in the repository."],
               [<KeyRound key="i" />, "No admin key, no upgrade path, no override."],
             ]}
-            cta={{ href: "#attack-lab", label: IS_SIMULATED ? "Run the attack lab" : "See what it refuses" }}
+            cta={{ href: "#attack-lab", label: IS_SIMULATED ? "Run the attack lab" : "Check the attacks" }}
           />
           <div className="relative flex justify-center" data-reveal style={{ "--reveal-delay": "80ms" } as React.CSSProperties}>
             <Halftone className="-inset-16 text-ink/15" />

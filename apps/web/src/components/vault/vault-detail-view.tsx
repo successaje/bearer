@@ -88,7 +88,7 @@ export function VaultDetailView() {
           <p className="mt-0.5 text-fg-2">
             Want to see what happens if you try?{" "}
             <a href="#attack-lab" className="font-medium text-accent hover:underline">
-              {IS_SIMULATED ? "Run it in the attack lab" : "See what the contract refuses"}
+              {IS_SIMULATED ? "Run it in the attack lab" : "See the real attempts in the attack lab"}
             </a>
             .
           </p>

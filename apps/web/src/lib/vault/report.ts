@@ -1,4 +1,4 @@
-import type { AttackKind, ChainObservation, ChainTag, VaultView, Withdrawal } from "@bearer/sdk";
+import type { AttackKind, ChainObservation, ChainTag, RecordedAttack, VaultView, Withdrawal } from "@bearer/sdk";
 import { CHAIN_TAGS } from "@bearer/sdk";
 import { BEARER_CONTRACT, CODE_HASH, SIGNER_CONTRACT } from "@/lib/config";
 import { SIMULATED_FACTS, type ContractFacts } from "./contract-facts";
@@ -199,6 +199,18 @@ export interface AttackScenario {
   call: string;
   expected: string;
   test: string;
+}
+
+/** The attacks as recorded against the live contract: actors and vaults are the recording's. */
+export function recordedScenarios(recorded: RecordedAttack[]): AttackScenario[] {
+  const titles: Record<AttackKind, string> = {
+    former_owner_withdraws: "Former owner tries to withdraw",
+    former_owner_breaks_seal: "Former owner tries to break the seal",
+    transfer_opened_vault: "Transfer an opened vault",
+    withdraw_sealed_vault: "Withdraw without breaking the seal",
+    sign_arbitrary_bytes: "Ask the contract to sign arbitrary bytes",
+  };
+  return recorded.map((a) => ({ kind: a.kind, title: titles[a.kind], actor: a.actor, call: a.call, expected: a.expected, test: a.testName }));
 }
 
 export function attackScenarios(v: VaultView): AttackScenario[] {

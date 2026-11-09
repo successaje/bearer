@@ -1,13 +1,14 @@
 "use client";
 
 import type { AttackKind, VaultView } from "@bearer/sdk";
-import { FlaskConical, Play, ShieldCheck } from "lucide-react";
+import { FlaskConical, Play, Search, ShieldCheck } from "lucide-react";
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SimulatedTag } from "@/components/ui/primitives";
 import { useRunAttack } from "@/lib/vault/hooks";
-import { attackScenarios } from "@/lib/vault/report";
-import { IS_SIMULATED } from "@/lib/config";
+import { attackScenarios, recordedScenarios } from "@/lib/vault/report";
+import { BEARER_CONTRACT, IS_SIMULATED, explorer } from "@/lib/config";
+import { RECORDED_ATTACKS } from "@/lib/vault/recorded-attacks";
 import { cn } from "@/lib/utils";
 
 interface LogLine {
@@ -15,15 +16,18 @@ interface LogLine {
   kind: AttackKind;
   text: string;
   tone: "cmd" | "ok" | "fail" | "dim";
+  href?: string;
 }
 
 /**
- * Runs the threat model's attacks against this vault and shows each refusal
- * (brief 3.4 Flow F, 10.2). Every line names the test that proves it.
+ * The threat model's attacks and each refusal (brief 3.4 Flow F, 10.2). In the simulated demo they
+ * run against this vault. Against the real contract they were sent as real transactions by test
+ * accounts, and "Check" re-reads each one's outcome from NEAR. Every line names the test that proves it.
  */
-export function AttackLab({ vault, compact = false }: { vault: VaultView; compact?: boolean }) {
+export function AttackLab({ vault, compact = false }: { vault?: VaultView; compact?: boolean }) {
   const headingId = useId();
-  const scenarios = attackScenarios(vault);
+  const recorded = !IS_SIMULATED;
+  const scenarios = vault && !recorded ? attackScenarios(vault) : recordedScenarios(RECORDED_ATTACKS);
   const run = useRunAttack();
   const [log, setLog] = useState<LogLine[]>([]);
   const [running, setRunning] = useState<AttackKind | null>(null);
@@ -35,13 +39,15 @@ export function AttackLab({ vault, compact = false }: { vault: VaultView; compac
     const id = Date.now();
     setLog((l) => [...l, { id, kind, text: `$ ${s.actor} → ${s.call}`, tone: "cmd" }]);
     try {
-      const r = await run.mutateAsync({ id: vault.token_id, kind });
+      const r = await run.mutateAsync({ id: vault?.token_id ?? "", kind });
       setLog((l) => [
         ...l,
         r.rejected
-          ? { id: id + 1, kind, text: `✓ rejected: ${r.errorCode}`, tone: "ok" }
+          ? { id: id + 1, kind, text: `✓ ${recorded ? "refused on chain" : "rejected"}: ${r.errorCode}`, tone: "ok" }
           : { id: id + 1, kind, text: "✗ accepted (this should never happen)", tone: "fail" },
-        { id: id + 2, kind, text: `  test: ${r.testName}`, tone: "dim" },
+        r.txHash
+          ? { id: id + 2, kind, text: `  tx ${r.txHash.slice(0, 10)}… · test: ${r.testName}`, tone: "dim", href: explorer.nearTx(r.txHash) }
+          : { id: id + 2, kind, text: `  test: ${r.testName}`, tone: "dim" },
       ]);
     } catch (e) {
       setLog((l) => [...l, { id: id + 1, kind, text: `! ${String(e)}`, tone: "fail" }]);
@@ -56,31 +62,17 @@ export function AttackLab({ vault, compact = false }: { vault: VaultView; compac
 
   const shown = compact ? scenarios.slice(0, 3) : scenarios;
 
-  // Against the real contract the attacks need accounts this site doesn't hold, so it lists them
-  // with the test that proves each one instead of offering a Run button that can only fail.
-  if (!IS_SIMULATED) {
+  if (!scenarios.length) {
     return (
-      <section aria-labelledby={headingId} className="overflow-hidden rounded-panel border border-line bg-surface">
-        <div className="border-b border-line p-5">
-          <h2 id={headingId} className="flex items-center gap-2 text-[15px] font-semibold">
-            <FlaskConical className="size-4 text-accent" aria-hidden />
-            What the contract refuses
-          </h2>
-          <p className="mt-1 text-[13px] leading-relaxed text-fg-3">
-            Each attack is a sandbox test in the repository (<span className="font-mono">pnpm test:contracts</span>). The
-            interactive lab runs in the simulated demo.
-          </p>
-        </div>
-        <ul className="divide-y divide-line">
-          {shown.map((s) => (
-            <li key={s.kind} className="px-5 py-3">
-              <p className="text-[13.5px] font-medium">{s.title}</p>
-              <p className="mt-0.5 break-words font-mono text-[11.5px] text-fg-3">
-                expects {s.expected} · {s.test}
-              </p>
-            </li>
-          ))}
-        </ul>
+      <section aria-labelledby={headingId} className="rounded-panel border border-line bg-surface p-5">
+        <h2 id={headingId} className="flex items-center gap-2 text-[15px] font-semibold">
+          <FlaskConical className="size-4 text-accent" aria-hidden />
+          Attack lab
+        </h2>
+        <p className="mt-1 text-[13px] leading-relaxed text-fg-3">
+          No attacks were recorded against <span className="font-mono">{BEARER_CONTRACT}</span>. Each one is a sandbox test
+          (<span className="font-mono">pnpm test:contracts</span>).
+        </p>
       </section>
     );
   }
@@ -93,7 +85,11 @@ export function AttackLab({ vault, compact = false }: { vault: VaultView; compac
             <FlaskConical className="size-4 text-accent" aria-hidden />
             Attack lab
           </h2>
-          <p className="mt-1 text-[13px] leading-relaxed text-fg-3">Try to cheat. The contract refuses each one.</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-fg-3">
+            {recorded
+              ? `Sent to ${BEARER_CONTRACT} as real transactions on 9 Nov. Check one: your browser reads the contract's answer from NEAR.`
+              : "Try to cheat. The contract refuses each one."}
+          </p>
         </div>
         {IS_SIMULATED ? <SimulatedTag className="mt-0.5" /> : null}
       </div>
@@ -102,11 +98,14 @@ export function AttackLab({ vault, compact = false }: { vault: VaultView; compac
           <li key={s.kind} className="flex items-center gap-3 px-5 py-3">
             <div className="min-w-0 flex-1">
               <p className="text-[13.5px] font-medium">{s.title}</p>
-              <p className="mt-0.5 truncate font-mono text-[11.5px] text-fg-3">expects {s.expected}</p>
+              {/* Recorded rows also name the call, so they wrap rather than widen the column on phones. */}
+              <p className={cn("mt-0.5 font-mono text-[11.5px] text-fg-3", recorded ? "break-words" : "truncate")}>
+                {recorded ? `${s.call} · ` : null}expects {s.expected}
+              </p>
             </div>
-            <Button size="sm" onClick={() => void execute(s.kind)} disabled={running !== null} aria-label={`Run: ${s.title}`}>
-              <Play className="size-3" />
-              Run
+            <Button size="sm" onClick={() => void execute(s.kind)} disabled={running !== null} aria-label={`${recorded ? "Check" : "Run"}: ${s.title}`}>
+              {recorded ? <Search className="size-3" /> : <Play className="size-3" />}
+              {recorded ? "Check" : "Run"}
             </Button>
           </li>
         ))}
@@ -127,7 +126,13 @@ export function AttackLab({ vault, compact = false }: { vault: VaultView; compac
                   l.tone === "dim" && "text-[#8b8b94]",
                 )}
               >
-                {l.text}
+                {l.href ? (
+                  <a href={l.href} target="_blank" rel="noreferrer" className="underline decoration-[#3a3a42] underline-offset-2 hover:text-[#d4d4d8]">
+                    {l.text}
+                  </a>
+                ) : (
+                  l.text
+                )}
               </p>
             ))
           )}
@@ -135,7 +140,7 @@ export function AttackLab({ vault, compact = false }: { vault: VaultView; compac
         <div className="mt-3 flex items-center justify-between gap-3">
           <span className="inline-flex items-center gap-1.5 text-[11.5px] text-[#8b8b94]">
             <ShieldCheck className="size-3.5" aria-hidden />
-            Same checks as the sandbox tests
+            {recorded ? "Real transactions, read from an archival node" : "Same checks as the sandbox tests"}
           </span>
           <button
             type="button"
@@ -143,8 +148,8 @@ export function AttackLab({ vault, compact = false }: { vault: VaultView; compac
             disabled={running !== null}
             className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-[#2a2a31] px-2.5 text-[12px] font-medium text-[#f4f4f5] transition-colors hover:bg-[#17171c] disabled:opacity-50"
           >
-            <Play className="size-3" />
-            Run all
+            {recorded ? <Search className="size-3" /> : <Play className="size-3" />}
+            {recorded ? "Check all" : "Run all"}
           </button>
         </div>
       </div>

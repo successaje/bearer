@@ -39,8 +39,9 @@ export function AttackPreview() {
           ) : (
             <>
               <p className="text-pretty mt-5 max-w-[460px] text-[16px] leading-relaxed text-fg-2">
-                Every attack in the threat model is a sandbox test that sends it to the real contract code and checks
-                the refusal. The table on the proof page names each test.
+                A former owner withdrawing, an opened vault changing hands, a withdrawal from a sealed vault, a raw
+                signature request: each was sent to the locked contract as a real transaction, and each was refused.
+                Check them yourself; your browser reads the answers from NEAR.
               </p>
               <Link
                 href="/proof#threats"
@@ -53,7 +54,7 @@ export function AttackPreview() {
           )}
         </div>
         <div data-reveal style={{ "--reveal-delay": "80ms" } as React.CSSProperties}>
-          {IS_SIMULATED ? <LiveLab /> : <TestnetNote />}
+          {IS_SIMULATED ? <LiveLab /> : <AttackLab />}
         </div>
       </div>
     </section>
@@ -64,14 +65,4 @@ function LiveLab() {
   const vault = useVault(DEMO_VAULT);
   if (!vault.data) return <Skeleton className="h-[460px] rounded-panel" />;
   return <AttackLab vault={vault.data} />;
-}
-
-function TestnetNote() {
-  return (
-    <div className="rounded-panel border border-line bg-surface p-6 text-[15px] leading-relaxed text-fg-2">
-      This site runs against the locked testnet contract, where the attacks would need accounts it doesn&apos;t hold,
-      so the interactive lab isn&apos;t live here. Run it in the simulated demo (<span className="font-mono">pnpm dev</span>)
-      or run the tests yourself: <span className="font-mono">pnpm test:contracts</span>.
-    </div>
-  );
 }

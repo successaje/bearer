@@ -75,7 +75,7 @@ export function RejectArt() {
             <span className="size-2.5 rounded-full bg-[#2a2a31]" />
           </div>
           <span className="truncate font-mono text-[11px] text-[#8b8b94]">
-            example<span className="hidden sm:inline"> · {IS_SIMULATED ? "run it live in the attack lab" : "each refusal is a sandbox test"}</span>
+            example<span className="hidden sm:inline"> · {IS_SIMULATED ? "run it live in the attack lab" : "refused on testnet too, in the attack lab"}</span>
           </span>
           <button
             type="button"

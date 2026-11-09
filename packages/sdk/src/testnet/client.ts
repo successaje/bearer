@@ -8,6 +8,7 @@ import type {
   Finish,
   MarketConfig,
   MarketListing,
+  RecordedAttack,
   VaultView,
   WithdrawRequest,
   Withdrawal,
@@ -43,6 +44,8 @@ export interface TestnetClientOptions {
   contractId: string;
   /** The market contract (contracts/market) selling this contract's vaults, if any. */
   marketId?: string | null;
+  /** Attacks sent to this contract as real transactions; `runAttack` re-reads their outcome. */
+  recordedAttacks?: RecordedAttack[];
   wallet: WalletAdapter;
   endpoints?: Partial<TestnetEndpoints>;
 }
@@ -313,10 +316,27 @@ export class TestnetBearerClient implements BearerClient {
     throw new Error("The vault hasn't come back yet. Check the vault page in a moment.");
   }
 
+  /**
+   * Re-reads a recorded attack transaction from an archival node and reports how the contract
+   * answered. Nothing is sent: the attacks were real transactions, signed by test accounts.
+   */
   async runAttack(kind: AttackKind): Promise<AttackResult> {
-    throw new Error(
-      `The live attack lab needs a demo attacker account, which this build doesn't configure. Run "${kind}" in mock mode, or in the sandbox tests (pnpm test:contracts).`,
-    );
+    const a = this.opts.recordedAttacks?.find((x) => x.kind === kind);
+    if (!a) throw new Error(`No "${kind}" attack was recorded on this contract. It runs in the sandbox tests (pnpm test:contracts).`);
+    const r = await jsonRpc<{ status: { Failure?: unknown; SuccessValue?: string } }>(this.ep.nearArchival, "tx", {
+      tx_hash: a.txHash,
+      sender_account_id: a.signerId,
+      wait_until: "NONE",
+    });
+    const failure = r.status.Failure ? JSON.stringify(r.status.Failure) : null;
+    return {
+      kind,
+      rejected: failure !== null,
+      errorCode: failure?.match(/ERR_[A-Z_]+|MethodNotFound/)?.[0] ?? null,
+      testName: a.testName,
+      txHash: a.txHash,
+      simulated: false,
+    };
   }
 }
 

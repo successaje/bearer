@@ -199,6 +199,25 @@ export type AttackKind =
   | "withdraw_sealed_vault"
   | "sign_arbitrary_bytes";
 
+/**
+ * An attack sent to the live contract as a real transaction, kept so anyone can re-read the
+ * contract's answer from the chain.
+ */
+export interface RecordedAttack {
+  kind: AttackKind;
+  /** Who sent it, and what they called, in words. */
+  actor: string;
+  call: string;
+  expected: string;
+  /** The test in contracts/tests that proves the same refusal. */
+  testName: string;
+  txHash: string;
+  /** The transaction's signer, needed to look it up. */
+  signerId: string;
+  /** ISO date it was sent. */
+  sentAt: string;
+}
+
 export interface AttackResult {
   kind: AttackKind;
   rejected: boolean;

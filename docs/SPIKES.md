@@ -3,6 +3,22 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-09 · A purchase and a scheduled handover through browser wallets
+
+The owner used the live site with two of their own testnet wallets. Read back from the chain:
+
+| Step | Result | Tx |
+|---|---|---|
+| `finishr.testnet` schedules vault No. 0006 for `takaba.testnet`, cancellable | `deposit_for_schedule` (0.01 NEAR), then `nft_transfer_call` to `bearer-schedule.testnet`; event `scheduled` | [deposit](https://testnet.nearblocks.io/txns/3Kapx6YPAhsAp5HK7sWhQqFYWzE5RsaH8Q4kSEedGPCE), [schedule](https://testnet.nearblocks.io/txns/FcWrDXuxvEWdu7nxyVm3vcWvbGESDUtGKvYxspJ3QXUn) |
+| `finishr.testnet` cancels it two minutes later | the vault came back sealed, and the 0.01 NEAR deposit with it; event `cancelled` | [HK2Si4jG…](https://testnet.nearblocks.io/txns/HK2Si4jGa4YBg4DbCUBxEBhXbg74wj68tfLwa8zGiBdf) |
+| `takaba.testnet` buys vault No. 0005, listed by `finishr.testnet` at 2 NEAR | event `sold` (price 2 NEAR); the vault moved to the buyer, then the market paid `finishr.testnet` 2.01 NEAR, the price plus the listing deposit | [2wReQN8A…](https://testnet.nearblocks.io/txns/2wReQN8Ajer7Cx93KYFnZyxFncpo2KVQFBT3vTsxnmxm) |
+
+Through a wallet so far: creating, listing, buying, scheduling and cancelling. Still only with
+key-backed test accounts: a plain transfer, breaking the seal, withdrawing.
+
+The seller had no way to see the sale on the site, which is why the notifications bell and the
+account page exist (docs/features/account.md).
+
 ## 2026-11-09 · Two signatures for one nonce on Base Sepolia (T10)
 
 Vault No. 0001 on `bearer.testnet` (opened, held by bob's test account) got 0.0005 Base Sepolia

@@ -133,8 +133,9 @@ other chain accepts it, not a payout to a separate person.
   The market contract (`bearer-market.testnet`) is reproducibly built and locked too
   ([tx](https://testnet.nearblocks.io/txns/G8t9cc9xKa7ymc84hCtk8xeRG2JKBao8auFLKLg1SHVK)).
 
-**Through a browser wallet.** On the live site, the owner's own testnet wallet created two vaults and
-listed one on the market (docs/SPIKES.md).
+**Through a browser wallet.** On the live site, the owner's own testnet wallets created two vaults,
+listed one, bought it from a second account (the seller was paid 2.01 NEAR: the price plus the
+listing deposit), and scheduled a handover, then cancelled it (docs/SPIKES.md).
 
 **A scheduled handover.** Vault No. 0007, scheduled by alice for bob and not cancellable, was
 handed over on its date by a third account
@@ -230,6 +231,7 @@ prototypes.
 |---|---|
 | `/v/[id]` | A vault's public page: seal, observed balances, custody, signatures, the attack lab |
 | `/market` | Sealed vaults for sale, held in escrow by the market contract; list from a vault's page, buy at exactly the listed price |
+| `/account` | Your account: what you have for sale, what sold and what you were paid, payouts to claim, and everything that happened to your vaults. The bell in the header shows what others did: a sale, a vault handed or scheduled to you |
 | `/v/[id]/handover` | Hand a vault over in person: a QR code for the recipient, and the card flips when the transfer lands |
 | `/v/[id]/certificate` | A printable bearer certificate, one A4 page, with a QR code to the live seal |
 | `/proof` | Live checks against NEAR testnet, every measured number, and the threat table |
@@ -274,9 +276,11 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## What comes next
 
-- Finish the browser-wallet flow by hand. Creating vaults and listing one worked from a real testnet
-  wallet on the live site (9 Nov); transfer, opening, withdrawal and buying are proven with
-  key-backed test accounts but not yet through a wallet.
+- Finish the browser-wallet flow by hand. Creating, listing, buying, scheduling and cancelling worked
+  from real testnet wallets on the live site (9 Nov); a plain transfer, opening and withdrawal are
+  proven with key-backed test accounts but not yet through a wallet.
+- Email alerts. The bell and browser alerts only work while the site is open; email needs a small
+  service that watches the chain and keeps addresses, which isn't built.
 - A funded withdrawal from the final contract to a separate recipient.
 - More adversarial tests: the `nft_transfer_call` return path (T6), and duplicate Bitcoin spends on
   testnet4 (T10 is shown on Base Sepolia, and for Bitcoin on a simulated ledger).

@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, Eye, History, Link2, PackageOpen, ScrollText, Send } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Eye, History, Link2, PackageOpen, Presentation, ScrollText, Send } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, ErrorState } from "@/components/layout/page-states";
@@ -19,6 +19,7 @@ import { AttackLab } from "./attack-lab";
 import { BreakSealSheet } from "./break-seal-sheet";
 import { FiveQuestions } from "./five-questions";
 import { FundSheet } from "./fund-sheet";
+import { RecipientChecklist } from "./recipient-checklist";
 import { SealPanel } from "./seal-panel";
 import { SlotCard, SlotCardSkeleton } from "./slot-card";
 import { TechnicalDetails } from "./technical-details";
@@ -32,6 +33,7 @@ type SheetName = "transfer" | "break" | "withdraw" | "fund";
 
 export function VaultDetailView() {
   const { id } = useParams<{ id: string }>();
+  const handover = useSearchParams().get("handover") === "1";
   const query = useVault(id);
   const vault = query.data;
   const obs = useObservation(vault);
@@ -177,13 +179,24 @@ export function VaultDetailView() {
               )}
             </div>
           ) : null}
-          <Link
-            href={`/v/${vault.token_id}/certificate`}
-            className="mt-4 inline-flex items-center gap-1.5 text-[13.5px] font-medium text-fg-2 transition-colors hover:text-fg"
-          >
-            <ScrollText className="size-4" />
-            Print a bearer certificate
-          </Link>
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+            {sealed ? (
+              <Link
+                href={`/v/${vault.token_id}/handover`}
+                className="inline-flex items-center gap-1.5 text-[13.5px] font-medium text-fg-2 transition-colors hover:text-fg"
+              >
+                <Presentation className="size-4" />
+                Hand it over in person
+              </Link>
+            ) : null}
+            <Link
+              href={`/v/${vault.token_id}/certificate`}
+              className="inline-flex items-center gap-1.5 text-[13.5px] font-medium text-fg-2 transition-colors hover:text-fg"
+            >
+              <ScrollText className="size-4" />
+              Print a bearer certificate
+            </Link>
+          </div>
           {isOwner && !vault.keys ? (
             <p className="mt-3 text-[12.5px] text-fg-3" aria-live="polite">
               Waiting for NEAR&apos;s signer to derive this vault&apos;s keys…
@@ -191,6 +204,8 @@ export function VaultDetailView() {
           ) : null}
         </div>
       </section>
+
+      {handover && !isOwner ? <RecipientChecklist vault={vault} viewer={accountId} /> : null}
 
       <div className="mt-10">
         <FiveQuestions answers={fiveQuestions(vault, observations, accountId)} />

@@ -17,13 +17,17 @@ export function VaultCard({
   valueUsd,
   className,
   flippable = true,
+  flipped: flippedProp,
 }: {
   vault: VaultView;
   valueUsd?: number | null;
   className?: string;
   flippable?: boolean;
+  /** Controls the flip from outside (hand-over mode turns it at the moment of transfer). */
+  flipped?: boolean;
 }) {
-  const [flipped, setFlipped] = useState(false);
+  const [flippedState, setFlipped] = useState(false);
+  const flipped = flippedProp ?? flippedState;
   const sealed = isSealed(vault);
   return (
     <div className={cn("w-full", className)}>

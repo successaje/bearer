@@ -7,6 +7,8 @@ import type {
   ContractConfig,
   Finish,
   Holdings,
+  StakingInfo,
+  VaultStake,
   MarketConfig,
   MarketListing,
   NftInfo,
@@ -56,6 +58,11 @@ export interface TestnetClientOptions {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** The standard staking pool's unlock wait, in epochs (contracts/bearer/src/staking.rs). */
+const UNLOCK_EPOCHS = 4;
+type RawStaking = { pool: string | null; total_shares: string; queued: string; unbonding: string; unbonding_epoch: number; busy: boolean };
+type RawStake = { shares: string; queued: string; unbonding: string; unlocks_at_epoch: number | null; ready: string };
 
 function addressOf(v: VaultView, chain: ChainTag) {
   const a = chain === "btc" ? v.btc_address : chain === "evm" ? v.evm_address : v.sol_address;
@@ -356,6 +363,98 @@ export class TestnetBearerClient implements BearerClient {
       (h) => !h.nfts.some((n) => n.contract === contract && n.token_id === nftTokenId && n.pending),
       "The withdrawal hasn't settled yet.",
     );
+  }
+
+  /* ---------- v2: staking (contracts/bearer/src/staking.rs) ---------- */
+
+  private epochLength?: Promise<number>;
+
+  /** Epoch number and rough timing from the recent block rate. */
+  private async epochTiming() {
+    this.epochLength ??= jsonRpc<{ epoch_length: number }>(this.ep.near, "EXPERIMENTAL_protocol_config", { finality: "final" }).then((c) => c.epoch_length);
+    const [length, v, head] = await Promise.all([
+      this.epochLength,
+      jsonRpc<{ epoch_height: number; epoch_start_height: number }>(this.ep.near, "validators", [null]),
+      jsonRpc<{ header: { height: number; timestamp_nanosec: string } }>(this.ep.near, "block", { finality: "final" }),
+    ]);
+    const back = 2000;
+    const past = await jsonRpc<{ header: { height: number; timestamp_nanosec: string } }>(this.ep.near, "block", { block_id: head.header.height - back });
+    const msPerBlock = Number(BigInt(head.header.timestamp_nanosec) - BigInt(past.header.timestamp_nanosec)) / 1e6 / (head.header.height - past.header.height);
+    return {
+      epoch: v.epoch_height,
+      msPerEpoch: Math.round(length * msPerBlock),
+      msToNextEpoch: Math.max(0, Math.round((v.epoch_start_height + length - head.header.height) * msPerBlock)),
+    };
+  }
+
+  async staking(): Promise<StakingInfo> {
+    this.requireHoldings();
+    const s = await this.near.view<RawStaking>(this.opts.contractId, "staking", {}, "final");
+    const [pool, timing] = await Promise.all([
+      s.pool ? this.near.view<{ staked_balance: string }>(s.pool, "get_account", { account_id: this.opts.contractId }, "final") : null,
+      this.epochTiming(),
+    ]);
+    return {
+      pool: s.pool,
+      poolStaked: pool?.staked_balance ?? "0",
+      totalShares: s.total_shares,
+      queued: s.queued,
+      unbonding: s.unbonding,
+      unlocksAtEpoch: s.unbonding === "0" ? null : s.unbonding_epoch + UNLOCK_EPOCHS,
+      busy: s.busy,
+      ...timing,
+    };
+  }
+
+  async stakeOf(tokenId: string): Promise<VaultStake | null> {
+    this.requireHoldings();
+    const [raw, s] = await Promise.all([this.near.view<RawStake | null>(this.opts.contractId, "stake_of", { token_id: tokenId }, "final"), this.staking()]);
+    if (!raw) return null;
+    const owned = BigInt(s.poolStaked) - BigInt(s.queued);
+    const staked = s.totalShares === "0" || owned <= 0n ? 0n : (BigInt(raw.shares) * owned) / BigInt(s.totalShares);
+    return { shares: raw.shares, staked: staked.toString(), queued: raw.queued, unbonding: raw.unbonding, unlocksAtEpoch: raw.unlocks_at_epoch, ready: raw.ready };
+  }
+
+  /** Waits for the contract's pool call to finish (a few receipts), then reads the vault's stake. */
+  private async afterPoolCall(tokenId: string | null) {
+    for (let i = 0; i < 30; i++) {
+      const s = await this.near.view<RawStaking>(this.opts.contractId, "staking", {}, "final");
+      if (!s.busy) break;
+      await sleep(1000);
+    }
+    return tokenId ? this.stakeOf(tokenId) : null;
+  }
+
+  async stake(tokenId: string, yocto: string, signer: string) {
+    this.signerFor(signer);
+    this.requireHoldings();
+    const before = await this.stakeOf(tokenId);
+    await this.opts.wallet.send(this.opts.contractId, [{ methodName: "stake", args: { token_id: tokenId, amount: yocto }, gas: 300n * TGAS, deposit: ONE_YOCTO }]);
+    const after = await this.afterPoolCall(tokenId);
+    if (BigInt(after?.shares ?? "0") <= BigInt(before?.shares ?? "0")) {
+      throw new Error("The pool didn't take the stake, so the NEAR is back in the vault. Try again in a moment.");
+    }
+    return after;
+  }
+
+  async unstake(tokenId: string, yocto: string | null, signer: string) {
+    this.signerFor(signer);
+    this.requireHoldings();
+    const before = await this.stakeOf(tokenId);
+    await this.opts.wallet.send(this.opts.contractId, [{ methodName: "unstake", args: { token_id: tokenId, amount: yocto }, gas: 300n * TGAS, deposit: ONE_YOCTO }]);
+    const after = await this.afterPoolCall(tokenId);
+    if (BigInt(after?.shares ?? "0") >= BigInt(before?.shares ?? "0")) {
+      throw new Error("The unstake was refused: it may be more than the vault has staked. Nothing changed.");
+    }
+    return after;
+  }
+
+  async processUnstaking(signer: string) {
+    this.signerFor(signer);
+    this.requireHoldings();
+    await this.opts.wallet.send(this.opts.contractId, [{ methodName: "process_unstaking", args: {}, gas: 300n * TGAS, deposit: 0n }]);
+    await this.afterPoolCall(null);
+    return this.staking();
   }
 
   /* ---------- the market: escrow by transfer (docs/features/market.md) ---------- */

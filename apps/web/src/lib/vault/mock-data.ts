@@ -35,7 +35,29 @@ export interface MockState {
   listings: Record<string, MarketListing>;
   /** v2: NEAR, tokens and NFTs held for each vault. */
   holdings: Record<string, Holdings>;
+  /** v2 staking, added on first use: the simulated pool position and each vault's stake. */
+  staking?: MockStaking;
+  stakes?: Record<string, MockStake>;
 }
+
+export interface MockStaking {
+  poolStaked: string;
+  totalShares: string;
+  queued: string;
+  batch: number;
+  unbonding: string;
+  unbondingEpoch: number;
+  withdrawnThrough: number;
+}
+
+export interface MockStake {
+  shares: string;
+  unstaking: { amount: string; batch: number }[];
+}
+
+/** The simulated staking pool. Its epochs last a minute, so unlocking (4 epochs) can be watched. */
+export const MOCK_POOL = "pool.mock.testnet";
+export const MOCK_EPOCH_MS = 60_000;
 
 /** Simulated token contracts the demo knows. Real ones are read from their own ft_metadata. */
 export const MOCK_TOKENS: Record<string, TokenInfo> = {

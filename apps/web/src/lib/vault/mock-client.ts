@@ -9,7 +9,9 @@ import type {
   MarketConfig,
   MarketListing,
   NftInfo,
+  StakingInfo,
   TokenInfo,
+  VaultStake,
   VaultView,
   Withdrawal,
   WithdrawalProgress,
@@ -21,16 +23,20 @@ import { CHAIN_META } from "./format";
 import {
   FEES,
   MOCK_ENTRY_STORAGE,
+  MOCK_EPOCH_MS,
   MOCK_LISTING_DEPOSIT,
   MOCK_NFT_CONTRACT,
   MOCK_TOKENS,
   MOCK_MARKET,
+  MOCK_POOL,
   mockAddresses,
   mockHex,
   mockView,
   ns,
   seedState,
   withdrawalParams,
+  type MockStake,
+  type MockStaking,
   type MockState,
   type MockVault,
 } from "./mock-data";
@@ -373,6 +379,7 @@ export class MockBearerClient implements BearerClient {
   async holdings(tokenId: string) {
     await jitter(120, 240);
     this.vault(tokenId);
+    this.settleUnstaked(tokenId);
     return clone(this.load().holdings[tokenId] ?? { near: "0", tokens: [], nfts: [] });
   }
 
@@ -465,6 +472,153 @@ export class MockBearerClient implements BearerClient {
     h.near = (BigInt(h.near) + MOCK_ENTRY_STORAGE).toString();
     this.save();
     return clone(h);
+  }
+
+  /* ---------- v2 staking: same rules as contracts/bearer/src/staking.rs, with one-minute epochs ---------- */
+
+  /** Simulated epochs, counted from 1 Nov 2026 so their numbers stay readable. */
+  private epochNow() {
+    return Math.floor((Date.now() - Date.UTC(2026, 10, 1)) / MOCK_EPOCH_MS);
+  }
+
+  private pool(): MockStaking {
+    const state = this.load();
+    state.stakes ??= {};
+    state.staking ??= { poolStaked: "0", totalShares: "0", queued: "0", batch: 1, unbonding: "0", unbondingEpoch: 0, withdrawnThrough: 0 };
+    return state.staking;
+  }
+
+  private stakeRecord(tokenId: string): MockStake | undefined {
+    this.pool();
+    return this.load().stakes?.[tokenId];
+  }
+
+  /** Moves NEAR back from withdrawn batches into the vault's NEAR, like the contract's settle. */
+  private settleUnstaked(tokenId: string) {
+    const st = this.pool();
+    const s = this.stakeRecord(tokenId);
+    if (!s) return;
+    const back = s.unstaking.filter((u) => u.batch <= st.withdrawnThrough).reduce((n, u) => n + BigInt(u.amount), 0n);
+    if (!back) return;
+    s.unstaking = s.unstaking.filter((u) => u.batch > st.withdrawnThrough);
+    const h = this.held(tokenId);
+    h.near = (BigInt(h.near) + back).toString();
+    if (s.shares === "0" && !s.unstaking.length) {
+      delete this.load().stakes![tokenId];
+      h.near = (BigInt(h.near) + MOCK_ENTRY_STORAGE).toString();
+    }
+    this.save();
+  }
+
+  /** The collecting batch goes to the simulated pool and starts unlocking. */
+  private unstakeBatch(st: MockStaking) {
+    st.unbonding = st.queued;
+    st.unbondingEpoch = this.epochNow();
+    st.poolStaked = (BigInt(st.poolStaked) - BigInt(st.queued)).toString();
+    st.queued = "0";
+    st.batch += 1;
+  }
+
+  async staking(): Promise<StakingInfo> {
+    await jitter(120, 240);
+    const st = this.pool();
+    return {
+      pool: MOCK_POOL,
+      poolStaked: st.poolStaked,
+      totalShares: st.totalShares,
+      queued: st.queued,
+      unbonding: st.unbonding,
+      unlocksAtEpoch: st.unbonding === "0" ? null : st.unbondingEpoch + 4,
+      busy: false,
+      epoch: this.epochNow(),
+      msPerEpoch: MOCK_EPOCH_MS,
+      msToNextEpoch: MOCK_EPOCH_MS - (Date.now() % MOCK_EPOCH_MS),
+    };
+  }
+
+  async stakeOf(tokenId: string): Promise<VaultStake | null> {
+    await jitter(120, 240);
+    this.settleUnstaked(tokenId);
+    const st = this.pool();
+    const s = this.stakeRecord(tokenId);
+    if (!s) return null;
+    const owned = BigInt(st.poolStaked) - BigInt(st.queued);
+    const sum = (f: (b: number) => boolean) =>
+      s.unstaking.filter((u) => f(u.batch)).reduce((n, u) => n + BigInt(u.amount), 0n).toString();
+    return {
+      shares: s.shares,
+      staked: st.totalShares === "0" ? "0" : ((BigInt(s.shares) * owned) / BigInt(st.totalShares)).toString(),
+      queued: sum((b) => b === st.batch),
+      unbonding: sum((b) => b < st.batch),
+      unlocksAtEpoch: s.unstaking.some((u) => u.batch < st.batch) ? st.unbondingEpoch + 4 : null,
+      ready: "0",
+    };
+  }
+
+  async stake(tokenId: string, yocto: string, signer: string) {
+    await jitter(1400, 2000);
+    this.assertOwner(this.vault(tokenId), signer);
+    const amount = BigInt(yocto);
+    if (amount < 10n ** 23n) throw new VaultError("ERR_MIN_STAKE", "Stake at least 0.1 NEAR.");
+    this.settleUnstaked(tokenId);
+    const st = this.pool();
+    const h = this.held(tokenId);
+    const stakes = this.load().stakes!;
+    // The first stake pays for the vault's staking record, like the contract (Y9).
+    const record = stakes[tokenId] ? 0n : MOCK_ENTRY_STORAGE;
+    if (BigInt(h.near) < amount + record) throw new VaultError("ERR_AMOUNT", "That's more than the vault holds.");
+    const owned = BigInt(st.poolStaked) - BigInt(st.queued);
+    const shares = st.totalShares === "0" || owned <= 0n ? amount : (amount * BigInt(st.totalShares)) / owned;
+    stakes[tokenId] ??= { shares: "0", unstaking: [] };
+    h.near = (BigInt(h.near) - amount - record).toString();
+    stakes[tokenId].shares = (BigInt(stakes[tokenId].shares) + shares).toString();
+    st.totalShares = (BigInt(st.totalShares) + shares).toString();
+    st.poolStaked = (BigInt(st.poolStaked) + amount).toString();
+    this.save();
+    return this.stakeOf(tokenId);
+  }
+
+  async unstake(tokenId: string, yocto: string | null, signer: string) {
+    await jitter(1400, 2000);
+    this.assertOwner(this.vault(tokenId), signer);
+    this.settleUnstaked(tokenId);
+    const st = this.pool();
+    const s = this.stakeRecord(tokenId);
+    if (!s || s.shares === "0") throw new VaultError("ERR_NOT_STAKED", "Nothing in this vault is staked.");
+    const owned = BigInt(st.poolStaked) - BigInt(st.queued);
+    const total = BigInt(st.totalShares);
+    const near = yocto === null ? (BigInt(s.shares) * owned) / total : BigInt(yocto);
+    // Rounded up, so the other vaults never pay for this one (Y5).
+    const burn = yocto === null ? BigInt(s.shares) : (near * total + owned - 1n) / owned;
+    if (near <= 0n || burn > BigInt(s.shares)) throw new VaultError("ERR_AMOUNT", "That's more than the vault has staked.");
+    s.shares = (BigInt(s.shares) - burn).toString();
+    st.totalShares = (total - burn).toString();
+    st.queued = (BigInt(st.queued) + near).toString();
+    const slot = s.unstaking.find((u) => u.batch === st.batch);
+    if (slot) slot.amount = (BigInt(slot.amount) + near).toString();
+    else s.unstaking.push({ amount: near.toString(), batch: st.batch });
+    // Nothing unlocking: the batch goes to the pool at once (Y6).
+    if (st.unbonding === "0") this.unstakeBatch(st);
+    this.save();
+    return this.stakeOf(tokenId);
+  }
+
+  async processUnstaking(signer: string) {
+    void signer;
+    await jitter(1400, 2000);
+    const st = this.pool();
+    if (st.unbonding !== "0") {
+      if (this.epochNow() < st.unbondingEpoch + 4) throw new VaultError("ERR_NOT_UNLOCKED", "The unstaked NEAR is still unlocking at the pool.");
+      st.withdrawnThrough = st.batch - 1;
+      st.unbonding = "0";
+      if (st.queued !== "0") this.unstakeBatch(st);
+    } else if (st.queued !== "0") {
+      this.unstakeBatch(st);
+    } else {
+      throw new VaultError("ERR_NOTHING_TO_DO", "Nothing is waiting to be unstaked or withdrawn from the pool.");
+    }
+    this.save();
+    return this.staking();
   }
 
   /* ---------- the simulated market: same rules as contracts/market ---------- */

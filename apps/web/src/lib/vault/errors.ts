@@ -38,6 +38,12 @@ export function errorCopy(error: unknown): string {
   if (text.includes("ERR_TOO_MANY_TOKENS")) return "A vault holds at most 8 kinds of token.";
   if (text.includes("ERR_TOO_MANY_NFTS")) return "A vault holds at most 16 NFTs.";
   if (text.includes("ERR_NO_NESTED_VAULTS")) return "A vault can't hold another vault.";
+  if (text.includes("ERR_NO_STAKING")) return "This contract has no staking pool.";
+  if (text.includes("ERR_STAKING_BUSY")) return "Another stake or unstake is going through the pool. Try again in a few seconds.";
+  if (text.includes("ERR_MIN_STAKE")) return "Stake at least 0.1 NEAR.";
+  if (text.includes("ERR_NOT_STAKED")) return "Nothing in this vault is staked.";
+  if (text.includes("ERR_NOT_UNLOCKED")) return "The unstaked NEAR is still unlocking at the pool.";
+  if (text.includes("ERR_NOTHING_TO_DO")) return "Nothing is waiting to be unstaked or withdrawn from the pool.";
   if (text.includes("ERR_AMOUNT")) return "Check the amount: it must be above zero and no more than the vault holds.";
   return text;
 }

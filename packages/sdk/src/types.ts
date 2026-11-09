@@ -253,6 +253,44 @@ export interface Holdings {
   nfts: NftHolding[];
 }
 
+/* ---------- v2: staking a vault's NEAR (contracts/bearer/src/staking.rs) ---------- */
+
+/** The contract's one staking pool and its unstaking batches. NEAR in yoctoNEAR. */
+export interface StakingInfo {
+  /** Fixed when the contract was created (Y1); null when staking is off. */
+  pool: string | null;
+  /** The contract's stake at the pool now, from the pool's own view. */
+  poolStaked: string;
+  /** Shares held by all vaults. */
+  totalShares: string;
+  /** Asked for in the batch now collecting requests: still staked at the pool. */
+  queued: string;
+  /** Unstaked at the pool and unlocking. */
+  unbonding: string;
+  /** The epoch the unlocking batch can be withdrawn from, or null. */
+  unlocksAtEpoch: number | null;
+  /** A pool call is in flight: stake and unstake wait for it (Y7). */
+  busy: boolean;
+  epoch: number;
+  /** From the recent block rate, so "about": how long an epoch takes, and until the next starts. */
+  msPerEpoch: number;
+  msToNextEpoch: number;
+}
+
+/** One vault's stake. NEAR in yoctoNEAR. */
+export interface VaultStake {
+  shares: string;
+  /** What the shares are worth at the pool's current price. */
+  staked: string;
+  /** Asked for; goes to the pool once nothing else is unlocking. */
+  queued: string;
+  /** Unlocking at the pool. */
+  unbonding: string;
+  unlocksAtEpoch: number | null;
+  /** Back from the pool; already counted in `Holdings.near`. */
+  ready: string;
+}
+
 /** A token contract's own description (NEP-148): shown next to its account, never instead of it. */
 export interface TokenInfo {
   contract: string;
@@ -330,6 +368,18 @@ export interface BearerClient {
   withdrawNear(tokenId: string, receiver: string, yocto: string, signer: string): Promise<Holdings>;
   withdrawToken(tokenId: string, contract: string, receiver: string, amount: string, signer: string): Promise<Holdings>;
   withdrawNft(tokenId: string, contract: string, nftTokenId: string, receiver: string, signer: string): Promise<Holdings>;
+
+  /**
+   * v2 contracts with a staking pool: the owner of a vault, sealed or opened, stakes its NEAR with
+   * the contract's one pool and unstakes it back into the vault. No signature is involved.
+   */
+  staking(): Promise<StakingInfo>;
+  stakeOf(tokenId: string): Promise<VaultStake | null>;
+  stake(tokenId: string, yocto: string, signer: string): Promise<VaultStake | null>;
+  /** `yocto` null unstakes everything. */
+  unstake(tokenId: string, yocto: string | null, signer: string): Promise<VaultStake | null>;
+  /** Anyone: withdraws an unlocked batch back into its vaults, then unstakes the next. */
+  processUnstaking(signer: string): Promise<StakingInfo>;
 
   /** The market contract's account, or null where this deployment has none. */
   readonly marketId: string | null;

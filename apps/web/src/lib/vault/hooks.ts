@@ -234,6 +234,42 @@ export function useHoldingsAction() {
   });
 }
 
+/* ---------- v2: staking a vault's NEAR ---------- */
+
+export function useStaking() {
+  return useQuery({
+    queryKey: ["staking"],
+    queryFn: async () => (await getVaultClient()).staking(),
+    enabled: HOLDINGS,
+    refetchInterval: (q) => (q.state.data?.busy ? 1_500 : POLL_MS),
+  });
+}
+
+export function useStakeOf(id: string) {
+  return useQuery({ queryKey: ["stake", id], queryFn: async () => (await getVaultClient()).stakeOf(id), enabled: HOLDINGS, refetchInterval: POLL_MS });
+}
+
+export type StakingAction = { kind: "stake"; yocto: string } | { kind: "unstake"; yocto: string | null } | { kind: "process" };
+
+export function useStakingAction() {
+  const qc = useQueryClient();
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async ({ id, action: a, signer }: { id: string; action: StakingAction; signer: string }) => {
+      const c = await getVaultClient();
+      if (a.kind === "stake") return c.stake(id, a.yocto, signer);
+      if (a.kind === "unstake") return c.unstake(id, a.yocto, signer);
+      await c.processUnstaking(signer);
+      return null;
+    },
+    onSuccess: (_s, v) => {
+      void qc.invalidateQueries({ queryKey: ["staking"] });
+      void qc.invalidateQueries({ queryKey: ["stake"] });
+      refresh(v.id);
+    },
+  });
+}
+
 /* ---------- the market ---------- */
 
 export function useListings() {

@@ -25,6 +25,7 @@ import { BreakSealSheet } from "./break-seal-sheet";
 import { FiveQuestions } from "./five-questions";
 import { FundSheet } from "./fund-sheet";
 import { HoldingsPanel } from "./holdings-panel";
+import { StakingPanel } from "./staking-panel";
 import { ReceivedMoment, useJustReceived } from "./received-moment";
 import { RecipientChecklist } from "./recipient-checklist";
 import { SealPanel } from "./seal-panel";
@@ -278,6 +279,7 @@ export function VaultDetailView() {
           </div>
 
           {HOLDINGS ? <HoldingsPanel vault={vault} viewer={ready ? accountId : null} onConnect={() => openConnect()} /> : null}
+          {HOLDINGS ? <StakingPanel vault={vault} viewer={ready ? accountId : null} onConnect={() => openConnect()} /> : null}
 
           {!sealed || (withdrawals.data?.length ?? 0) > 0 ? (
             <>

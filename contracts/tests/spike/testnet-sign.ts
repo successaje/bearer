@@ -9,6 +9,7 @@
  *   node spike/testnet-sign.ts btc-vault            # alice creates a vault to fund with testnet4 BTC
  *   node spike/testnet-sign.ts btc-withdraw <token> # transfer to bob, break the seal, withdraw, broadcast
  *   node spike/testnet-sign.ts sol-withdraw <token> # sign a devnet transfer; airdrop and broadcast if possible
+ *   CONFIRM_LOCK=<contract> node spike/testnet-sign.ts lock  # delete every key; only if the code is BEARER_WASM
  *
  * Needs BEARER_TESTNET_PARENT: a faucet-created testnet account whose key is in
  * ~/.near-credentials/testnet. Subaccount keys are written there too, never to the repo.
@@ -716,6 +717,63 @@ async function solWithdraw(tokenId: string) {
   saveReport("testnet-sol-withdraw", report);
 }
 
+/* ---------- lock (cannot be undone) ---------- */
+
+function base58(buf: Buffer) {
+  const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  let n = BigInt(`0x${buf.toString("hex")}`);
+  let out = "";
+  while (n > 0n) {
+    out = alphabet[Number(n % 58n)] + out;
+    n /= 58n;
+  }
+  return out;
+}
+
+/**
+ * Deletes every access key on the contract account, so nobody can ever change or redeploy its
+ * code (brief 4.10, T11). Refuses unless the deployed code is exactly BEARER_WASM and
+ * CONFIRM_LOCK names the contract. There is no way back: a bug after this means a new account.
+ */
+async function lock() {
+  if (process.env.CONFIRM_LOCK !== CONTRACT) {
+    throw new Error(`Locking ${CONTRACT} can't be undone. Run again with CONFIRM_LOCK=${CONTRACT}.`);
+  }
+  const expected = base58(createHash("sha256").update(readFileSync(WASM)).digest());
+  const { code_hash } = await viewAccount(CONTRACT);
+  if (code_hash !== expected) throw new Error(`${CONTRACT} runs ${code_hash}, not ${WASM} (${expected}); refusing to lock`);
+
+  type Keys = { keys: { public_key: string; access_key: { permission: unknown } }[] };
+  const keyList = () => rpc<Keys>("query", { request_type: "view_access_key_list", finality: "final", account_id: CONTRACT });
+  const { keys } = await keyList();
+  if (!keys.length) {
+    console.log(`${CONTRACT} is already locked`);
+    return;
+  }
+  const own = (JSON.parse(readFileSync(join(CREDS, `${CONTRACT}.json`), "utf8")) as { public_key: string }).public_key;
+  // Every other key first, then the one signing this transaction.
+  const ordered = [...keys.filter((k) => k.public_key !== own), ...keys.filter((k) => k.public_key === own)];
+  const r = (await account(CONTRACT).signAndSendTransaction({
+    receiverId: CONTRACT,
+    actions: ordered.map((k) => actions.deleteKey(PublicKey.fromString(k.public_key))),
+    waitUntil: "FINAL",
+  })) as unknown as Outcome;
+
+  const after = await keyList();
+  const report = {
+    measured_at: new Date().toISOString(),
+    contract: CONTRACT,
+    code_hash,
+    wasm: WASM,
+    deleted_keys: ordered.map((k) => ({ public_key: k.public_key, full_access: k.access_key.permission === "FullAccess" })),
+    tx: explorer(r.transaction.hash),
+    keys_after: after.keys.length,
+  };
+  console.log(JSON.stringify(report, null, 2));
+  saveReport("testnet-lock", report);
+  if (after.keys.length) throw new Error(`${CONTRACT} still has ${after.keys.length} key(s)`);
+}
+
 const cmd = process.argv[2];
 if (cmd === "setup") await setup();
 else if (cmd === "run") await run();
@@ -726,7 +784,8 @@ else if (cmd === "btc-joined") await btcJoined(process.argv[3] ?? "");
 else if (cmd === "btc-vault") await btcVault();
 else if (cmd === "btc-withdraw") await btcWithdraw(process.argv[3] ?? "");
 else if (cmd === "sol-withdraw") await solWithdraw(process.argv[3] ?? "");
+else if (cmd === "lock") await lock();
 else {
-  console.log("usage: node spike/testnet-sign.ts setup|run|redeploy|gas-floor|broadcast|btc-joined|btc-vault|btc-withdraw|sol-withdraw");
+  console.log("usage: node spike/testnet-sign.ts setup|run|redeploy|gas-floor|broadcast|btc-joined|btc-vault|btc-withdraw|sol-withdraw|lock");
   process.exitCode = 1;
 }

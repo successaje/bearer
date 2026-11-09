@@ -3,6 +3,24 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-09 · First Solana withdrawal broadcast from an opened vault
+
+After the human funded vault No. 0002's Solana address with 0.5 devnet SOL, `pnpm spike:testnet
+sol-withdraw 2` signed a new withdrawal and broadcast it:
+
+| | |
+|---|---|
+| Withdrawal | `withdraw_sol` by `bob.` on vault No. 0002 (opened): 1,000 lamports from the vault to itself, with a fresh finalized blockhash |
+| Signed after | 7.7 s from submitting, through NEAR's MPC Ed25519 domain; checked in the callback with `env::ed25519_verify` (N = 1) ([NEAR tx](https://testnet.nearblocks.io/txns/7K7pbrjU9h7vXZHzuJkjTgVoga53NvMrFnjgAsFW3bBt)) |
+| Gas | 14.7 Tgas for the whole transaction |
+| Checked before broadcast | `@solana/web3.js`: signature valid, the vault pays the fee, exactly one instruction |
+| Transaction | **[`jQCk6nNL…grmt`](https://explorer.solana.com/tx/jQCk6nNLGvbAfkrxGizGhvqiUpnUZeA4b58tU3SEFdNA3La2g5PqTY6uod3zWMJk7yB9wfvZebVzFa73oEdgrmt?cluster=devnet)** on Solana devnet |
+| Result | **Finalized** in slot 520,280,234 (2026-11-09 05:43 UTC), no error. One system transfer, the vault the only signer, fee 5,000 lamports. Devnet reported it finalized 1.4 s after `sendTransaction` (N = 1, polled every second) |
+
+Read back with `getTransaction` at `finalized` commitment, independently of the script. With this,
+withdrawals from opened vaults have landed on all three chains: Base, Bitcoin and Solana. Raw
+numbers: [`testnet-sol-withdraw-2026-11-09T05-43-03.639Z.json`](../contracts/tests/spike/reports/testnet-sol-withdraw-2026-11-09T05-43-03.639Z.json).
+
 ## 2026-11-08 · First Bitcoin withdrawal from an opened vault
 
 The full Bitcoin story on testnet4, run by `pnpm spike:testnet btc-withdraw 4` as soon as the
@@ -41,7 +59,8 @@ the callback checked the signature with `env::ed25519_verify` (N = 1).
 | Devnet simulation (`sigVerify: true`) | Passed signature checks; stopped at `AccountNotFound` because the vault holds no SOL yet |
 
 Devnet's RPC airdrop is closed ("Request test SOL at https://faucet.solana.com"), so funding
-needs the human. Once `Dgx8782F7YJYYYYsKuk1uhdyPbvnu2DNRFrfKKGKgUKn` holds about 0.05 devnet SOL:
+needed the human. **Funded and done** (see "First Solana withdrawal" above): once
+`Dgx8782F7YJYYYYsKuk1uhdyPbvnu2DNRFrfKKGKgUKn` holds devnet SOL,
 
 ```bash
 cd contracts/tests && pnpm spike:testnet sol-withdraw 2
@@ -154,5 +173,5 @@ step before that endpoint rate-limited it (HTTP 429); no report was saved from i
 - **Spike 3** through real wallets (near-connect).
 - **Spike 5** against chainsig.js: compared with the signer's view here; the chainsig.js check
   comes with the SDK's `deriveAddresses`.
-- **Spike 6, faucets (needs the human):** Base Sepolia ETH and testnet4 BTC are funded. Still
-  needed: devnet SOL for vault No. 0002's Solana address (above).
+- ~~**Spike 6, faucets**~~: Base Sepolia ETH, testnet4 BTC and devnet SOL were all funded by the
+  human, and each chain has a confirmed withdrawal (above).

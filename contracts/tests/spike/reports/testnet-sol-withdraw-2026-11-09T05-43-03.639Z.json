@@ -1,0 +1,77 @@
+{
+  "measured_at": "2026-11-09T05:42:51.541Z",
+  "contract": "v3a.bearer-1108-ffb3.testnet",
+  "token_id": "2",
+  "sol_address": "Dgx8782F7YJYYYYsKuk1uhdyPbvnu2DNRFrfKKGKgUKn",
+  "rpc": "https://api.devnet.solana.com",
+  "balance_lamports": 500000000,
+  "params": {
+    "recent_blockhash": "HBPeQvLPRaeUnfFHb9bniP47LLMSyjKnR93NNcquUcFj",
+    "to": "Dgx8782F7YJYYYYsKuk1uhdyPbvnu2DNRFrfKKGKgUKn",
+    "lamports": "1000"
+  },
+  "status": "signed",
+  "error": null,
+  "near_tx": "https://testnet.nearblocks.io/txns/7K7pbrjU9h7vXZHzuJkjTgVoga53NvMrFnjgAsFW3bBt",
+  "signed_visible_after_ms": 7747,
+  "gas": {
+    "total_tgas": 14.703,
+    "receipts": [
+      {
+        "executor": "v3a.bearer-1108-ffb3.testnet",
+        "tgas": 3.119,
+        "failed": false
+      },
+      {
+        "executor": "v1.signer-prod.testnet",
+        "tgas": 4.464,
+        "failed": false
+      },
+      {
+        "executor": "v1.signer-prod.testnet",
+        "tgas": 3.475,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      },
+      {
+        "executor": "v3a.bearer-1108-ffb3.testnet",
+        "tgas": 2.436,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      },
+      {
+        "executor": "bob.bearer-1108-ffb3.testnet",
+        "tgas": 0.223,
+        "failed": false
+      }
+    ]
+  },
+  "verified_with_web3js": true,
+  "broadcast": {
+    "signature": "jQCk6nNLGvbAfkrxGizGhvqiUpnUZeA4b58tU3SEFdNA3La2g5PqTY6uod3zWMJk7yB9wfvZebVzFa73oEdgrmt",
+    "status": {
+      "confirmationStatus": "finalized",
+      "confirmations": null,
+      "err": null,
+      "slot": 520280234,
+      "status": {
+        "Ok": null
+      }
+    },
+    "confirmed_after_ms": 1350,
+    "explorer": "https://explorer.solana.com/tx/jQCk6nNLGvbAfkrxGizGhvqiUpnUZeA4b58tU3SEFdNA3La2g5PqTY6uod3zWMJk7yB9wfvZebVzFa73oEdgrmt?cluster=devnet"
+  }
+}

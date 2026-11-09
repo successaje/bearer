@@ -49,7 +49,7 @@ Everything below was measured on testnet against NEAR's real MPC signer (`v1.sig
 |---|---|---|
 | Base Sepolia | 5 of 5, median 7.7 s (N = 5) | **Confirmed**: [`0xb347…20e3`](https://sepolia.basescan.org/tx/0xb347d755df6105ef2deb58158533f31fa5687586992308ee2fed0e4622ee20e3) |
 | Bitcoin testnet4 | 1–4 inputs joined into one callback, 6.5–8.4 s (one run each) | **Confirmed** in block 159,948: [`ce01f9ff…58b6`](https://mempool.space/testnet4/tx/ce01f9fffdf0f362641a4f6882257295ae63de6146c5a3478704ef809bf958b6), after a transfer and a seal break in one NEAR transaction |
-| Solana devnet | 8.3 s (N = 1); devnet's simulation passes signature checks | Waiting for devnet SOL to broadcast |
+| Solana devnet | 2 of 2, 7.7 s and 8.3 s (N = 2) | **Finalized** in slot 520,280,234: [`jQCk6nNL…grmt`](https://explorer.solana.com/tx/jQCk6nNLGvbAfkrxGizGhvqiUpnUZeA4b58tU3SEFdNA3La2g5PqTY6uod3zWMJk7yB9wfvZebVzFa73oEdgrmt?cluster=devnet) |
 
 Not done yet: the locked, reproducible deployment (the spike contract still has a full-access
 key) and the hosted demo.

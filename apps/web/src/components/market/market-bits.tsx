@@ -1,47 +1,17 @@
 "use client";
 
 import type { ChainObservation } from "@bearer/sdk";
-import { AlertTriangle, Check, Loader2 } from "lucide-react";
 import { ChainIcon } from "@/components/brand/chain-icon";
-import { IS_SIMULATED, MARKET_CONTRACT } from "@/lib/config";
+import { EscrowLock } from "@/components/vault/escrow-lock";
+import { MARKET_CONTRACT } from "@/lib/config";
 import { CHAIN_META, formatAmount, relativeTime } from "@/lib/vault/format";
 import { useMarketFacts } from "@/lib/vault/hooks";
 
-/**
- * The market account's lock state, read from the chain. Until it has no full-access keys,
- * whoever holds one could act as the owner of every listed vault, so this says so plainly.
- */
+/** The market account's lock state, read from the chain. */
 export function MarketLock({ compact = false }: { compact?: boolean }) {
   const facts = useMarketFacts();
-  const d = facts.data;
   if (!MARKET_CONTRACT) return null;
-  if (!d) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[13px] text-fg-3">
-        <Loader2 className="size-3.5 animate-spin" aria-hidden />
-        Checking the market contract…
-      </span>
-    );
-  }
-  if (d.locked) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-[13px] text-fg-2">
-        <Check className="size-3.5 text-ok" strokeWidth={3} aria-hidden />
-        Market contract locked{IS_SIMULATED ? " (simulated)" : ": no keys, nobody can change it"}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-start gap-1.5 text-[13px] leading-snug text-fg-2">
-      <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" aria-hidden />
-      <span>
-        Market contract not locked yet
-        {compact
-          ? "."
-          : `: ${MARKET_CONTRACT} still has ${d.fullAccessKeys} full-access key${d.fullAccessKeys === 1 ? "" : "s"}, so whoever holds it could act as the owner of a listed vault. Locking deletes it for good.`}
-      </span>
-    </span>
-  );
+  return <EscrowLock name="Market" account={MARKET_CONTRACT} holds="a listed vault" facts={facts.data} compact={compact} />;
 }
 
 /** What is at the vault's addresses, as public data shows it: amounts, confirmation, source, time. */

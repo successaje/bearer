@@ -4,9 +4,10 @@ import type { HandoverSchedule } from "@bearer/sdk";
 import { Gift, Loader2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { EscrowLock } from "@/components/vault/escrow-lock";
 import { SCHEDULE_CONTRACT } from "@/lib/config";
 import { errorCopy } from "@/lib/vault/errors";
-import { useCancelHandover, useReleaseHandover } from "@/lib/vault/hooks";
+import { useCancelHandover, useReleaseHandover, useScheduleFacts } from "@/lib/vault/hooks";
 import { formatWhen, nsToMsNumber, untilText } from "./when";
 
 /** On a scheduled vault's page: who it's for, when, and Hand over (anyone, once due) or Cancel. */
@@ -96,6 +97,16 @@ export function SchedulePanel({
           <p className="text-[13px] text-fg-3">Anyone can hand it over once the date arrives.</p>
         )}
       </div>
+      <div className="mt-4 border-t border-gold/20 pt-3.5">
+        <ScheduleLock compact />
+      </div>
     </div>
   );
+}
+
+/** The schedule account's lock state, read from the chain. */
+export function ScheduleLock({ compact = false }: { compact?: boolean }) {
+  const facts = useScheduleFacts();
+  if (!SCHEDULE_CONTRACT) return null;
+  return <EscrowLock name="Schedule" account={SCHEDULE_CONTRACT} holds="a scheduled vault" facts={facts.data} compact={compact} />;
 }

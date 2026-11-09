@@ -3,7 +3,7 @@
 import type { AttackKind, ChainTag, Finish, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { IS_SIMULATED, MARKET_CONTRACT } from "@/lib/config";
+import { IS_SIMULATED, MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
 import { getVaultClient } from "./client";
 import { fetchContractFacts } from "./contract-facts";
 
@@ -175,6 +175,15 @@ export function useSchedules() {
 
 export function useSchedule(id: string) {
   return useQuery({ queryKey: keys.schedule(id), queryFn: async () => (await getVaultClient()).getSchedule(id), refetchInterval: POLL_MS });
+}
+
+export function useScheduleFacts() {
+  return useQuery({
+    queryKey: ["schedule-facts", SCHEDULE_CONTRACT],
+    queryFn: () => fetchContractFacts(SCHEDULE_CONTRACT as string),
+    enabled: Boolean(SCHEDULE_CONTRACT),
+    staleTime: 60_000,
+  });
 }
 
 export function useScheduleHandover() {

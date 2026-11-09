@@ -23,7 +23,7 @@ async function query<T>(accountId: string, params: Record<string, unknown>): Pro
   return body.result as T;
 }
 
-/** Lock state and code hash of a contract account: Bearer's by default, or the market's. */
+/** Lock state and code hash of a contract account: Bearer's by default, or the market's or the schedule's. */
 export async function fetchContractFacts(accountId: string = BEARER_CONTRACT): Promise<ContractFacts> {
   if (IS_SIMULATED) return SIMULATED_FACTS;
   const [keys, account] = await Promise.all([

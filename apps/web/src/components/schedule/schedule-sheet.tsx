@@ -15,6 +15,7 @@ import { vaultNumber } from "@/lib/vault/format";
 import { useAccountExists, useNow, useScheduleHandover } from "@/lib/vault/hooks";
 import { validateNearAccount } from "@/lib/validation";
 import { cn } from "@/lib/utils";
+import { ScheduleLock } from "./schedule-panel";
 import { formatWhen } from "./when";
 
 type Step = "form" | "review" | "done";
@@ -112,6 +113,10 @@ export function ScheduleSheet({
               )}
               <li>A 0.01 NEAR deposit pays for the schedule; you get it back when it&apos;s handed over or cancelled</li>
             </ReviewBlock>
+
+            <div className="rounded-[14px] border border-line bg-bg px-3.5 py-3">
+              <ScheduleLock />
+            </div>
 
             <div className="flex flex-col gap-2.5">
               <Button

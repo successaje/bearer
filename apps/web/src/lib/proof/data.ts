@@ -7,10 +7,9 @@
 export const PROOF_CONTRACT = process.env.NEXT_PUBLIC_PROOF_CONTRACT || "v3a.bearer-1108-ffb3.testnet";
 export const PROOF_SIGNER = "v1.signer-prod.testnet";
 export const PROOF_RPC = process.env.NEXT_PUBLIC_NEAR_RPC || "https://test.rpc.fastnear.com";
-export const MEASURED_ON = "2026-11-08";
+export const MEASURED_ON = "8–9 Nov 2026";
 
 const REPORTS = "contracts/tests/spike/reports";
-const nearTx = (hash: string) => `https://testnet.nearblocks.io/txns/${hash}`;
 
 export interface Run {
   ms: number;
@@ -27,7 +26,7 @@ export interface Series {
   /** "repeats": N runs of the same request (median shown). "sweep": one run per setting (range shown). */
   kind: "repeats" | "sweep";
   runs: Run[];
-  source: string;
+  source: string | string[];
 }
 
 export const LATENCY: Series[] = [
@@ -83,8 +82,9 @@ export const LATENCY: Series[] = [
     kind: "repeats",
     runs: [
       { ms: 8287, tgas: 14.759, tx: "https://testnet.nearblocks.io/txns/AWiMXRvuX3sRdVEmbcQ76TfEJahjuRE3yZssj26hpsvu" },
+      { ms: 7747, tgas: 14.703, tx: "https://testnet.nearblocks.io/txns/7K7pbrjU9h7vXZHzuJkjTgVoga53NvMrFnjgAsFW3bBt" },
     ],
-    source: `${REPORTS}/testnet-sol-withdraw-2026-11-08T22-51-57.356Z.json`,
+    source: [`${REPORTS}/testnet-sol-withdraw-2026-11-08T22-51-57.356Z.json`, `${REPORTS}/testnet-sol-withdraw-2026-11-09T05-43-03.639Z.json`],
   },
 ];
 
@@ -131,10 +131,10 @@ export const LANDED: Landed[] = [
   {
     chain: "sol",
     title: "Solana devnet",
-    status: "signed",
-    detail: "Signed and verified; devnet's simulation passes signature checks. Broadcast waits for devnet SOL",
-    href: nearTx("AWiMXRvuX3sRdVEmbcQ76TfEJahjuRE3yZssj26hpsvu"),
-    linkLabel: "NEAR tx",
+    status: "confirmed",
+    detail: "Vault No. 0002 → itself, 1,000 lamports · signed in 7.7 s · finalized in slot 520,280,234",
+    href: "https://explorer.solana.com/tx/jQCk6nNLGvbAfkrxGizGhvqiUpnUZeA4b58tU3SEFdNA3La2g5PqTY6uod3zWMJk7yB9wfvZebVzFa73oEdgrmt?cluster=devnet",
+    linkLabel: "jQCk6nNL…grmt",
   },
 ];
 

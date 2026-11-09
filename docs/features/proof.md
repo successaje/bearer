@@ -17,9 +17,9 @@ of an eval dashboard (braintrust.dev's bars, Bearer's gold):
    yourself" curl command.
 2. **Signed by NEAR's MPC network.** One bar per real signing request on testnet: Base
    (`withdraw_evm`, N = 5, median line), Ed25519 (N = 5), Bitcoin (1–4 inputs, one run each, shown
-   as a range rather than a median), Solana (N = 1). Each time links to its NEAR transaction.
-3. **Where the withdrawals landed.** Base and Bitcoin: confirmed on their chains, with explorer
-   links. Solana: signed and verified, waiting for devnet SOL.
+   as a range rather than a median), Solana (N = 2). Each time links to its NEAR transaction.
+3. **Where the withdrawals landed.** Base, Bitcoin and Solana: each confirmed on its own chain,
+   with an explorer link.
 4. **Gas, measured.** Bitcoin's callback (reserved 30 Tgas vs 2.8–4.4 used) and the whole
    withdrawal vs NEAR's 300 Tgas limit.
 5. **Every attack we know of.** T1–T17 from docs/THREAT_MODEL.md with the defence, the tests and a
@@ -52,5 +52,4 @@ a terminal and compare. Checked at 1440 px and 390 px, dark and light.
 
 ## Later
 
-- Show the Solana broadcast here once it lands (update `LANDED`).
 - A CI job that regenerates `data.ts` from the reports, so the page can't drift.

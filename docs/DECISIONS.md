@@ -3,6 +3,12 @@
 **For:** anyone wondering why Bearer is built the way it is.
 Newest first. Each entry: date, decision, reason, alternatives considered.
 
+## 2026-11-09 · Hosting: Vercel, built locally and deployed prebuilt
+
+- **Decision:** the web app runs on Vercel at `https://bearer-near.vercel.app` (project `bearer`, the owner's personal scope), in testnet mode. `scripts/deploy-web.sh` pulls the project's production settings and env vars, builds at the repo root with `apps/web` as the root and Node 22, refuses a build that still points at `localhost:3000`, and deploys the output with `vercel deploy --prebuilt --prod`. Production env vars on the project: `NEXT_PUBLIC_NETWORK=testnet`, `NEXT_PUBLIC_BEARER_CONTRACT`, `NEXT_PUBLIC_SITE_URL`. `NEXT_PUBLIC_REPO_URL` is left out while the repository is private.
+- **Reason:** the app imports `packages/sdk` from the pnpm workspace, so Vercel must build with Root Directory `apps/web` from an upload of the whole repo. The project was created with Root Directory "." and Vercel CLI 48.9 can't change it (nor does it accept the project's default Node 26.x), while `vercel build` reads those settings from the local `.vercel/project.json`. Vercel's Linux runtime has no system fonts, so the Open Graph image draws the card's words itself (see docs/features/nft-media.md).
+- **Alternatives:** set Root Directory to `apps/web` in the Vercel dashboard and connect the Git repository for remote builds on every push (better long term; needs the owner's dashboard login); a `vercel.json` at the root (Vercel's Next.js builder looks for `next` in the root package.json, so it doesn't work for this layout).
+
 ## 2026-11-09 · `demo:dry` with committed wasm and simulated ledgers
 
 - **Decision:** `pnpm demo:dry` deploys `contracts/res/bearer.wasm` and `mock_signer.wasm` (committed, with `SHA256SUMS`) to a local `near-sandbox`, and simulates the three chains as ledgers that really apply each signed transaction. It is plain JavaScript (`contracts/tests/demo/dry.mjs`) so it runs on Node 20.

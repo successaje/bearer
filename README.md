@@ -6,6 +6,11 @@ can break the seal. Nobody before them can.**
 Hand someone Bitcoin like you'd hand them a sealed envelope. Testnet prototype, built for the NEAR
 Hackathon (Nov 2026). Not audited; not financial advice.
 
+**Live on testnet: [bearer-near.vercel.app](https://bearer-near.vercel.app)**, against the spike
+contract `v3a.bearer-1108-ffb3.testnet` (not locked yet). Start with
+[/proof](https://bearer-near.vercel.app/proof) or the vault behind the first Bitcoin withdrawal,
+[No. 0004](https://bearer-near.vercel.app/v/4).
+
 ## The problem
 
 On every chain, coins are bound to keys, so changing who owns them means moving them. On NEAR, a
@@ -52,7 +57,7 @@ Everything below was measured on testnet against NEAR's real MPC signer (`v1.sig
 | Solana devnet | 2 of 2, 7.7 s and 8.3 s (N = 2) | **Finalized** in slot 520,280,234: [`jQCk6nNL…grmt`](https://explorer.solana.com/tx/jQCk6nNLGvbAfkrxGizGhvqiUpnUZeA4b58tU3SEFdNA3La2g5PqTY6uod3zWMJk7yB9wfvZebVzFa73oEdgrmt?cluster=devnet) |
 
 Not done yet: the locked, reproducible deployment (the spike contract still has a full-access
-key) and the hosted demo.
+key). The hosted site runs against the spike contract until then.
 
 ## Try it
 

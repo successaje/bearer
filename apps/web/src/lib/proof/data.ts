@@ -146,6 +146,26 @@ export const MARKET_SALE = {
 };
 
 /**
+ * The headline with real coins, on the locked contract, through the owner's own wallets
+ * (docs/SPIKES.md, 2026-11-09): a sealed vault holding testnet Bitcoin changed hands on NEAR, and
+ * the new holder opened it and withdrew Bitcoin and SOL.
+ */
+export const HEADLINE_RUN = {
+  vault: "6",
+  into: "9",
+  heldSats: "684,666",
+  handoverTx: "https://testnet.nearblocks.io/txns/H3XPWh2n5cvDKaqKS8pY4kSCjXDCaPgG3fp6E8beJJYj",
+  openTx: "https://testnet.nearblocks.io/txns/3vEJFVpAM5TQjNRz57mmFHsnHPs8QUi65SyQFR4tMpQQ",
+  solTx: "https://testnet.nearblocks.io/txns/4dABcJcuWaHzzJA4Z2kaGLqR1qT1c4A9wgjW3bQEqekp",
+  btcAddress: "https://blockstream.info/testnet4/address/tb1qqtlwr0xlr8ex8qldu3nea5s2kc4ajzrsnd2g4g",
+  btc: "https://blockstream.info/testnet4/tx/6002c967889d8185b4457837db9c44369b06af0208998cb445a64cea2b5e1e23",
+  /** Testnet4 block that confirmed the withdrawal; null while it waits. */
+  btcBlock: 160228 as number | null,
+  sol: "https://explorer.solana.com/tx/5FQ1wbWQrcLEpb4aqBgpCb3KC5D1UQvPR1aWFjaeEfLBW3eNqFQp2aLMxMKd4NwSeBy86sznnyDvAgoXe4T5XSqm?cluster=devnet",
+  solSlot: "520,527,063",
+};
+
+/**
  * The first funded withdrawal from the locked contract, through the owner's own wallet
  * (docs/SPIKES.md, 2026-11-09).
  */

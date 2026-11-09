@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
 const RPC = process.env.NEXT_PUBLIC_NEAR_RPC || "https://test.rpc.fastnear.com";
 /** The simulated demo's keys are made up, so this page always reads a real deployment. */
 const LIVE_CONTRACT = IS_SIMULATED ? process.env.NEXT_PUBLIC_PROOF_CONTRACT || "v3a.bearer-1108-ffb3.testnet" : BEARER_CONTRACT;
-/** A vault that exists on the live deployment: No. 0004, opened by the first Bitcoin withdrawal. */
-const REAL_VAULT = "4";
+/** A vault every deployment has: No. 0001, the first one created (on the spike and on bearer.testnet). */
+const REAL_VAULT = "1";
 
 async function view<T>(account: string, method: string, args: object): Promise<T> {
   const res = await fetch(RPC, {

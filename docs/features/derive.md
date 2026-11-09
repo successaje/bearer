@@ -21,9 +21,9 @@ are really the vault's. This page does it in the browser, as a six-step trace:
 Everything after step 1 is computed locally with audited libraries (`@noble/curves`,
 `@noble/hashes`, `@scure/base`); the only other fetches are the two views it compares against.
 In the simulated demo, vault keys are made up, so the page reads the live testnet deployment. A
-simulated vault's Technical details therefore link to `/derive` (vault No. 0004 by default)
-rather than to their own number. If the contract has no such vault, the form says so and offers
-No. 0004 in one click. The "Open vault" link after a match only appears against the real chain,
+simulated vault's Technical details therefore link to `/derive` (vault No. 0001 by default, which
+both the spike contract and `bearer.testnet` have) rather than to their own number. If the
+contract has no such vault, the form says so and offers No. 0001 in one click. The "Open vault" link after a match only appears against the real chain,
 since the simulated app can't open a testnet vault.
 
 ## The formula

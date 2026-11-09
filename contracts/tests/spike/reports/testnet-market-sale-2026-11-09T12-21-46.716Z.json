@@ -1,0 +1,56 @@
+{
+  "measured_at": "2026-11-09T12:21:46.454Z",
+  "bearer": "bearer.testnet",
+  "market": "bearer-market.testnet",
+  "market_code_hash": "7joKh4WSVFGb6EEsUpS6BeC1wtp3pepG2FQwBuAJqt7P",
+  "token_id": "4",
+  "price_yocto": "100000000000000000000000",
+  "listing_deposit_yocto": "10000000000000000000000",
+  "seller": "alice.bearer-1108-ffb3.testnet",
+  "buyer": "bob.bearer-1108-ffb3.testnet",
+  "deposit_tx": "https://testnet.nearblocks.io/txns/8j5C1Xiw3NUHAZABBJnaLTqzAYkkDtwLDuFdnt6rh4uT",
+  "list": {
+    "tx": "https://testnet.nearblocks.io/txns/75Gdpx1BKNyi2qWGn7XuGVmQ9yH1mkYi3K3B4QRPoGk8",
+    "tgas": 8.889,
+    "events": [
+      "nft_transfer",
+      "listed"
+    ],
+    "failed_receipts": [],
+    "listing": {
+      "token_id": "4",
+      "seller": "alice.bearer-1108-ffb3.testnet",
+      "price": "100000000000000000000000",
+      "deposit": "10000000000000000000000",
+      "listed_at_ns": "1794226880253730921",
+      "state": {
+        "kind": "listed"
+      }
+    }
+  },
+  "buy": {
+    "tx": "https://testnet.nearblocks.io/txns/GCuy9zAFHGeN8ZsjgvUyaF8Uzz4xvW4UvNessKMMYv6F",
+    "tgas": 11.476,
+    "events": [
+      "nft_transfer",
+      "sold"
+    ],
+    "failed_receipts": []
+  },
+  "vault_after": {
+    "owner_id": "bob.bearer-1108-ffb3.testnet",
+    "state": {
+      "kind": "sealed"
+    },
+    "signatures_requested": 0,
+    "custody": [
+      "alice.bearer-1108-ffb3.testnet",
+      "bearer-market.testnet",
+      "bob.bearer-1108-ffb3.testnet"
+    ]
+  },
+  "listing_after": null,
+  "seller_received_yocto": "110000000000000000000000",
+  "seller_received_expected_yocto": "110000000000000000000000",
+  "seller_paid_exactly": true
+}

@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "spike:testnet": "node --env-file-if-exists=../../.env spike/testnet-sign.ts",
     "spike:adapter": "vitest run --config spike/vitest.testnet.config.ts",
-    "demo:dry": "node demo/dry.mjs"
+    "demo:dry": "node demo/dry.mjs",
+    "spike:market": "node --env-file-if-exists=../../.env spike/market-testnet.ts"
   },
   "devDependencies": {
     "@noble/curves": "2.4.0",

@@ -118,6 +118,10 @@ other chain accepts it, not a payout to a separate person.
   - Solana: signed and verified.
 
   These weren't broadcast: those vaults held no funds.
+- **A funded withdrawal through a wallet.** The owner opened vault No. 0005 and withdrew 0.0002 ETH
+  to a separate Base Sepolia address, in one NEAR transaction from their own wallet
+  ([NEAR](https://testnet.nearblocks.io/txns/9ioTWzebJRgkTaRLG9ZVNQzFKdyX9RSqkxMKwjN4UKwf)). Base Sepolia confirmed it in block 56,685,109
+  ([0x1678…5017](https://sepolia.basescan.org/tx/0x167897cae482d693f5a321ec459c3204270efcd735d11bb5ff95c0ea0ab65017)).
 - **Two signatures for one nonce, on a real chain (T10).** Vault No. 0001 requested two Base
   withdrawals for the same nonce, as a retry could leave them, and both were broadcast together.
   Base Sepolia confirmed one
@@ -133,9 +137,15 @@ other chain accepts it, not a payout to a separate person.
   The market contract (`bearer-market.testnet`) is reproducibly built and locked too
   ([tx](https://testnet.nearblocks.io/txns/G8t9cc9xKa7ymc84hCtk8xeRG2JKBao8auFLKLg1SHVK)).
 
-**Through a browser wallet.** On the live site, the owner's own testnet wallets created two vaults,
-listed one, bought it from a second account (the seller was paid 2.01 NEAR: the price plus the
-listing deposit), handed it back, and scheduled a handover, then cancelled it (docs/SPIKES.md).
+**Through a browser wallet.** On the live site, the owner's own testnet wallets did every flow:
+- created two vaults;
+- listed one and bought it from a second account (the seller was paid 2.01 NEAR: the price plus
+  the listing deposit);
+- handed it back;
+- scheduled a handover, then cancelled it;
+- opened the vault and withdrew Base Sepolia ETH to a separate address.
+
+Details are in docs/SPIKES.md.
 
 **A scheduled handover.** Vault No. 0007, scheduled by alice for bob and not cancellable, was
 handed over on its date by a third account
@@ -276,12 +286,10 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## What comes next
 
-- Finish the browser-wallet flow by hand. Creating, listing, buying, transferring, scheduling and
-  cancelling worked from real testnet wallets on the live site (9 Nov); opening and withdrawal are
-  proven with key-backed test accounts but not yet through a wallet.
 - Email alerts. The bell and browser alerts only work while the site is open; email needs a small
   service that watches the chain and keeps addresses, which isn't built.
-- A funded withdrawal from the final contract to a separate recipient.
+- Funded Bitcoin and Solana withdrawals from the final contract. Both confirmed from the earlier test
+  contract; from `bearer.testnet` so far only Base has been broadcast.
 - More adversarial tests: the `nft_transfer_call` return path (T6), and duplicate Bitcoin spends on
   testnet4 (T10 is shown on Base Sepolia, and for Bitcoin on a simulated ledger).
 - An independent security review before anything on mainnet.

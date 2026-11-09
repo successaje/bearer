@@ -3,7 +3,7 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
-## 2026-11-09 · A purchase, a scheduled handover and a transfer through browser wallets
+## 2026-11-09 · Every flow through browser wallets, including a funded withdrawal
 
 The owner used the live site with two of their own testnet wallets. Read back from the chain:
 
@@ -15,8 +15,12 @@ The owner used the live site with two of their own testnet wallets. Read back fr
 
 | `takaba.testnet` hands vault No. 0005 back to `finishr.testnet` with `nft_transfer` | 3.8 Tgas; the vault arrived sealed with 0 signatures. Its custody log reads `finishr.testnet` → market → `takaba.testnet` → `finishr.testnet` | [ER7uyXcZ…](https://testnet.nearblocks.io/txns/ER7uyXcZiQsHnz7QoiAGepwx5gJKd4nYZasRHY1BwSxf) |
 
-Through a wallet so far: creating, listing, buying, scheduling, cancelling and a plain transfer.
-Still only with key-backed test accounts: breaking the seal and withdrawing.
+| `finishr.testnet` breaks the seal on vault No. 0005 and withdraws 0.0002 ETH to `0x9384…edda`, in one transaction | events `vault_opened`, `withdrawal_requested` and `withdrawal_signed`; 16.6 Tgas. The vault is opened, with 1 signature | [9ioTWzeb…](https://testnet.nearblocks.io/txns/9ioTWzebJRgkTaRLG9ZVNQzFKdyX9RSqkxMKwjN4UKwf) |
+| The signed transaction on Base Sepolia | from the vault's address `0x9df2…6d4b` to `0x9384…edda`, 0.0002 ETH, nonce 0. Confirmed in block 56,685,109; fee 0.000000126 ETH. The vault's address then held 0.00029987 ETH | [0x1678…5017](https://sepolia.basescan.org/tx/0x167897cae482d693f5a321ec459c3204270efcd735d11bb5ff95c0ea0ab65017) |
+
+Through a wallet, every flow is now done: creating, listing, buying, transferring, scheduling,
+cancelling, breaking the seal and withdrawing. It's also the first funded withdrawal from the final
+contract to a separate address.
 
 The seller had no way to see the sale on the site, which is why the notifications bell and the
 account page exist (docs/features/account.md).

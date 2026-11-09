@@ -11,7 +11,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Callout, Skeleton } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
-import { useNow, useObservation, useVault, useWithdrawals } from "@/lib/vault/hooks";
+import { useContractFacts, useNow, useObservation, useVault, useWithdrawals } from "@/lib/vault/hooks";
 import { formatDate, formatUsd, nsToMs, vaultNumber } from "@/lib/vault/format";
 import { fiveQuestions, isSealed, observedUsd, vaultReport, vaultStatus } from "@/lib/vault/report";
 import { Activity } from "./activity";
@@ -39,6 +39,7 @@ export function VaultDetailView() {
   const vault = query.data;
   const obs = useObservation(vault);
   const withdrawals = useWithdrawals(id);
+  const facts = useContractFacts();
   const now = useNow(1000);
   const { accountId, ready, openConnect } = useWallet();
   const [sheet, setSheet] = useState<SheetName | null>(null);
@@ -61,7 +62,7 @@ export function VaultDetailView() {
   const isOwner = ready && accountId === vault.owner_id;
   const wasOwner = ready && !!accountId && !isOwner && vault.custody.some((c) => c.account_id === accountId);
   const observations = obs.data;
-  const report = vaultReport(vault, observations);
+  const report = vaultReport(vault, observations, facts.data ?? { locked: null, fullAccessKeys: null, codeHash: null, simulated: false });
   const status = vaultStatus(vault, withdrawals.data, observations);
   const value = observedUsd(observations);
   const pending = observations?.some((o) => o.pending !== "0");

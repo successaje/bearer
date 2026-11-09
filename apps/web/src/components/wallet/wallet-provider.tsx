@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { toast } from "sonner";
 import { SimulatedTag } from "@/components/ui/primitives";
 import { DEMO_ACCOUNTS } from "@/lib/vault/mock-data";
+import { getConnector, setConnectedAccount } from "@/lib/vault/wallet-bridge";
 import { IS_SIMULATED } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
@@ -31,12 +32,30 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [dialog, setDialog] = useState<{ open: boolean; reason?: string }>({ open: false });
 
   useEffect(() => {
-    try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setAccountId(localStorage.getItem(STORAGE_KEY));
-    } catch {}
-    setReady(true);
+    if (IS_SIMULATED) {
+      try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setAccountId(localStorage.getItem(STORAGE_KEY));
+      } catch {}
+      setReady(true);
+      return;
+    }
+    // Testnet: near-connect owns the session; follow its sign-in and sign-out events.
+    let live = true;
+    void getConnector().then((c) => {
+      c.on("wallet:signIn", (e) => live && setAccountId(e.accounts[0]?.accountId ?? null));
+      c.on("wallet:signOut", () => live && setAccountId(null));
+      c.getConnectedWallet()
+        .then(({ accounts }) => live && setAccountId(accounts[0]?.accountId ?? null))
+        .catch(() => undefined)
+        .finally(() => live && setReady(true));
+    });
+    return () => {
+      live = false;
+    };
   }, []);
+
+  useEffect(() => setConnectedAccount(accountId), [accountId]);
 
   const connect = useCallback((id: string) => {
     setAccountId(id);
@@ -49,12 +68,22 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const disconnect = useCallback(() => {
     setAccountId(null);
+    if (!IS_SIMULATED) {
+      void getConnector().then((c) => c.disconnect());
+      return;
+    }
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {}
   }, []);
 
-  const openConnect = useCallback((reason?: string) => setDialog({ open: true, reason }), []);
+  const openConnect = useCallback((reason?: string) => {
+    if (IS_SIMULATED) return setDialog({ open: true, reason });
+    // near-connect shows its own wallet picker (HOT, Meteor, Intear, MyNearWallet, …).
+    void getConnector()
+      .then((c) => c.connect())
+      .catch((e: unknown) => toast.error("Couldn't connect a wallet", { description: String(e).slice(0, 140) }));
+  }, []);
 
   const value = useMemo(
     () => ({ accountId, ready, connect, disconnect, openConnect }),

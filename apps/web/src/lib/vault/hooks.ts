@@ -3,7 +3,9 @@
 import type { AttackKind, ChainTag, Finish, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { IS_SIMULATED } from "@/lib/config";
 import { getVaultClient } from "./client";
+import { fetchContractFacts } from "./contract-facts";
 
 export const keys = {
   vaults: (owner: string) => ["vaults", owner] as const,
@@ -79,7 +81,26 @@ export function useWithdrawalProgress(id: string, index: number | null) {
     queryKey: keys.progress(id, index ?? -1),
     queryFn: async () => (await getVaultClient()).trackWithdrawal(id, index as number),
     enabled: index !== null,
-    refetchInterval: (q) => (q.state.data && DONE.includes(q.state.data.stage) ? false : 700),
+    // Public RPCs are shared: poll the live adapter gently.
+    refetchInterval: (q) => (q.state.data && DONE.includes(q.state.data.stage) ? false : IS_SIMULATED ? 700 : 4000),
+  });
+}
+
+/** The contract's lock state and code hash, from the chain on testnet. */
+export function useContractFacts() {
+  return useQuery({ queryKey: ["contract-facts"], queryFn: fetchContractFacts, staleTime: 60_000 });
+}
+
+/** Live adapter only: sends a signed withdrawal to its chain (anyone may). */
+export function useBroadcast() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: { id: string; index: number }) => {
+      const client = await getVaultClient();
+      if (!client.broadcast) throw new Error("Broadcasting happens on its own in the simulated demo.");
+      return client.broadcast(v.id, v.index);
+    },
+    onSuccess: (p, v) => qc.setQueryData(keys.progress(v.id, v.index), p),
   });
 }
 

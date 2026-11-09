@@ -93,8 +93,8 @@ export function SealPanel({
       <div className="border-t border-line bg-surface-2 p-5">
         <p className="text-[12.5px] font-medium text-fg-2">You&apos;re trusting</p>
         <p className="mt-1.5 text-[13px] leading-relaxed text-fg-3">
-          NEAR&apos;s MPC network, where a threshold of operators must agree, and the Bearer contract: open source, locked,
-          with no admin.
+          NEAR&apos;s MPC network, where a threshold of operators must agree, and the Bearer contract: open source,
+          with no admin methods. The checks above say whether it&apos;s locked.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button size="sm" onClick={share}>

@@ -1,0 +1,249 @@
+{
+  "measured_at": "2026-11-09T18:38:13.118Z",
+  "contract": "bearer-v2.testnet",
+  "code_hash": "7fHTedpfPzdENiFahCaNQu99KWhDsw7cCwWFYmThhpNk",
+  "pool": "stakely_v2.pool.f863973.m0",
+  "epoch": 5430,
+  "token_id": "4",
+  "vault_near_before_stake": "799300000000000000000000",
+  "pool_before": {
+    "account_id": "bearer-v2.testnet",
+    "unstaked_balance": "0",
+    "staked_balance": "0",
+    "can_withdraw": true
+  },
+  "after_stake": {
+    "vault_near": "198200000000000000000000",
+    "stake": {
+      "shares": "600000000000000000000000",
+      "staked_estimate": "0",
+      "queued": "0",
+      "unbonding": "0",
+      "unlocks_at_epoch": null,
+      "ready": "0"
+    },
+    "pool": {
+      "account_id": "bearer-v2.testnet",
+      "unstaked_balance": "5",
+      "staked_balance": "599999999999999999999995",
+      "can_withdraw": true
+    },
+    "staking": {
+      "pool": "stakely_v2.pool.f863973.m0",
+      "total_shares": "600000000000000000000000",
+      "queued": "0",
+      "batch": 1,
+      "unbonding": "0",
+      "unbonding_epoch": 0,
+      "withdrawn_through": 0,
+      "busy": false,
+      "last_pool_stake": "0",
+      "last_pool_stake_epoch": 5430
+    }
+  },
+  "sealed_after_stake": {
+    "token_id": "4",
+    "owner_id": "alice.bearer-1108-ffb3.testnet",
+    "state": {
+      "kind": "sealed"
+    },
+    "signatures_requested": 0,
+    "withdrawal_count": 0,
+    "keys": {
+      "btc": "secp256k1:2BPRWR3SarC2X8Ea8R1tGKLJXMaX39QTfz7do6spREy1mVeCtwG7VCFqvybXANBRidbcQa1boJcUxjYb1A4hGysA",
+      "evm": "secp256k1:5NrFFARGgXBXsMcN5VdYn7pU5ytMUo8v1ztpWqqH5RkR14jGH7H5a98NZCxdhLzyaUjSo4HXj9T79vnMgw7XxUHB",
+      "sol": "ed25519:BstgjV1mXpZY9SbNFgZFYQTfRdR9xqn8QtxkP6DnY83w"
+    },
+    "btc_address": "tb1q9aaplpwdrfu3uj8faa2khljngwj60jdsk79r5t",
+    "evm_address": "0xe4063f7f76bd83b472c72073c4269d2b626bdb50",
+    "sol_address": "BstgjV1mXpZY9SbNFgZFYQTfRdR9xqn8QtxkP6DnY83w",
+    "paths": {
+      "btc": "bearer:v3:4:btc",
+      "evm": "bearer:v3:4:evm",
+      "sol": "bearer:v3:4:sol"
+    },
+    "custody": [
+      {
+        "account_id": "alice.bearer-1108-ffb3.testnet",
+        "since_ns": "1794249434098679776"
+      }
+    ],
+    "created_at_ns": "1794249434098679776",
+    "name": "Staking run",
+    "finish": "sage"
+  },
+  "first_batch": {
+    "staking": {
+      "pool": "stakely_v2.pool.f863973.m0",
+      "total_shares": "399999999999999999999998",
+      "queued": "0",
+      "batch": 2,
+      "unbonding": "200000000000000000000000",
+      "unbonding_epoch": 5430,
+      "withdrawn_through": 0,
+      "busy": false,
+      "last_pool_stake": "599999999999999999999995",
+      "last_pool_stake_epoch": 5430
+    },
+    "stake": {
+      "shares": "399999999999999999999998",
+      "staked_estimate": "599999999999999999999995",
+      "queued": "0",
+      "unbonding": "200000000000000000000000",
+      "unlocks_at_epoch": 5434,
+      "ready": "0"
+    },
+    "pool": {
+      "account_id": "bearer-v2.testnet",
+      "unstaked_balance": "200000000000000000000008",
+      "staked_balance": "399999999999999999999992",
+      "can_withdraw": false
+    }
+  },
+  "second_request": {
+    "staking": {
+      "pool": "stakely_v2.pool.f863973.m0",
+      "total_shares": "299999999999999999999996",
+      "queued": "100000000000000000000000",
+      "batch": 2,
+      "unbonding": "200000000000000000000000",
+      "unbonding_epoch": 5430,
+      "withdrawn_through": 0,
+      "busy": false,
+      "last_pool_stake": "399999999999999999999992",
+      "last_pool_stake_epoch": 5430
+    },
+    "stake": {
+      "shares": "299999999999999999999996",
+      "staked_estimate": "299999999999999999999992",
+      "queued": "100000000000000000000000",
+      "unbonding": "200000000000000000000000",
+      "unlocks_at_epoch": 5434,
+      "ready": "0"
+    },
+    "pool": {
+      "account_id": "bearer-v2.testnet",
+      "unstaked_balance": "200000000000000000000008",
+      "staked_balance": "399999999999999999999992",
+      "can_withdraw": false
+    }
+  },
+  "second_request_left_the_pool_alone": true,
+  "owner_after": "bob.bearer-1108-ffb3.testnet",
+  "steps": [
+    {
+      "step": "alice creates a vault",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "create_vault",
+      "tx": "https://testnet.nearblocks.io/txns/2nNrL6fKv66ZXb9UnKHsDGTQ7g5ARtZmLmovLNBtTuPc",
+      "tgas": 25.369,
+      "refused": null,
+      "events": [
+        "nft_mint",
+        "vault_created",
+        "keys_set"
+      ]
+    },
+    {
+      "step": "alice puts 0.8 NEAR in vault 4",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "deposit_near",
+      "tx": "https://testnet.nearblocks.io/txns/F7Mn8z6AzGpnjtSx7NoSxkvYE6HhdkZZsFASAY9hFoHp",
+      "tgas": 2.825,
+      "refused": null,
+      "events": [
+        "near_deposited"
+      ]
+    },
+    {
+      "step": "a stranger stakes alice's vault",
+      "by": "bearer-1108-ffb3.testnet",
+      "call": "stake",
+      "tx": "https://testnet.nearblocks.io/txns/Hc31GmEQrBwYtAgHcDCCYTkRMTnv4tJmteoQFaHdMBLA",
+      "tgas": 2.509,
+      "refused": "ERR_NOT_OWNER",
+      "events": []
+    },
+    {
+      "step": "alice stakes 0.6 NEAR from her sealed vault",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "stake",
+      "tx": "https://testnet.nearblocks.io/txns/9t4QvMKTKZbm9XhjbZUrfLQta1wDqTLhMPurFhHVgpda",
+      "tgas": 17.416,
+      "refused": null,
+      "events": [
+        "staked"
+      ]
+    },
+    {
+      "step": "alice withdraws from her sealed vault",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "withdraw_near",
+      "tx": "https://testnet.nearblocks.io/txns/2E4k5857ZGaVShKNYg5Nhr9F1gxR7FG3gKV74T5om456",
+      "tgas": 2.518,
+      "refused": "ERR_VAULT_SEALED",
+      "events": []
+    },
+    {
+      "step": "anyone moves unstaking along with nothing asked",
+      "by": "bearer-1108-ffb3.testnet",
+      "call": "process_unstaking",
+      "tx": "https://testnet.nearblocks.io/txns/Fz7KwpkAHt18BGjWd5KxG4h7q4QzMyZysEV8jXayidr2",
+      "tgas": 2.095,
+      "refused": "ERR_NOTHING_TO_DO",
+      "events": []
+    },
+    {
+      "step": "alice hands the vault to bob",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "nft_transfer",
+      "tx": "https://testnet.nearblocks.io/txns/4FUZGkzkQySnMMZFm8uyD6ihpoRFkJApvTGgSXY1MMS3",
+      "tgas": 4.183,
+      "refused": null,
+      "events": [
+        "nft_transfer"
+      ]
+    },
+    {
+      "step": "alice unstakes after handing it over",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "unstake",
+      "tx": "https://testnet.nearblocks.io/txns/4JVsmHTX1gFmJzE2g6qHcmcWgjq1AzEpUw6KvPdQtq8e",
+      "tgas": 2.507,
+      "refused": "ERR_NOT_OWNER",
+      "events": []
+    },
+    {
+      "step": "bob unstakes 0.2 NEAR",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "unstake",
+      "tx": "https://testnet.nearblocks.io/txns/7wz1VszPSMyrZtvHN6iHVwFHdHYxKd6rjWFBfgskxXh4",
+      "tgas": 16.894,
+      "refused": null,
+      "events": [
+        "unstake_requested",
+        "batch_unstaked"
+      ]
+    },
+    {
+      "step": "bob unstakes 0.1 NEAR more while the first unlocks",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "unstake",
+      "tx": "https://testnet.nearblocks.io/txns/8M8dW1za3Q3dS4vWCWBzTZuHDa3WFKPgVr18UqhmHX84",
+      "tgas": 8.969,
+      "refused": null,
+      "events": [
+        "unstake_requested"
+      ]
+    },
+    {
+      "step": "anyone withdraws before it unlocks",
+      "by": "bearer-1108-ffb3.testnet",
+      "call": "process_unstaking",
+      "tx": "https://testnet.nearblocks.io/txns/9kGyGzb2xHuzYqx3pndKaLuSgWu7RtWB4ma8LdJ6GV2d",
+      "tgas": 2.095,
+      "refused": "ERR_NOT_UNLOCKED",
+      "events": []
+    }
+  ]
+}

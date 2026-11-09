@@ -1,0 +1,37 @@
+{
+  "measured_at": "2026-11-09T18:40:53.918Z",
+  "contract": "bearer-v2.testnet",
+  "tx": "https://testnet.nearblocks.io/txns/8crVjGixqsSMbwfDxsPByjGrv1gCij5wxHfUVHZx2FC3",
+  "code_hash": "Hnifjj83V5LQzBAyDkPeSrrhxMt8Rj3TjwSQTPenNHp1",
+  "matches_wasm": true,
+  "before": {
+    "staking": {
+      "pool": "stakely_v2.pool.f863973.m0",
+      "total_shares": "299999999999999999999996",
+      "queued": "100000000000000000000000",
+      "batch": 2,
+      "unbonding": "200000000000000000000000",
+      "unbonding_epoch": 5430,
+      "withdrawn_through": 0,
+      "busy": false,
+      "last_pool_stake": "399999999999999999999992",
+      "last_pool_stake_epoch": 5430
+    },
+    "supply": "4"
+  },
+  "after": {
+    "staking": {
+      "pool": "stakely_v2.pool.f863973.m0",
+      "total_shares": "299999999999999999999996",
+      "queued": "100000000000000000000000",
+      "batch": 2,
+      "unbonding": "200000000000000000000000",
+      "unbonding_epoch": 5430,
+      "withdrawn_through": 0,
+      "busy": false,
+      "last_pool_stake": "399999999999999999999992",
+      "last_pool_stake_epoch": 5430
+    },
+    "supply": "4"
+  }
+}

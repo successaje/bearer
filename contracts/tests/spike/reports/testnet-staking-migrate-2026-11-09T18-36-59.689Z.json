@@ -1,0 +1,83 @@
+{
+  "measured_at": "2026-11-09T18:36:58.765Z",
+  "contract": "bearer-v2.testnet",
+  "tx": "https://testnet.nearblocks.io/txns/9NJCrYL12A2oK1Srgx12VGwxXWEzAeUm6rYb9Ks3pQ3J",
+  "code_hash": "7fHTedpfPzdENiFahCaNQu99KWhDsw7cCwWFYmThhpNk",
+  "wasm_code_hash": "7fHTedpfPzdENiFahCaNQu99KWhDsw7cCwWFYmThhpNk",
+  "staking": {
+    "pool": "stakely_v2.pool.f863973.m0",
+    "total_shares": "0",
+    "queued": "0",
+    "batch": 1,
+    "unbonding": "0",
+    "unbonding_epoch": 0,
+    "withdrawn_through": 0,
+    "busy": false,
+    "last_pool_stake": "0",
+    "last_pool_stake_epoch": 0
+  },
+  "vaults_before": "3",
+  "vaults_after": "3",
+  "vault_1_before": {
+    "token_id": "1",
+    "owner_id": "alice.bearer-1108-ffb3.testnet",
+    "state": {
+      "kind": "sealed"
+    },
+    "signatures_requested": 0,
+    "withdrawal_count": 0,
+    "keys": {
+      "btc": "secp256k1:4dnKWNsB9tuekqjSTFWZPqaP3Av5NMGAJb6SxKeRcmuWsVAFq4DQDV4g5JAyTyBwKJbeqMpzpJaJedLMCK1B7Fg2",
+      "evm": "secp256k1:QMgDUwjMKEGT2AknBadeop1JFGA5KMN78qYbnVN6Jmm3Y3Y9UeFVghptpFFcei9QabwiKFvPu3WV49irfZPjXij",
+      "sol": "ed25519:HCnJaeHAydDAmqfkK7sNRHNt3g72VCcShJ1781egSjzS"
+    },
+    "btc_address": "tb1qhfg0z8f964452hwnuu3prlke6t2678xxy7fly0",
+    "evm_address": "0xfa420a51595f5b2ec5333e32693badaee2bba877",
+    "sol_address": "HCnJaeHAydDAmqfkK7sNRHNt3g72VCcShJ1781egSjzS",
+    "paths": {
+      "btc": "bearer:v3:1:btc",
+      "evm": "bearer:v3:1:evm",
+      "sol": "bearer:v3:1:sol"
+    },
+    "custody": [
+      {
+        "account_id": "alice.bearer-1108-ffb3.testnet",
+        "since_ns": "1794231553132651911"
+      }
+    ],
+    "created_at_ns": "1794231553132651911",
+    "name": "v2 holdings run",
+    "finish": "obsidian"
+  },
+  "vault_1_after": {
+    "token_id": "1",
+    "owner_id": "alice.bearer-1108-ffb3.testnet",
+    "state": {
+      "kind": "sealed"
+    },
+    "signatures_requested": 0,
+    "withdrawal_count": 0,
+    "keys": {
+      "btc": "secp256k1:4dnKWNsB9tuekqjSTFWZPqaP3Av5NMGAJb6SxKeRcmuWsVAFq4DQDV4g5JAyTyBwKJbeqMpzpJaJedLMCK1B7Fg2",
+      "evm": "secp256k1:QMgDUwjMKEGT2AknBadeop1JFGA5KMN78qYbnVN6Jmm3Y3Y9UeFVghptpFFcei9QabwiKFvPu3WV49irfZPjXij",
+      "sol": "ed25519:HCnJaeHAydDAmqfkK7sNRHNt3g72VCcShJ1781egSjzS"
+    },
+    "btc_address": "tb1qhfg0z8f964452hwnuu3prlke6t2678xxy7fly0",
+    "evm_address": "0xfa420a51595f5b2ec5333e32693badaee2bba877",
+    "sol_address": "HCnJaeHAydDAmqfkK7sNRHNt3g72VCcShJ1781egSjzS",
+    "paths": {
+      "btc": "bearer:v3:1:btc",
+      "evm": "bearer:v3:1:evm",
+      "sol": "bearer:v3:1:sol"
+    },
+    "custody": [
+      {
+        "account_id": "alice.bearer-1108-ffb3.testnet",
+        "since_ns": "1794231553132651911"
+      }
+    ],
+    "created_at_ns": "1794231553132651911",
+    "name": "v2 holdings run",
+    "finish": "obsidian"
+  }
+}

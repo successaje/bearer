@@ -3,6 +3,21 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-09 · A sealed handover: time to final and cost
+
+`BEARER_CONTRACT_ID=bearer.testnet pnpm spike:testnet handover 7 6` handed sealed vault No. 0007
+between alice's and bob's test accounts six times with `nft_transfer`. N = 6:
+
+- **Final after** a median 4.6 s (4.0–5.8 s), timed on a laptop from sending the signed
+  transaction to the RPC answering with `wait_until: FINAL`. That includes the round trip to the
+  RPC, so the chain itself is faster.
+- **Gas** 3.97–4.04 Tgas each (it grows slightly as the custody log fills up), which is 0.0004 NEAR
+  at testnet's gas price of 100,000,000 yoctoNEAR per gas.
+- After every handover the vault was sealed with 0 signatures requested. Nothing moved on Bitcoin,
+  Base or Solana, so there was no fee there.
+
+Report: [`testnet-handover-2026-11-09T18-05-40.934Z.json`](../contracts/tests/spike/reports/testnet-handover-2026-11-09T18-05-40.934Z.json).
+
 ## 2026-11-09 · Scheduled handover, on the locked contract
 
 `bearer-schedule.testnet` (faucet-created) runs `contracts/res/schedule.wasm`, the reproducible

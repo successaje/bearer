@@ -1,0 +1,179 @@
+{
+  "measured_at": "2026-11-09T14:37:57.211Z",
+  "bearer": "bearer.testnet",
+  "schedule": "bearer-schedule.testnet",
+  "schedule_code_hash": "9sLo27AU3jr3fSRSpQrNmCSDJKorpPN5huoNarJpJSkE",
+  "release_at_ns": "1794235034548812559",
+  "steps": [
+    {
+      "step": "alice creates a vault to cancel",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.create_vault",
+      "tx": "https://testnet.nearblocks.io/txns/8orioEFQzmVL1RUGVW7o646UGTVc5L89piuwVdM6fz8W",
+      "tgas": 25.373,
+      "refused": null,
+      "events": [
+        "nft_mint",
+        "vault_created",
+        "keys_set"
+      ]
+    },
+    {
+      "step": "alice pays two schedule deposits",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-schedule.testnet.deposit_for_schedule",
+      "tx": "https://testnet.nearblocks.io/txns/HwXFAPVMVD533XEW189J71EN3exmM8TBezpqcjNPC9xv",
+      "tgas": 2.027,
+      "refused": null,
+      "events": []
+    },
+    {
+      "step": "bob pays a schedule deposit",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-schedule.testnet.deposit_for_schedule",
+      "tx": "https://testnet.nearblocks.io/txns/C15GULguPjdfMWBNXgxyizMmtRBNsaLXds1ib7WRDqwy",
+      "tgas": 2.035,
+      "refused": null,
+      "events": []
+    },
+    {
+      "step": "alice schedules vault 8 for bob in an hour, cancellable",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.nft_transfer_call",
+      "tx": "https://testnet.nearblocks.io/txns/3mFVSUScJVQPgJHm9HCueVotSmKfyrX6KYRgE2FzUv5D",
+      "tgas": 9.002,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "scheduled"
+      ]
+    },
+    {
+      "step": "alice cancels it",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-schedule.testnet.cancel",
+      "tx": "https://testnet.nearblocks.io/txns/AeF5U5xnTGunHcJweFyEvoUhEEdZ9cz9KQTEavuPE4k1",
+      "tgas": 11.472,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "cancelled"
+      ]
+    },
+    {
+      "step": "alice schedules vault 7 for bob, not cancellable",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.nft_transfer_call",
+      "tx": "https://testnet.nearblocks.io/txns/Frr7M9xyBENpMmj7Svc7yMKZ2xizqgqPknU1VP74QfVL",
+      "tgas": 9.298,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "scheduled"
+      ]
+    },
+    {
+      "step": "bob schedules vault 2 for nobody2.bearer-1108-ffb3.testnet, which doesn't exist",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.nft_transfer_call",
+      "tx": "https://testnet.nearblocks.io/txns/GFR5YdXGQRp4hB5GXu2JD3gC7mgCFtvjQbQz3k34VKLv",
+      "tgas": 9.05,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "scheduled"
+      ]
+    },
+    {
+      "step": "release before the date",
+      "by": "bearer-1108-ffb3.testnet",
+      "call": "bearer-schedule.testnet.release",
+      "tx": "https://testnet.nearblocks.io/txns/A3EfLqy3PQz1bZG6rayRK26xo1J9rcuWWWmND1izDEVo",
+      "tgas": 1.879,
+      "refused": "ERR_TOO_EARLY",
+      "events": []
+    },
+    {
+      "step": "alice cancels a schedule she made irrevocable",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-schedule.testnet.cancel",
+      "tx": "https://testnet.nearblocks.io/txns/4cpvA6hHjt2uynaVXXqsd7spnEENDQm1af8GFBoDx1eA",
+      "tgas": 2.116,
+      "refused": "ERR_NOT_CANCELLABLE",
+      "events": []
+    },
+    {
+      "step": "alice breaks the seal on her scheduled vault",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.break_seal",
+      "tx": "https://testnet.nearblocks.io/txns/DiJF3L67hPMMWJzJiEMStEyRgXi85GKZvhMqcj3kLiwt",
+      "tgas": 2.311,
+      "refused": "ERR_NOT_OWNER",
+      "events": []
+    },
+    {
+      "step": "release vault 7 to bob",
+      "by": "bearer-1108-ffb3.testnet",
+      "call": "bearer-schedule.testnet.release",
+      "tx": "https://testnet.nearblocks.io/txns/76eGYPzRDspJi3YXLXVGU1zDnj8wcNF14kSz8Vu2HUpt",
+      "tgas": 15.211,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "released"
+      ]
+    },
+    {
+      "step": "release vault 2 to nobody2.bearer-1108-ffb3.testnet",
+      "by": "bearer-1108-ffb3.testnet",
+      "call": "bearer-schedule.testnet.release",
+      "tx": "https://testnet.nearblocks.io/txns/zaDjCK5w2x8MQG87vhQ3pL6VWdQPSymutSGDKL5NqUZ",
+      "tgas": 5.593,
+      "refused": "ActionError",
+      "events": [
+        "recipient_missing"
+      ]
+    },
+    {
+      "step": "release vault 2 again, now nobody2.bearer-1108-ffb3.testnet exists",
+      "by": "bearer-1108-ffb3.testnet",
+      "call": "bearer-schedule.testnet.release",
+      "tx": "https://testnet.nearblocks.io/txns/9fVdTyuJWyabMsZMbe17p1t2wv2MqJYwMUmooxbFBisB",
+      "tgas": 14.287,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "released"
+      ]
+    }
+  ],
+  "cancelled_vault": {
+    "token_id": "8",
+    "owner_after": "alice.bearer-1108-ffb3.testnet"
+  },
+  "released_vault": {
+    "token_id": "7",
+    "owner": "bob.bearer-1108-ffb3.testnet",
+    "state": {
+      "kind": "sealed"
+    },
+    "signatures_requested": 0,
+    "custody": [
+      "alice.bearer-1108-ffb3.testnet",
+      "bearer-schedule.testnet",
+      "alice.bearer-1108-ffb3.testnet",
+      "bearer-schedule.testnet",
+      "bob.bearer-1108-ffb3.testnet"
+    ]
+  },
+  "giver_refund_yocto": "10000000000000000000000",
+  "giver_refund_exact": true,
+  "missing_recipient": {
+    "token_id": "2",
+    "state_after_first_release": {
+      "kind": "waiting"
+    },
+    "held_by": "bearer-schedule.testnet",
+    "owner_after_account_created": "nobody2.bearer-1108-ffb3.testnet"
+  }
+}

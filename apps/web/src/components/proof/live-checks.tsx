@@ -98,7 +98,7 @@ export function LiveChecks() {
             >
               {d.fullAccessKeys === 0
                 ? "No full-access keys: nobody can change or redeploy the contract."
-                : `${d.fullAccessKeys} full-access key${d.fullAccessKeys > 1 ? "s" : ""}. This is the spike deployment; the locked, reproducible deploy deletes every full-access key before submission.`}
+                : `${d.fullAccessKeys} full-access key${d.fullAccessKeys > 1 ? "s" : ""}, so whoever holds ${d.fullAccessKeys > 1 ? "them" : "it"} could still replace the code. Locking deletes every full-access key, for good.`}
             </Check>
             <Check label="Code identity" tone="info" value={<span className="font-mono text-[15px]">{d.codeHash.slice(0, 22)}…</span>} curl={curlFor("view_account")}>
               The deployed code hash. The locked deploy publishes the build that reproduces it.{" "}

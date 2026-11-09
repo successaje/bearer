@@ -3,6 +3,16 @@ name = "bearer"
 version = "0.3.0"
 edition = "2021"
 publish = false
+repository = "https://github.com/successaje/bearer"
+
+# `cargo near build reproducible-wasm` builds inside this pinned image, so anyone can rebuild the
+# deployed wasm byte for byte and compare its hash (NEP-330, brief 4.10). Rust 1.98.1 matches the
+# toolchain the tests ran on.
+[package.metadata.near.reproducible_build]
+image = "sourcescan/cargo-near:0.22.0-rust-1.98.1"
+image_digest = "sha256:90cf2abe31d75946d82f1c6eee70802332b4d499ac39c01a5c41f228000ecb8a"
+passed_env = []
+container_build_command = ["cargo", "near", "build", "non-reproducible-wasm", "--locked"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

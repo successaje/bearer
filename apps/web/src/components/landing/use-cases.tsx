@@ -23,7 +23,7 @@ const USES: { tag: string; name: string; finish: Finish; title: string; body: st
   },
   {
     tag: "An inheritance envelope",
-    name: "For Mira",
+    name: "⏳ For Mira",
     finish: "midnight",
     title: "Seal it now. It's theirs on the day.",
     body: "Schedule it for a date. Until then nobody can withdraw, you included. On or after the day, anyone can hand it over, and only to them.",

@@ -1,4 +1,6 @@
 import type { Finish, VaultView } from "@bearer/sdk";
+import { nameLines, readName } from "@/lib/vault/category";
+import { categoryArt } from "@/lib/vault/category-art";
 
 /**
  * The vault as a standalone SVG: what wallets show as the token's `media`, so it must work inside
@@ -57,9 +59,14 @@ export function sealSvg(opened: boolean, x: number, y: number, size: number, idP
 export function cardText(vault: VaultView) {
   const look = LOOKS[vault.finish] ?? LOOKS.obsidian;
   const opened = vault.state.kind === "opened";
+  const { category, title } = readName(vault.name);
+  const name = title || `Vault ${vault.token_id}`;
   return {
     opened,
-    name: (vault.name ?? `Vault ${vault.token_id}`).slice(0, 32),
+    category,
+    name,
+    /** One or two lines; with art on the right, they stay in the left half. */
+    lines: category ? nameLines(name, 15) : [name.slice(0, 32)],
     serial: `No. ${vault.token_id.padStart(4, "0")}`,
     state: opened ? "OPENED · CAN'T CHANGE HANDS" : "SEALED · 0 SIGNATURES EVER REQUESTED",
     text: look.text,
@@ -74,6 +81,10 @@ export function cardSvg(vault: VaultView, { text = true }: { text?: boolean } = 
   const words = cardText(vault);
   const opened = words.opened;
   const name = esc(words.name);
+  const lines = words.lines.map(esc);
+  const nameY = H * 0.55 - (lines.length - 1) * 18;
+  // The category's art, 180 square, between the seal and the bottom edge.
+  const art = words.category ? `<g transform="translate(${W - 37 - 180} 104) scale(0.9)">${categoryArt(words.category.id, `nft${vault.token_id}`)}</g>` : "";
   const { serial, state, pill } = words;
   const fill =
     look.kind === "radial"
@@ -92,13 +103,14 @@ export function cardSvg(vault: VaultView, { text = true }: { text?: boolean } = 
     <rect width="${W}" height="${H}" fill="url(#bg)"/>
     <g fill="none" stroke="${look.rings}" stroke-width="1">${rings}</g>
   </g>
+  ${art}
   <rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" rx="30.5" fill="none" stroke="${look.text}" stroke-opacity="0.14"/>
   ${text ? `<text x="37" y="58" font-family="${SANS}" font-size="16.8" font-weight="600" letter-spacing="4.4" fill="${look.muted}">BEARER</text>` : ""}
   ${sealSvg(opened, W - 37 - 69, 30, 69)}
   ${
     text
-      ? `<text x="37" y="${H * 0.55}" font-family="${SANS}" font-size="32" font-weight="500" fill="${look.text}">${name}</text>
-  <text x="37" y="${H * 0.55 + 30}" font-family="${MONO}" font-size="18" fill="${look.muted}">${serial}</text>
+      ? `${lines.map((l, i) => `<text x="37" y="${nameY + i * 36}" font-family="${SANS}" font-size="${lines.length > 1 ? 29 : 32}" font-weight="500" fill="${look.text}">${l}</text>`).join("")}
+  <text x="37" y="${nameY + (lines.length - 1) * 36 + 30}" font-family="${MONO}" font-size="18" fill="${look.muted}">${serial}</text>
   <g transform="translate(37 ${H - 70})">
     <rect width="${pillW}" height="34" rx="17" fill="rgb(${pill.rgb})" fill-opacity="0.18" stroke="rgb(${pill.rgb})" stroke-opacity="0.55"/>
     <text x="16" y="22" font-family="${MONO}" font-size="12.5" font-weight="600" letter-spacing="1.2" fill="${pill.color}">${state}</text>

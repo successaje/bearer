@@ -3,6 +3,12 @@
 **For:** anyone wondering why Bearer is built the way it is.
 Newest first. Each entry: date, decision, reason, alternatives considered.
 
+## 2026-11-10 · Card art by category, read from the name
+
+- **Decision:** a vault's card shows art for what it's for (gift, birthday, prize, savings, time capsule, love letter, and three fun ones: pizza money, to the moon, treasure). The category is read from the name: a leading emoji, which the create form adds, or else a few whole words; no match keeps the classic card. The same SVG art is drawn on the site, in the NFT image and in link previews.
+- **Reason:** the owner asked for images that fit the occasion, not only cards. The contract is locked and stores just a name and a finish, so the name is the only place a category can live; an emoji there is visible in wallets too and costs 4 or 5 of its 32 bytes.
+- **Alternatives:** mapping categories onto the six finishes (would change what existing vaults look like, and ties colour to occasion); a category stored off chain (the site has no database, and wallets wouldn't see it); a new contract field (the contract is locked).
+
 ## 2026-11-10 · Bearer links: the new key is saved before anything moves
 
 - **Decision:** "Pass it on" stores the new link in the browser and shows it to be saved before any transaction; every step checks what already happened, so the old link resumes or cancels an interrupted pass-on. `pnpm spike:links mint` writes each key to disk before any transaction and finishes unfinished links on the next run.

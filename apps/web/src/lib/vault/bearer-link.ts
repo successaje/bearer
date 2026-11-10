@@ -40,8 +40,7 @@ export function newLinkKey(): LinkKey {
 
 export const linkUrl = (key: LinkKey) => `${window.location.origin}/claim#${base58.encode(key.seed)}`;
 
-/** `3f9a…c21e`: implicit accounts are 64 hex characters. */
-export const shortAccount = (id: string) => (/^[0-9a-f]{64}$/.test(id) ? `${id.slice(0, 4)}…${id.slice(-4)}` : id);
+export { shortAccount } from "./format";
 
 /* ---------- this tab's open link ---------- */
 

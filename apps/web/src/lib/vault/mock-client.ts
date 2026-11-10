@@ -36,7 +36,7 @@ import {
 import { ATTACK_TESTS, VaultError } from "./errors";
 import { withdrawalAmount } from "./report";
 
-const STORAGE_KEY = "bearer:mock:v7";
+const STORAGE_KEY = "bearer:mock:v9";
 const CUSTODY_CAP = 16;
 const KEYS_DELAY_MS = 1_500;
 
@@ -69,7 +69,7 @@ export class MockBearerClient implements BearerClient {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as MockState;
-        if (parsed.version === 7) return (this.state = parsed);
+        if (parsed.version === 9) return (this.state = parsed);
       }
     } catch {
       // Private mode or corrupt storage: start fresh.

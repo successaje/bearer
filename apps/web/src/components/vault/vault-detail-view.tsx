@@ -19,7 +19,7 @@ import { Callout, Skeleton } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
 import { IS_SIMULATED, MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
 import { useContractFacts, useListing, useNow, useObservation, useSchedule, useVault, useWithdrawals } from "@/lib/vault/hooks";
-import { formatDate, formatUsd, nsToMs, vaultNumber } from "@/lib/vault/format";
+import { formatDate, formatUsd, nsToMs, shortAccount, vaultNumber } from "@/lib/vault/format";
 import { fiveQuestions, isSealed, observedUsd, vaultReport, vaultStatus } from "@/lib/vault/report";
 import { Activity } from "./activity";
 import { AttackLab } from "./attack-lab";
@@ -88,7 +88,7 @@ export function VaultDetailView() {
       {wasOwner && handedAt && !(inEscrow && listing.seller === accountId) && !(inSchedule && scheduled.giver === accountId) ? (
         <Callout tone="warn" icon={<History />} className="mb-8">
           <p className="font-medium text-fg">
-            You handed this vault to {vault.owner_id} on {formatDate(nsToMs(handedAt.since_ns))}. You can&apos;t withdraw from it.
+            You handed this vault to {shortAccount(vault.owner_id)} on {formatDate(nsToMs(handedAt.since_ns))}. You can&apos;t withdraw from it.
           </p>
           <p className="mt-0.5 text-fg-2">
             Want to see what happens if you try?{" "}
@@ -154,7 +154,7 @@ export function VaultDetailView() {
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5">
-                Owner <span className="font-mono text-fg">{vault.owner_id}</span>
+                Owner <span className="font-mono text-fg" title={vault.owner_id}>{shortAccount(vault.owner_id)}</span>
                 <CopyButton value={vault.owner_id} label="Copy owner account" size="sm" />
               </span>
             )}

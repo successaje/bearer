@@ -3,7 +3,7 @@ import { CHAIN_TAGS } from "@bearer/sdk";
 import { BEARER_CONTRACT, CODE_HASH, SIGNER_CONTRACT } from "@/lib/config";
 import { SIMULATED_FACTS, type ContractFacts } from "./contract-facts";
 import { ATTACK_TESTS } from "./errors";
-import { CHAIN_META, formatAmount, formatDate, nsToMs, toUsd, vaultNumber } from "./format";
+import { CHAIN_META, formatAmount, formatDate, nsToMs, shortAccount, toUsd, vaultNumber } from "./format";
 
 export type VaultStatus = "sealed" | "opened" | "withdrawing" | "empty";
 
@@ -66,10 +66,10 @@ export function vaultReport(v: VaultView, obs?: ChainObservation[], facts: Contr
       : {
           id: "seal",
           title: "Seal broken",
-          summary: `Opened ${opened ? formatDate(nsToMs(opened.at_ns)) : ""} by ${opened?.by ?? ""}`,
+          summary: `Opened ${opened ? formatDate(nsToMs(opened.at_ns)) : ""} by ${shortAccount(opened?.by ?? "")}`,
           state: "info",
           why: "The owner broke the seal to withdraw. From that moment the vault can never change hands, so every signature it produces pays that owner.",
-          evidence: [`vault.state = opened`, `by ${opened?.by ?? ""}`],
+          evidence: [`vault.state = opened`, `by ${shortAccount(opened?.by ?? "")}`],
         },
     {
       id: "signatures",
@@ -145,7 +145,7 @@ export function vaultReport(v: VaultView, obs?: ChainObservation[], facts: Contr
     headline: sealed ? "Unopened" : "Opened · can't change hands",
     detail: sealed
       ? "No signature has ever been requested for this vault."
-      : `Opened on ${opened ? formatDate(nsToMs(opened.at_ns)) : ""} by ${opened?.by ?? ""}. It can't change hands.`,
+      : `Opened on ${opened ? formatDate(nsToMs(opened.at_ns)) : ""} by ${shortAccount(opened?.by ?? "")}. It can't change hands.`,
     checks,
   };
 }
@@ -184,8 +184,8 @@ export function fiveQuestions(v: VaultView, obs: ChainObservation[] | undefined,
           : escrow?.kind === "market"
             ? "Nobody while it's for sale: the market holds it and never breaks seals. Whoever buys it can break the seal once it's theirs."
             : sealed
-              ? `Only the current owner (${v.owner_id}), and only after breaking the seal. Right now nobody has.`
-              : `Only ${v.owner_id}. The vault is opened and can't change hands.`,
+              ? `Only the current owner (${shortAccount(v.owner_id)}), and only after breaking the seal. Right now nobody has.`
+              : `Only ${shortAccount(v.owner_id)}. The vault is opened and can't change hands.`,
     },
     {
       q: "What changes if it's transferred?",
@@ -244,7 +244,7 @@ export function attackScenarios(v: VaultView): AttackScenario[] {
     {
       kind: "transfer_opened_vault",
       title: "Transfer an opened vault",
-      actor: `${v.owner_id} (owner)`,
+      actor: `${shortAccount(v.owner_id)} (owner)`,
       call: isSealed(v) ? "nft_transfer(any opened vault)" : `nft_transfer(vault ${v.token_id})`,
       expected: "ERR_VAULT_OPENED",
       test: ATTACK_TESTS.transfer_opened_vault,
@@ -252,7 +252,7 @@ export function attackScenarios(v: VaultView): AttackScenario[] {
     {
       kind: "withdraw_sealed_vault",
       title: "Withdraw without breaking the seal",
-      actor: `${v.owner_id} (owner)`,
+      actor: `${shortAccount(v.owner_id)} (owner)`,
       call: isSealed(v) ? `withdraw_evm(vault ${v.token_id})` : "withdraw_evm(any sealed vault)",
       expected: "ERR_VAULT_SEALED",
       test: ATTACK_TESTS.withdraw_sealed_vault,

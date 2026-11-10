@@ -289,6 +289,7 @@ prototypes.
 | `/v/[id]` | A vault's public page: seal, observed balances, custody, signatures, the attack lab |
 | `/market` | Sealed vaults for sale, held in escrow by the market contract; list from a vault's page, buy at exactly the listed price |
 | `/account` | Your account: what you have for sale, what sold and what you were paid, payouts to claim, and everything that happened to your vaults. The bell in the header shows what others did: a sale, a vault handed or scheduled to you |
+| `/create` | Make a vault: pick what it's for (a gift, a prize, savings, a pizza fund…) and its card shows that art ([docs/features/card-art.md](docs/features/card-art.md)) |
 | `/claim` | Open a Bearer link: see the vault it holds, pass it on as a new link, send it to a NEAR account, or break the seal and withdraw, with no wallet |
 | `/v/[id]/handover` | Hand a vault over in person: a QR code for the recipient, and the card flips when the transfer lands |
 | `/v/[id]/certificate` | A printable bearer certificate, one A4 page, with a QR code to the live seal |

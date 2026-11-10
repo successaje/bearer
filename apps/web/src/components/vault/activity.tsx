@@ -2,7 +2,7 @@ import type { ChainObservation, VaultView, Withdrawal } from "@bearer/sdk";
 import { ArrowDownLeft, PackageOpen, PenLine, Plus, Send, type LucideIcon } from "lucide-react";
 import { MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
 import { withdrawalAmount } from "@/lib/vault/report";
-import { CHAIN_META, formatAmount, nsToMs, relativeTime } from "@/lib/vault/format";
+import { CHAIN_META, formatAmount, nsToMs, relativeTime, shortAccount } from "@/lib/vault/format";
 import { cn } from "@/lib/utils";
 
 interface Item {
@@ -31,9 +31,11 @@ export function Activity({
   vault.custody.forEach((c, i) => {
     const at = nsToMs(c.since_ns);
     if (i === 0 && Math.abs(at - created) < 1000) {
-      items.push({ key: "created", at, icon: Plus, tone: "bg-raised text-fg-2", title: "Vault created", detail: `By ${c.account_id}. Sealed.` });
+      items.push({ key: "created", at, icon: Plus, tone: "bg-raised text-fg-2", title: "Vault created", detail: `By ${shortAccount(c.account_id)}. Sealed.` });
     } else {
-      const from = vault.custody[i - 1]?.account_id;
+      const prev = vault.custody[i - 1]?.account_id;
+      const from = prev ? shortAccount(prev) : undefined;
+      const to = shortAccount(c.account_id);
       const market = MARKET_CONTRACT;
       const scheduler = SCHEDULE_CONTRACT;
       const { title, detail } =
@@ -41,16 +43,16 @@ export function Activity({
           ? { title: "Scheduled for a handover", detail: `By ${from ?? "its holder"}. Held, sealed, until its date.` }
           : scheduler && from === scheduler
             ? c.account_id === vault.custody[i - 2]?.account_id
-              ? { title: `Back with ${c.account_id}`, detail: "The schedule was cancelled, or refused. Still sealed." }
-              : { title: `Handed over to ${c.account_id}`, detail: `On schedule, from ${vault.custody[i - 2]?.account_id ?? "its giver"}. Still sealed.` }
+              ? { title: `Back with ${to}`, detail: "The schedule was cancelled, or refused. Still sealed." }
+              : { title: `Handed over to ${to}`, detail: `On schedule, from ${vault.custody[i - 2]?.account_id ?? "its giver"}. Still sealed.` }
             : market && c.account_id === market
           ? { title: "Listed on the market", detail: `By ${from ?? "its holder"}. The market holds it in escrow, sealed.` }
           : market && from === market
             ? c.account_id === vault.custody[i - 2]?.account_id
-              ? { title: `Back with ${c.account_id}`, detail: "Delisted, or the market refused the listing. Still sealed." }
-              : { title: `Bought by ${c.account_id}`, detail: "From the market, which paid the seller after the vault moved." }
+              ? { title: `Back with ${to}`, detail: "Delisted, or the market refused the listing. Still sealed." }
+              : { title: `Bought by ${to}`, detail: "From the market, which paid the seller after the vault moved." }
             : {
-                title: `Transferred to ${c.account_id}`,
+                title: `Transferred to ${to}`,
                 detail: `From ${from ?? "an earlier holder"}. Nothing moved on Bitcoin, Base or Solana.`,
               };
       items.push({ key: `custody-${i}`, at, icon: Send, tone: "bg-gold/15 text-accent", title, detail });
@@ -63,7 +65,7 @@ export function Activity({
       icon: PackageOpen,
       tone: "bg-warn/15 text-warn",
       title: "Seal broken",
-      detail: `By ${vault.state.by}. The vault can't change hands from here on.`,
+      detail: `By ${shortAccount(vault.state.by)}. The vault can't change hands from here on.`,
     });
   }
   for (const w of withdrawals) {

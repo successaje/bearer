@@ -44,8 +44,14 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           <div style={{ display: "flex", position: "relative", width: 540, height: 340, borderRadius: 28, boxShadow: "0 40px 80px rgba(0,0,0,0.6)" }}>
             <img src={card} width={540} height={340} alt="" style={{ position: "absolute", top: 0, left: 0 }} />
             <div style={{ position: "absolute", left: 33, top: 37, fontSize: 15, fontWeight: 600, letterSpacing: 4, lineHeight: 1, color: words.muted }}>BEARER</div>
-            <div style={{ position: "absolute", left: 33, top: 164, fontSize: 29, fontWeight: 500, lineHeight: 1, color: words.text }}>{words.name}</div>
-            <div style={{ position: "absolute", left: 33, top: 201, fontSize: 16, lineHeight: 1, color: words.muted }}>{words.serial}</div>
+            <div style={{ position: "absolute", left: 33, top: 164 - (words.lines.length - 1) * 16, display: "flex", flexDirection: "column" }}>
+              {words.lines.map((l) => (
+                <div key={l} style={{ fontSize: words.lines.length > 1 ? 26 : 29, fontWeight: 500, lineHeight: 1.12, color: words.text }}>
+                  {l}
+                </div>
+              ))}
+              <div style={{ marginTop: 8, fontSize: 16, lineHeight: 1, color: words.muted }}>{words.serial}</div>
+            </div>
             <div
               style={{
                 position: "absolute",

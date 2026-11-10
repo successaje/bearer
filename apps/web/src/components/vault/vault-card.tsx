@@ -4,7 +4,7 @@ import type { VaultView } from "@bearer/sdk";
 import { Repeat } from "lucide-react";
 import { useState } from "react";
 import { BearerCard, FINISHES } from "@/components/card/bearer-card";
-import { formatDate, nsToMs, vaultNumber } from "@/lib/vault/format";
+import { formatDate, nsToMs, shortAccount, vaultNumber } from "@/lib/vault/format";
 import { isSealed } from "@/lib/vault/report";
 import { cn } from "@/lib/utils";
 
@@ -107,7 +107,7 @@ function CardBack({ vault }: { vault: VaultView }) {
                   <span className="mr-[1.4cqw] text-[2.4cqw] uppercase tracking-[0.12em]" style={{ color: f.muted }}>
                     {current ? "Held by" : "Pay to"}
                   </span>
-                  <span className={cn("font-mono text-[3.3cqw]", current && "font-semibold")}>{c.account_id}</span>
+                  <span className={cn("font-mono text-[3.3cqw]", current && "font-semibold")} title={c.account_id}>{shortAccount(c.account_id)}</span>
                 </span>
                 <span className="shrink-0 text-[2.5cqw]" style={{ color: f.muted }}>
                   {formatDate(nsToMs(c.since_ns))}

@@ -11,9 +11,11 @@ import { FieldMessage, Input, Label } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
 import { BearerCard, FINISHES, FINISH_ORDER } from "@/components/card/bearer-card";
 import { CREATE_DEPOSIT_NEAR } from "@/lib/config";
+import { CATEGORIES, nameBytes, nameWith, type Category } from "@/lib/vault/category";
 import { useCreateVault } from "@/lib/vault/hooks";
 import { cn } from "@/lib/utils";
 
+/** The contract's limit, in UTF-8 bytes (MAX_NAME_LEN): a category's emoji and its space take 4 or 5. */
 const MAX_NAME = 32;
 
 export function CreateView() {
@@ -21,7 +23,11 @@ export function CreateView() {
   const nameId = useId();
   const { accountId, ready, openConnect } = useWallet();
   const [name, setName] = useState("");
+  const [category, setCategory] = useState<Category | null>(null);
   const [finish, setFinish] = useState<Finish>("obsidian");
+  // What's stored: the category's emoji, then the name, which defaults to the category's label.
+  const fullName = nameWith(category, name.trim() || (category ? category.label : ""));
+  const fits = (title: string, c: Category | null) => nameBytes(nameWith(c, title)) <= MAX_NAME;
   const create = useCreateVault();
 
   function submit(e: FormEvent) {
@@ -31,7 +37,7 @@ export function CreateView() {
       return;
     }
     create.mutate(
-      { name: name.trim(), finish, signer: accountId },
+      { name: fullName, finish, signer: accountId },
       {
         onSuccess: (vault) => {
           toast.success("Vault created", {
@@ -59,13 +65,47 @@ export function CreateView() {
           <div className="relative mx-auto max-w-[520px] py-6">
             <div aria-hidden className="absolute inset-x-0 top-1/2 h-[120%] -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(201_162_39/0.14),transparent)]" />
             <div className="relative">
-              <BearerCard name={name.trim() || "Your vault"} finish={finish} valueUsd={0} />
+              <BearerCard name={fullName || "Your vault"} finish={finish} valueUsd={0} />
             </div>
           </div>
           <p className="mt-2 text-center text-[13px] text-fg-3">Preview. Its number is assigned when it&apos;s created.</p>
         </div>
 
         <form onSubmit={submit} noValidate className="flex flex-col gap-7">
+          <fieldset>
+            <legend className="flex w-full justify-between text-[13.5px] font-medium">
+              What&apos;s it for? <span className="font-normal text-fg-2">{category ? category.blurb : "The classic card"}</span>
+            </legend>
+            <div role="radiogroup" aria-label="What it's for" className="mt-3 flex flex-wrap gap-2">
+              {[null, ...CATEGORIES].map((c) => {
+                const on = (c?.id ?? null) === (category?.id ?? null);
+                return (
+                  <button
+                    key={c?.id ?? "classic"}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => {
+                      // Keep the name within the limit once the emoji is in front of it.
+                      let title = name;
+                      while (title && !fits(title, c)) title = Array.from(title).slice(0, -1).join("");
+                      setName(title);
+                      setCategory(c);
+                    }}
+                    className={cn(
+                      "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[13.5px] transition-colors",
+                      on ? "border-gold bg-gold/10 text-fg" : "border-line-strong bg-surface text-fg-2 hover:bg-raised hover:text-fg",
+                    )}
+                  >
+                    {c ? <span aria-hidden>{c.emoji}</span> : null}
+                    {c ? c.label : "Classic"}
+                    {c?.fun ? <span className="rounded-full bg-raised px-1.5 text-[10.5px] font-medium uppercase tracking-wide text-fg-3">fun</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
           <div>
             <div className="flex items-center justify-between">
               <Label htmlFor={nameId}>Name</Label>
@@ -74,15 +114,19 @@ export function CreateView() {
             <Input
               id={nameId}
               value={name}
-              maxLength={MAX_NAME}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Theo's birthday"
+              onChange={(e) => {
+                // Trim to the contract's byte limit rather than refuse a paste.
+                let title = e.target.value;
+                while (title && !fits(title, category)) title = Array.from(title).slice(0, -1).join("");
+                setName(title);
+              }}
+              placeholder={category ? category.label : "Theo's birthday"}
               autoComplete="off"
               aria-describedby={`${nameId}-msg`}
               className="mt-2"
             />
             <FieldMessage id={`${nameId}-msg`}>
-              Shown on the vault. It&apos;s public on NEAR. {name.length}/{MAX_NAME}
+              Shown on the vault{category ? `, after ${category.emoji}` : ""}. It&apos;s public on NEAR. {nameBytes(fullName)}/{MAX_NAME} bytes
             </FieldMessage>
           </div>
 

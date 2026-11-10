@@ -3,6 +3,7 @@ import { Check, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { isSealed } from "@/lib/vault/report";
 import { cn } from "@/lib/utils";
+import { shortAccount } from "@/lib/vault/format";
 
 /**
  * Shown when someone scans a hand-over QR (`?handover=1`): the three things to check before
@@ -29,7 +30,7 @@ export function RecipientChecklist({ vault, viewer }: { vault: VaultView; viewer
         <Item ok={zero} title={`${vault.signatures_requested} signatures ever requested`}>
           {zero ? "There's no signed transaction anywhere that could empty it later." : "Signatures exist for this vault."}
         </Item>
-        <Item ok title={`Held by ${vault.owner_id}`}>
+        <Item ok title={`Held by ${shortAccount(vault.owner_id)}`}>
           Make sure that&apos;s the person in front of you. Once it&apos;s yours, this page says &ldquo;You hold this
           vault&rdquo;{viewer ? "" : " when you connect your wallet"}.
         </Item>

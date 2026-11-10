@@ -2,6 +2,8 @@ import type { CSSProperties } from "react";
 import { Seal, type SealVariant } from "@/components/brand/seal";
 import { ChainStack } from "@/components/brand/chain-icon";
 import type { ChainTag, Finish } from "@bearer/sdk";
+import { readName } from "@/lib/vault/category";
+import { categoryArt } from "@/lib/vault/category-art";
 import { formatUsd, vaultNumber } from "@/lib/vault/format";
 import { cn } from "@/lib/utils";
 
@@ -84,7 +86,8 @@ export const FINISH_ORDER: Finish[] = ["obsidian", "champagne", "graphite", "ivo
 
 /**
  * The physical card. Sizes scale with its container (cqw), so it looks right
- * from a 90px illustration up to the hero.
+ * from a 90px illustration up to the hero. A name that picks a category
+ * (lib/vault/category.ts) puts that category's art on the face.
  */
 export function BearerCard({
   name,
@@ -97,6 +100,7 @@ export function BearerCard({
   style,
   shadow = true,
   valueLabel = "Observed value",
+  art = true,
 }: {
   name: string;
   id?: string;
@@ -108,8 +112,11 @@ export function BearerCard({
   style?: CSSProperties;
   shadow?: boolean;
   valueLabel?: string;
+  /** Draw the category's art, if the name picks one. */
+  art?: boolean;
 }) {
   const f = FINISHES[finish];
+  const { category, title } = art ? readName(name) : { category: null, title: name };
   return (
     <div className={cn("@container w-full", className)} style={style}>
       <div
@@ -120,6 +127,15 @@ export function BearerCard({
         style={{ background: f.background, borderColor: f.border, color: f.text }}
       >
         <div aria-hidden className={cn("absolute inset-0 -z-10", f.light ? "guilloche-ink" : "guilloche")} />
+        {category ? (
+          <svg
+            aria-hidden
+            viewBox="0 0 200 200"
+            className="pointer-events-none absolute right-[5cqw] top-[47%] -z-[5] h-[54%] -translate-y-1/2"
+            // Our own static drawing; the only input is the category id.
+            dangerouslySetInnerHTML={{ __html: categoryArt(category.id, `bc${id ?? "x"}${category.id}`) }}
+          />
+        ) : null}
         <div className="flex items-start justify-between">
           <span className="text-[2.8cqw] font-semibold tracking-[0.26em]" style={{ color: f.muted }}>
             BEARER
@@ -127,7 +143,9 @@ export function BearerCard({
           <Seal variant={seal} tone={f.light && seal === "monogram" ? "dark" : "gold"} className="size-[11.5cqw]" />
         </div>
         <div>
-          <div className="truncate text-[5.4cqw] font-medium tracking-[-0.02em]">{name}</div>
+          <div className={cn("text-[5.4cqw] font-medium leading-[1.2] tracking-[-0.02em]", category ? "line-clamp-2 max-w-[56%] break-words" : "truncate")}>
+            {title || name}
+          </div>
           {id ? (
             <div className="mt-[0.8cqw] font-mono text-[3cqw]" style={{ color: f.muted }}>
               {vaultNumber(id)}

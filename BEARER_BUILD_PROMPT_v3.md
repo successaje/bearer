@@ -135,7 +135,7 @@ Short form: **"Hand someone Bitcoin like you'd hand them a sealed envelope."**
 
 ### 1.8 The other project (required disclosure, hackathon rule Q-015)
 
-The same team lead is also submitting an independent project, **"Sudo by Contract"**: on-chain-governed SSH access for AI agents using NEAR Chain Signatures. The two share no code. Bearer's README must name it and state that they are independent. Do not import, copy or reference its code.
+The same team lead is also submitting an independent project, **"Bakeoff"**. The two share no code. Bearer's README must name it and state that they are independent. Do not import, copy or reference its code.
 
 ## 2. Hackathon briefing (internalize, then re-verify)
 
@@ -695,7 +695,7 @@ bearer/
 
 `rust` (fmt, clippy, unit tests, reproducible build), `wasm-hash` (rebuild and compare with `SHA256SUMS`), `sandbox` (integration tests), `ts` (lint, typecheck, Vitest, `apps/web` build), `clean-clone` (Linux and macOS, Node + pnpm only: `pnpm install --frozen-lockfile && pnpm demo:dry`), `e2e` (Playwright, mock), `secrets` (gitleaks). Status badge in the README.
 
-### 6.6 Known gotchas (verified 2026-11-08 while building the sibling project, Sudo by Contract)
+### 6.6 Known gotchas (verified 2026-11-08)
 
 These were hit for real against nearcore 2.14 sandbox and NEAR testnet. Check them on Day 1.
 
@@ -849,7 +849,7 @@ Demo: <hosted url>  Code: <repo url>
 10. **Deployed contracts:** testnet IDs, code hash, `near account list-keys` output showing no full-access keys.
 11. **Repo layout and running the tests**, including why the wasm is committed.
 12. **Limitations and honest status:** once opened, a vault can't be transferred; balances are observed data; Bearer doesn't escrow payments between people; EVM withdrawals on Base Sepolia only; testnet only; not audited.
-13. **Hackathon disclosure:** built during the window starting 2026-10-19; libraries and AI tools used; *"The same team lead also submitted **Sudo by Contract**, an independent project. The two share no code."*
+13. **Hackathon disclosure:** built during the window starting 2026-10-19; libraries and AI tools used; *"The same team lead also submitted **Bakeoff**, an independent project. The two share no code."*
 14. **License** (MIT).
 
 ### 9.2 "How NEAR is used" table
@@ -897,7 +897,7 @@ Keep `idea` within 2,000 characters and update it to match what actually shipped
 - [ ] Contract locked; code hash published and matching `contracts/res/SHA256SUMS`.
 - [ ] Hosted demo works on a phone; the attack lab works.
 - [ ] LICENSE present; no secrets in git history (gitleaks).
-- [ ] The Q-015 disclosure naming Sudo by Contract is present.
+- [ ] The Q-015 disclosure naming Bakeoff is present.
 - [ ] Video recorded; X post drafted; **the human publishes it** and gives you the link.
 - [ ] Repo public, **with the human's approval**.
 - [ ] Payload printed, **the human says yes**, then you send it.

@@ -421,6 +421,26 @@ claim("Bearer links", "Vault No. 0010 passed through three links and on to an ac
   return `custody ${ids.map((id) => (isLink(id) ? `${id.slice(0, 4)}…` : id)).join(" → ")}; sealed, 0 signatures`;
 });
 
+const LINK_TX = "HDeV3xPnpxn24NbcA3ja45hZyqty8wVbrPBmo3DZrZA";
+const LINK_BTC = "4c3191e9c2c9177654dab2a7b43459ed5800040e41fa0279eae0e81f6a3d3519";
+
+claim("Bearer links", "With no wallet, a link's own key broke vault No. 0012's seal and withdrew its Bitcoin, confirmed in testnet4 block 160,397", `NEAR archival RPC, tx ${short(LINK_TX)}; Esplora`, async () => {
+  const v = await vault("12");
+  expect(/^[0-9a-f]{64}$/.test(v.owner_id) && v.state.kind === "opened" && v.state.by === v.owner_id, `held by ${v.owner_id}, ${JSON.stringify(v.state)}`);
+  const tx = await nearTx(LINK_TX, v.owner_id);
+  expect(tx && tx.status.SuccessValue !== undefined, "the NEAR transaction isn't a success");
+  const methods = calls(tx).map((c) => c.method_name).join(" + ");
+  expect(tx.transaction.signer_id === v.owner_id && methods === "break_seal + withdraw_btc", `${tx.transaction.signer_id} called ${methods}`);
+  const [[w], raw, btc] = await Promise.all([
+    view(BEARER, "withdrawals", { token_id: "12", from_index: 0, limit: 1 }),
+    esplora(`/tx/${LINK_BTC}/hex`),
+    esplora(`/tx/${LINK_BTC}`),
+  ]);
+  expect(raw?.toLowerCase() === w?.signed_raw_tx?.toLowerCase(), "the Bitcoin transaction's bytes differ from the contract's signed record");
+  expect(btc.status.confirmed && btc.status.block_height === 160397, `status ${JSON.stringify(btc.status)}`);
+  return `${methods} signed by ${v.owner_id.slice(0, 4)}…, ${(gasBurnt(tx) / 1e12).toFixed(1)} Tgas; ${sats(btc.vout[0].value)} in ${short(LINK_BTC)}, block 160,397`;
+});
+
 // 8. Signed through the earlier test contract and accepted by each chain.
 
 const GE = "Signed through an earlier test contract and accepted on each chain";

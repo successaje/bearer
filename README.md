@@ -179,7 +179,7 @@ keys and sends nothing:
 pnpm verify        # or: node scripts/verify.mjs  (Node 22+, nothing to install)
 ```
 
-You should see 34 ✓ in under a minute, ending `34 claims in … s: 34 ✓, 0 ✗`. Among them:
+You should see 35 ✓ in under a minute, ending `35 claims in … s: 35 ✓, 0 ✗`. Among them:
 
 - each of the three contracts has no access keys, runs the wasm committed in `contracts/res/`, and
   names a commit that is in this repository;
@@ -188,7 +188,8 @@ You should see 34 ✓ in under a minute, ending `34 claims in … s: 34 ✓, 0 �
 - vault No. 0009 is sealed with 0 signatures and holds 300,000 sats and 0.5 SOL;
 - every sealed vault on `bearer.testnet` has 0 signatures;
 - each recorded attack failed with its expected error;
-- vault No. 0010 went through three Bearer links and on to an account, still sealed;
+- vault No. 0010 went through three Bearer links and on to an account, still sealed, and a link's own
+  key, with no wallet, broke vault No. 0012's seal and withdrew its Bitcoin;
 - the sale, the scheduled handover, the wallet withdrawal and both T10 transactions are on chain as
   described, and the second T10 transaction never confirmed.
 
@@ -262,7 +263,7 @@ link needs no contract of its own. Each way keeps the vault sealed until it arri
 | **Hand over** | `nft_transfer` on `bearer.testnet`, or in person with a QR code (`/v/[id]/handover`) | 6 handovers of vault No. 0007: final in a median 4.6 s (4.0–5.8 s, timed from a laptop), 4.0 Tgas = 0.0004 NEAR each; sealed, 0 signatures after every one ([report](contracts/tests/spike/reports/testnet-handover-2026-11-09T18-05-40.934Z.json)) |
 | **Sell** | `bearer-market.testnet` holds a listed vault in escrow; the buyer pays the exact price, gets the vault, then the seller is paid | Vault No. 0004 sold for 0.1 NEAR ([purchase](https://testnet.nearblocks.io/txns/GCuy9zAFHGeN8ZsjgvUyaF8Uzz4xvW4UvNessKMMYv6F)); it arrived sealed with 0 signatures |
 | **Schedule** | `bearer-schedule.testnet` holds it until a date; on or after it, anyone can hand it over, only to the chosen recipient | Vault No. 0007 handed to bob on its date by a third account ([tx](https://testnet.nearblocks.io/txns/76eGYPzRDspJi3YXLXVGU1zDnj8wcNF14kSz8Vu2HUpt)) |
-| **Send as a link** | `/claim#<key>`: the key's NEAR account holds the vault. Whoever opens the link holds it, with no wallet, and can pass it on as a new link, which empties the old one ([docs/features/bearer-links.md](docs/features/bearer-links.md)) | Vault No. 0010 passed through three links and on to an account, sealed with 0 signatures; each earlier link then read empty |
+| **Send as a link** | `/claim#<key>`: the key's NEAR account holds the vault. Whoever opens the link holds it, with no wallet, and can pass it on as a new link, which empties the old one ([docs/features/bearer-links.md](docs/features/bearer-links.md)) | Vault No. 0010 passed through three links and on to an account, sealed with 0 signatures; each earlier link then read empty. Link 2, with no wallet, broke vault No. 0012's seal and withdrew 9,718 sats in one NEAR transaction signed by its own key ([NEAR](https://testnet.nearblocks.io/txns/HDeV3xPnpxn24NbcA3ja45hZyqty8wVbrPBmo3DZrZA), [Bitcoin](https://blockstream.info/testnet4/tx/4c3191e9c2c9177654dab2a7b43459ed5800040e41fa0279eae0e81f6a3d3519), block 160,397) |
 
 What people could use them for:
 

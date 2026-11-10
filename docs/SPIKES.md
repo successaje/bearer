@@ -3,6 +3,25 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-10 · Bearer links: sealed vaults sent as links, opened with no wallet
+
+`pnpm spike:links` on `bearer.testnet`, with the parent test account, and the page at `/claim`
+on a local build against testnet. Read back from the chains:
+
+| Step | Result | Tx |
+|---|---|---|
+| The treasury, vault No. 0011 (opened, held by the parent), is funded | `takaba.testnet` withdrew 80,000 sats from opened vault No. 0006 through its wallet; confirmed in testnet4 block 160,394 | [d85f0245…](https://blockstream.info/testnet4/tx/d85f024546bb3c07cf683b90ea66dff708f549cd54e07fad2c29e1567187e87a) |
+| 7 links are minted (vaults No. 0012 to No. 0018) | each: a sealed vault created by the parent, a fresh key's implicit account funded with 0.2 NEAR, the vault handed to it, 10,000 sats paid from the treasury (fee 282 sats each), the payments chained on unconfirmed change; all 7 confirmed in block 160,395 | e.g. [b2c73cc2…](https://blockstream.info/testnet4/tx/b2c73cc2698aa75d94a95413abab252ccc1a072f98041f71c68ad1a7d4df74a9) |
+| Link 2 is opened in a browser with no wallet; the vault page treats it as the owner | the page signed `break_seal` + `withdraw_btc` in one NEAR transaction with the link's key: 46.4 Tgas, 0.0016 NEAR burnt, plus the 0.01 NEAR withdrawal deposit | [HDeV3xPn…](https://testnet.nearblocks.io/txns/HDeV3xPnpxn24NbcA3ja45hZyqty8wVbrPBmo3DZrZA) |
+| The signed Bitcoin spend | 9,718 sats from No. 0012 back to the treasury, fee 282 sats; confirmed in testnet4 block 160,397 | [4c3191e9…](https://blockstream.info/testnet4/tx/4c3191e9c2c9177654dab2a7b43459ed5800040e41fa0279eae0e81f6a3d3519) |
+| Vault No. 0010 is passed on as a new link twice, then sent to an account | custody: parent → link → new link → newer link → parent; still sealed, 0 signatures. Each earlier link then read "This link is empty" | |
+| A pass-on is interrupted (T19) | the page reloaded mid-move, after the new link was funded and before vault No. 0019 moved; reopening the old link showed the same new link and finished the move. A mint stopped after creating its vault was finished by a plain rerun | |
+
+Measured along the way: NEAR takes a call's gas up front at about ten times the base price (a 30
+Tgas `nft_transfer` needed 0.031 NEAR available), and charges a transfer to an implicit account
+about 0.0076 NEAR up front; both are refunded in part. The six links still sealed are kept,
+owner-only, for judges. N = 1 for each flow.
+
 ## 2026-11-09 · Bitcoin that changed hands without a Bitcoin transaction, with real coins
 
 On `bearer.testnet`, through the owner's own wallets on the live site:

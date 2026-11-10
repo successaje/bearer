@@ -1,0 +1,12 @@
+[package]
+name = "mock-receiver"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Sandbox-only NEP-171 receiver that breaks a vault's seal inside nft_on_transfer, then asks for it back (T6)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { workspace = true }

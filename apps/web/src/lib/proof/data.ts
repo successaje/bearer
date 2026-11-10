@@ -277,8 +277,8 @@ export const THREATS: Threat[] = [
     id: "T6",
     attack: "Bypass the gate: approvals, the transfer_call return leg, a forgotten path",
     defence: "No approvals extension; the return leg uses the gate; a test fails if any other code writes the owner",
-    tests: ["nft_approve_not_exposed", "single_owner_write_path", "resolve_keeps_opened_vault_with_receiver (to do)"],
-    status: "partly",
+    tests: ["nft_approve_not_exposed", "single_owner_write_path", "resolve_keeps_opened_vault_with_receiver (a receiver opens it in the callback, then asks for it back: it stays opened, with the receiver)"],
+    status: "proven",
   },
   {
     id: "T7",

@@ -1,10 +1,11 @@
 "use client";
 
 import type { MarketListing } from "@bearer/sdk";
-import { ArrowDownLeft, ArrowUpRight, CalendarClock, Eye, History, Link2, PackageOpen, Presentation, ScrollText, Send, Store } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CalendarClock, Code, Coins, Eye, History, Link2, PackageOpen, Presentation, ScrollText, Send, ShieldCheck, Store, Swords } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Tabs } from "radix-ui";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, ErrorState } from "@/components/layout/page-states";
 import { VerifyForm } from "@/components/landing/verify-form";
@@ -39,6 +40,64 @@ import { WithdrawalsList } from "./withdrawals-list";
 
 type SheetName = "transfer" | "break" | "withdraw" | "fund" | "list" | "buy" | "schedule";
 
+/** The page below the card, one tab at a time. Each tab has a link: /v/1#attack-lab opens that tab. */
+const TABS = [
+  { id: "overview", label: "Overview", icon: ShieldCheck },
+  { id: "inside", label: "Inside", icon: Coins },
+  { id: "history", label: "History", icon: History },
+  { id: "attack-lab", label: "Attack lab", icon: Swords },
+  { id: "technical", label: "Technical", icon: Code },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
+
+function tabFromHash(): TabId | null {
+  const h = window.location.hash.slice(1);
+  return TABS.find((t) => t.id === h)?.id ?? null;
+}
+
+/** The open tab, kept in the URL's fragment so a link (or the back of a shared link) opens it. */
+function useHashTab(loaded: boolean) {
+  // The tabs render only once the vault has loaded, after hydration, so reading the URL here is safe.
+  const [tab, setTab] = useState<TabId>(() => (typeof window === "undefined" ? null : tabFromHash()) ?? "overview");
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!loaded) return;
+    if (tabFromHash()) tabsRef.current?.scrollIntoView({ block: "start" });
+    const onHash = () => {
+      const t = tabFromHash();
+      if (!t) return;
+      setTab(t);
+      tabsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, [loaded]);
+
+  // On a phone the tab bar scrolls sideways: keep the open tab in sight.
+  useEffect(() => {
+    const list = tabsRef.current?.querySelector<HTMLElement>("[role=tablist]");
+    const active = list?.querySelector<HTMLElement>("[data-state=active]");
+    if (!list || !active) return;
+    const right = active.offsetLeft + active.offsetWidth;
+    if (right > list.scrollLeft + list.clientWidth) list.scrollLeft = right - list.clientWidth;
+    else if (active.offsetLeft < list.scrollLeft) list.scrollLeft = active.offsetLeft;
+  }, [tab, loaded]);
+
+  function selectTab(t: TabId) {
+    setTab(t);
+    const { pathname, search } = window.location;
+    history.replaceState(history.state, "", t === "overview" ? pathname + search : `${pathname}${search}#${t}`);
+  }
+
+  function openTab(t: TabId) {
+    selectTab(t);
+    tabsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  return { tab, selectTab, openTab, tabsRef };
+}
+
 export function VaultDetailView() {
   const { id } = useParams<{ id: string }>();
   const handover = useSearchParams().get("handover") === "1";
@@ -55,6 +114,7 @@ export function VaultDetailView() {
   // The listing being bought, kept so the success screen survives the listing's removal.
   const [buying, setBuying] = useState<MarketListing | null>(null);
   const received = useJustReceived(query.data, ready ? accountId : null);
+  const { tab, selectTab, openTab, tabsRef } = useHashTab(!!query.data && !!now);
 
   if (query.isPending || !now) return <VaultDetailSkeleton />;
   if (query.isError) return <Shell><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Shell>;
@@ -92,9 +152,9 @@ export function VaultDetailView() {
           </p>
           <p className="mt-0.5 text-fg-2">
             Want to see what happens if you try?{" "}
-            <a href="#attack-lab" className="font-medium text-accent hover:underline">
+            <button type="button" onClick={() => openTab("attack-lab")} className="font-medium text-accent hover:underline">
               {IS_SIMULATED ? "Run it in the attack lab" : "See the real attempts in the attack lab"}
-            </a>
+            </button>
             .
           </p>
         </Callout>
@@ -265,43 +325,55 @@ export function VaultDetailView() {
 
       {handover && !isOwner ? <RecipientChecklist vault={vault} viewer={accountId} /> : null}
 
-      <div className="mt-10">
-        <FiveQuestions
-          answers={fiveQuestions(
-            vault,
-            observations,
-            accountId,
-            inSchedule
-              ? { kind: "schedule", giver: scheduled.giver, recipient: scheduled.recipient }
-              : inEscrow
-                ? { kind: "market", seller: listing.seller }
-                : null,
-          )}
-        />
-      </div>
+      <Tabs.Root value={tab} onValueChange={(t) => selectTab(t as TabId)} className="mt-10">
+        <div ref={tabsRef} className="scroll-mt-24 border-b border-line">
+          <Tabs.List aria-label="About this vault" className="relative -mb-px flex gap-1 overflow-x-auto [scrollbar-width:none]">
+            {TABS.map((t) => (
+              <Tabs.Trigger
+                key={t.id}
+                value={t.id}
+                className="inline-flex h-11 shrink-0 items-center gap-2 border-b-2 border-transparent px-3 text-[14px] text-fg-2 transition-colors hover:text-fg data-[state=active]:border-accent data-[state=active]:font-medium data-[state=active]:text-fg"
+              >
+                <t.icon aria-hidden className="hidden size-4 sm:block" />
+                {t.label}
+              </Tabs.Trigger>
+            ))}
+          </Tabs.List>
+        </div>
 
-      <div className="my-12 h-px bg-line" />
-
-      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <aside className="flex flex-col gap-5 lg:sticky lg:top-24 lg:order-last">
-          <SealPanel
-            tokenId={vault.token_id}
-            owner={vault.owner_id}
-            report={report}
-            now={now}
-            checkedAt={obs.dataUpdatedAt}
-            onRecheck={() => {
-              void query.refetch();
-              void obs.refetch();
-            }}
-            rechecking={query.isFetching || obs.isFetching}
-          />
-          <div id="attack-lab" className="scroll-mt-24">
-            <AttackLab vault={vault} />
+        <Tabs.Content value="overview" className="mt-7 focus-visible:outline-none">
+          <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <SealPanel
+              tokenId={vault.token_id}
+              owner={vault.owner_id}
+              report={report}
+              now={now}
+              checkedAt={obs.dataUpdatedAt}
+              onRecheck={() => {
+                void query.refetch();
+                void obs.refetch();
+              }}
+              rechecking={query.isFetching || obs.isFetching}
+            />
+            <div className="lg:sticky lg:top-24">
+              <FiveQuestions
+                stacked
+                answers={fiveQuestions(
+                  vault,
+                  observations,
+                  accountId,
+                  inSchedule
+                    ? { kind: "schedule", giver: scheduled.giver, recipient: scheduled.recipient }
+                    : inEscrow
+                      ? { kind: "market", seller: listing.seller }
+                      : null,
+                )}
+              />
+            </div>
           </div>
-        </aside>
+        </Tabs.Content>
 
-        <div className="flex min-w-0 flex-col">
+        <Tabs.Content value="inside" className="mt-7 max-w-[820px] focus-visible:outline-none">
           <h2 className="text-[20px] font-semibold tracking-[-0.02em]">Inside this vault</h2>
           <div className="mt-4 flex flex-col gap-3">
             {observations
@@ -317,17 +389,21 @@ export function VaultDetailView() {
               </div>
             </>
           ) : null}
+        </Tabs.Content>
 
-          <h2 className="mt-11 text-[20px] font-semibold tracking-[-0.02em]">History</h2>
-          <div className="mt-4">
-            <Activity vault={vault} withdrawals={withdrawals.data ?? []} observations={observations} now={now} />
-          </div>
+        <Tabs.Content value="history" className="mt-7 max-w-[820px] focus-visible:outline-none">
+          <h2 className="sr-only">History</h2>
+          <Activity vault={vault} withdrawals={withdrawals.data ?? []} observations={observations} now={now} />
+        </Tabs.Content>
 
-          <div className="mt-11">
-            <TechnicalDetails vault={vault} facts={facts.data} />
-          </div>
-        </div>
-      </div>
+        <Tabs.Content value="attack-lab" className="mt-7 max-w-[720px] focus-visible:outline-none">
+          <AttackLab vault={vault} />
+        </Tabs.Content>
+
+        <Tabs.Content value="technical" className="mt-7 max-w-[820px] focus-visible:outline-none">
+          <TechnicalDetails vault={vault} facts={facts.data} />
+        </Tabs.Content>
+      </Tabs.Root>
 
       {!isOwner && ready && !accountId ? (
         <p className="mt-10 text-center text-[13.5px] text-fg-3">

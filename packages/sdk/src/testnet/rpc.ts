@@ -29,7 +29,9 @@ export async function getJson<T>(url: string): Promise<T | null> {
 }
 
 const decoder = new TextDecoder();
-const toBase64 = (s: string) => (typeof btoa === "function" ? btoa(s) : Buffer.from(s, "utf8").toString("base64"));
+const encoder = new TextEncoder();
+/** UTF-8, then base64, the same in browsers and Node (both have btoa). */
+const toBase64 = (s: string) => btoa(Array.from(encoder.encode(s), (b) => String.fromCharCode(b)).join(""));
 
 /** NEAR's view calls and account checks, read at `final` finality unless asked otherwise. */
 export class NearRpc {

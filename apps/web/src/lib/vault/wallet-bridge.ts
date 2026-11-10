@@ -25,6 +25,13 @@ export function setConnectedAccount(id: string | null) {
   account = id;
 }
 
+let link: WalletAdapter | null = null;
+
+/** While a Bearer link is open in this tab, its key signs instead of near-connect's wallet. */
+export function setLinkWallet(wallet: WalletAdapter | null) {
+  link = wallet;
+}
+
 function decodeReturn(value: string | undefined) {
   if (!value) return null;
   const text = atob(value);
@@ -44,14 +51,16 @@ function result(outcome: Outcome) {
   return { txHash: outcome.transaction.hash, returnValue: decodeReturn(outcome.status?.SuccessValue) };
 }
 
-/** @bearer/sdk's wallet interface, backed by whichever wallet the user picked in near-connect. */
-export const nearConnectWallet: WalletAdapter = {
-  accountId: () => account,
+/** @bearer/sdk's wallet interface: the open Bearer link, or the wallet the user picked in near-connect. */
+export const appWallet: WalletAdapter = {
+  accountId: () => link?.accountId() ?? account,
   async send(receiverId, calls) {
+    if (link) return link.send(receiverId, calls);
     const wallet = await (await getConnector()).wallet();
     return result((await wallet.signAndSendTransaction({ receiverId, actions: toActions(calls) })) as unknown as Outcome);
   },
   async sendMany(txs) {
+    if (link?.sendMany) return link.sendMany(txs);
     const wallet = await (await getConnector()).wallet();
     const outcomes = (await wallet.signAndSendTransactions({
       transactions: txs.map((t) => ({ receiverId: t.receiverId, actions: toActions(t.calls) })),

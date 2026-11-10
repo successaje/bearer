@@ -3,6 +3,12 @@
 **For:** anyone wondering why Bearer is built the way it is.
 Newest first. Each entry: date, decision, reason, alternatives considered.
 
+## 2026-11-10 · Bearer links: a vault sent as a link, with no contract change
+
+- **Decision:** a link `/claim#<seed>` holds a vault through the seed's NEAR implicit account. The page signs with the key in the browser (`apps/web/src/lib/vault/bearer-link.ts`: Borsh, ed25519, `send_tx`), and the app's wallet bridge uses it while the link is open, so every vault page works without a wallet. "Pass it on" moves the vault to a new link's account, which empties the old link. `pnpm spike:links` makes links: a sealed vault per link, handed to a fresh key's account with 0.2 NEAR for fees, its Bitcoin paid from one opened treasury vault.
+- **Reason:** judges and recipients without a NEAR wallet could only read; now they can hold, pass on and open a vault with real testnet coins from a link. It also shows Bearer's point directly: an old copy of a passed-on link is worth nothing. The contracts are locked, so the brief's claim keys in the contract (T13) were out; this needs none, and T13 is met by moving the vault, not by deleting a key.
+- **Alternatives:** claim keys inside the contract (needs a new deployment); a server that holds the keys and claims for you (custody); near-api-js in the browser (a much larger bundle for one transaction type).
+
 ## 2026-11-09 · Scheduled handover: a separate contract, released by anyone after the date
 
 - **Decision:** `contracts/schedule` (`bearer-schedule.testnet`) holds a sealed vault sent with `nft_transfer_call` and a message naming the recipient, the date and whether the giver may cancel. On or after the date anyone may call `release`, which sends the recipient 1 yoctoNEAR first and moves the vault only if that succeeds; the giver may cancel only if they chose to and only before the date. A 0.01 NEAR deposit per schedule, paid back at the end. Reproducibly built and locked, like Bearer and the market.

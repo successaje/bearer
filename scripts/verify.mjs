@@ -400,7 +400,20 @@ claim(GM, "Vault No. 0007 was handed to bob on its date by a third account, stil
   return `release(7) by ${tx.transaction.signer_id}; custody alice → schedule → bob; sealed, 0 signatures`;
 });
 
-// 7. Signed through the earlier test contract and accepted by each chain.
+// 7. Bearer links: a vault sent as a link, then passed on (docs/features/bearer-links.md).
+
+claim("Bearer links", "Vault No. 0010 passed through three links and on to an account, still sealed", "bearer.testnet vault view", async () => {
+  const v = await vault("10");
+  const ids = v.custody.map((c) => c.account_id);
+  const isLink = (id) => /^[0-9a-f]{64}$/.test(id);
+  const last = ids[ids.length - 1];
+  expect(ids.filter(isLink).length >= 3, `its custody has ${ids.filter(isLink).length} link accounts`);
+  expect(!isLink(last) && ids.findIndex(isLink) < ids.length - 1, `it ends with ${last}`);
+  expect(v.state.kind === "sealed" && v.signatures_requested === 0, `state ${v.state.kind}, ${v.signatures_requested} signatures`);
+  return `custody ${ids.map((id) => (isLink(id) ? `${id.slice(0, 4)}…` : id)).join(" → ")}; sealed, 0 signatures`;
+});
+
+// 8. Signed through the earlier test contract and accepted by each chain.
 
 const GE = "Signed through an earlier test contract and accepted on each chain";
 

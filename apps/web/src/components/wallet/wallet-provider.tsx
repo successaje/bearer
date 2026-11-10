@@ -6,7 +6,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { toast } from "sonner";
 import { SimulatedTag } from "@/components/ui/primitives";
 import { DEMO_ACCOUNTS } from "@/lib/vault/mock-data";
-import { getConnector, setConnectedAccount } from "@/lib/vault/wallet-bridge";
+import { linkWallet, storeLinkKey, storedLinkKey, type LinkKey } from "@/lib/vault/bearer-link";
+import { getConnector, setConnectedAccount, setLinkWallet } from "@/lib/vault/wallet-bridge";
 import { IS_SIMULATED } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
@@ -19,15 +20,21 @@ interface WalletContextValue {
   accountId: string | null;
   /** False until we've read the stored session on the client. */
   ready: boolean;
+  /** The account is a Bearer link open in this tab (lib/vault/bearer-link.ts), not a wallet. */
+  link: boolean;
   connect: (accountId: string) => void;
+  /** Disconnects the wallet, or forgets the open link. */
   disconnect: () => void;
   openConnect: (reason?: string) => void;
+  /** Holds a Bearer link in this tab: its key signs until the tab closes or a wallet connects. */
+  openLink: (key: LinkKey) => void;
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null);
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [accountId, setAccountId] = useState<string | null>(null);
+  const [link, setLink] = useState<LinkKey | null>(null);
   const [ready, setReady] = useState(false);
   const [dialog, setDialog] = useState<{ open: boolean; reason?: string }>({ open: false });
 
@@ -40,13 +47,26 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setReady(true);
       return;
     }
-    // Testnet: near-connect owns the session; follow its sign-in and sign-out events.
+    // Testnet: a Bearer link open in this tab comes first; otherwise near-connect owns the
+    // session, and signing in with a wallet replaces the link.
     let live = true;
+    const stored = storedLinkKey();
+    if (stored) {
+      setLinkWallet(linkWallet(stored));
+      setLink(stored);
+      setAccountId(stored.accountId);
+    }
     void getConnector().then((c) => {
-      c.on("wallet:signIn", (e) => live && setAccountId(e.accounts[0]?.accountId ?? null));
-      c.on("wallet:signOut", () => live && setAccountId(null));
+      c.on("wallet:signIn", (e) => {
+        if (!live) return;
+        storeLinkKey(null);
+        setLinkWallet(null);
+        setLink(null);
+        setAccountId(e.accounts[0]?.accountId ?? null);
+      });
+      c.on("wallet:signOut", () => live && !storedLinkKey() && setAccountId(null));
       c.getConnectedWallet()
-        .then(({ accounts }) => live && setAccountId(accounts[0]?.accountId ?? null))
+        .then(({ accounts }) => live && !storedLinkKey() && setAccountId(accounts[0]?.accountId ?? null))
         .catch(() => undefined)
         .finally(() => live && setReady(true));
     });
@@ -66,7 +86,26 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     toast.success(`Signed in as ${id}`);
   }, []);
 
+  const openLink = useCallback((key: LinkKey) => {
+    storeLinkKey(key);
+    setLinkWallet(linkWallet(key));
+    setLink(key);
+    setAccountId(key.accountId);
+  }, []);
+
   const disconnect = useCallback(() => {
+    if (link) {
+      // Forget the link; a wallet signed in underneath it comes back.
+      storeLinkKey(null);
+      setLinkWallet(null);
+      setLink(null);
+      setAccountId(null);
+      void getConnector()
+        .then((c) => c.getConnectedWallet())
+        .then(({ accounts }) => setAccountId(accounts[0]?.accountId ?? null))
+        .catch(() => undefined);
+      return;
+    }
     setAccountId(null);
     if (!IS_SIMULATED) {
       void getConnector().then((c) => c.disconnect());
@@ -75,7 +114,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {}
-  }, []);
+  }, [link]);
 
   const openConnect = useCallback((reason?: string) => {
     if (IS_SIMULATED) return setDialog({ open: true, reason });
@@ -86,8 +125,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ accountId, ready, connect, disconnect, openConnect }),
-    [accountId, ready, connect, disconnect, openConnect],
+    () => ({ accountId, ready, link: Boolean(link), connect, disconnect, openConnect, openLink }),
+    [accountId, ready, link, connect, disconnect, openConnect, openLink],
   );
 
   return (

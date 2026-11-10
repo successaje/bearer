@@ -329,10 +329,10 @@ export const THREATS: Threat[] = [
   },
   {
     id: "T13",
-    attack: "A stale claim link after a transfer or opening",
-    defence: "Only if claim links ship: every transfer and break_seal deletes the key",
-    tests: [],
-    status: "open",
+    attack: "A stale copy of a Bearer link takes the vault after it was passed on",
+    defence: "A link is the key of the account holding the vault; passing it on moves the vault to another account, so an old copy controls an empty one",
+    tests: ["testnet, 10 Nov: vault No. 0010 through three links and on to an account; each earlier link read empty"],
+    status: "proven",
   },
   {
     id: "T14",
@@ -362,6 +362,13 @@ export const THREATS: Threat[] = [
     tests: ["rejects_signature_from_wrong_key", "wrong-key Bitcoin and Ed25519 cases"],
     status: "proven",
     chains: "Base, Bitcoin, Solana",
+  },
+  {
+    id: "T18",
+    attack: "Someone who sees a Bearer link takes the vault first",
+    defence: "By design, like cash: the page says so and offers to move it out; the key stays after #, never sent to a server",
+    tests: [],
+    status: "policy",
   },
   // The market (contracts/market), rows M1–M10.
   {

@@ -412,7 +412,7 @@ impl Contract {
         self.require_idle(GAS_FOR_PRICE.saturating_add(GAS_FOR_CHAINED_CALLBACK));
         self.settle_unstaked(&token_id);
         require!(self.stake_record(&token_id).shares.0 > 0, "ERR_NOT_STAKED");
-        require!(amount.map_or(true, |a| !a.is_zero()), "ERR_AMOUNT");
+        require!(amount.is_none_or(|a| !a.is_zero()), "ERR_AMOUNT");
         self.staking.busy = true;
         self.read_pool_stake().then(
             Self::ext(env::current_account_id())
@@ -630,7 +630,7 @@ mod tests {
         let b = shares_for(10 * NEAR, a, 11 * NEAR);
         let (total, owned) = (a + b, 21 * NEAR);
         let va = value_of(a, total, owned);
-        assert!(va <= 11 * NEAR && va >= 11 * NEAR - 1); // rounded down, never up
+        assert!((11 * NEAR - 1..=11 * NEAR).contains(&va)); // rounded down, never up
         assert!(value_of(b, total, owned) <= 10 * NEAR);
         // Burning for an amount rounds up: what's left never pays for someone else's unstake.
         let burn = shares_to_burn(NEAR, total, owned).unwrap();

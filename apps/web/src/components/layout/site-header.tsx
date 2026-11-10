@@ -13,6 +13,7 @@ import { IS_SIMULATED } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
 export const NAV_LINKS = [
+  { href: "/try", label: "Try it" },
   { href: "/vaults", label: "My vaults" },
   { href: "/market", label: "Market" },
   { href: "/verify", label: "Verify" },

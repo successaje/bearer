@@ -61,7 +61,9 @@ function save(state: State, ready?: Set<number>) {
   const md = [
     "# Bearer links (testnet)",
     "",
-    "Each link holds a sealed vault on bearer.testnet. Anyone who opens a link can take its vault, so share each one once.",
+    "Each link holds a sealed vault on bearer.testnet. Anyone who opens a link can take its vault, so share each one once,",
+    "with one person, and never post one publicly. Every link here is a key, used ones included: a used link can still",
+    "hold an opened vault or leftover NEAR. Keep this file private.",
     "",
     ...(ready
       ? [

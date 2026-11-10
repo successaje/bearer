@@ -99,7 +99,7 @@ export function BearerCard({
   className,
   style,
   shadow = true,
-  valueLabel = "Observed value",
+  valueLabel = "At mainnet prices",
   art = true,
 }: {
   name: string;

@@ -230,7 +230,7 @@ function VaultInLink({
         </h1>
         <p className="mt-2 text-[15px] leading-relaxed text-fg-2">
           Vault {vaultNumber(vault.token_id)}
-          {vault.name ? `, "${vault.name}",` : ""} {giver ? <>handed to this link by <span className="font-mono">{giver}</span>.</> : "is in this link."}{" "}
+          {vault.name ? `, "${vault.name}",` : ""} {giver ? <>handed to this link by <span className="font-mono">{shortAccount(giver)}</span>.</> : "is in this link."}{" "}
           {sealed
             ? "Its seal is intact: nobody has ever asked for a withdrawal signature, so everything at its addresses is still there for whoever holds it."
             : "Its seal is broken, so it can't change hands any more. Withdraw what's left from its page."}
@@ -256,7 +256,7 @@ function VaultInLink({
           )}
           {observations && held.length ? (
             <li className="flex items-baseline justify-between gap-4 px-4 py-3 text-[13px] text-fg-3">
-              <span>Observed from public data</span>
+              <span>Testnet coins have no value; at mainnet prices</span>
               <span className="tabular">{formatUsd(observedUsd(observations))} est.</span>
             </li>
           ) : null}
@@ -264,17 +264,30 @@ function VaultInLink({
 
         {sealed ? (
           <>
-            <Callout tone="warn" className="mt-5">
-              Anyone with this link can take the vault, like cash. To make it yours alone, move it out: to a NEAR account, or into a
-              new link that only you have.
-            </Callout>
-            <div className="mt-5 flex flex-wrap gap-2.5">
-              <PassOn vault={vault} accountId={accountId} nearLeft={nearLeft} onPassOn={onPassOn} />
-              <Button onClick={() => setSending(true)} disabled={!vault.keys}>
-                <Send className="size-4" />
-                Send it to a NEAR account
-              </Button>
-              <Link href={`/v/${vault.token_id}`} className={buttonVariants({ variant: "ghost" })}>
+            <div className="mt-6 rounded-panel border border-warn/40 bg-warn/[0.07] p-5">
+              <p className="text-[12.5px] font-semibold uppercase tracking-[0.12em] text-warn">First, secure it</p>
+              <p className="mt-2 text-[14.5px] leading-relaxed text-fg">
+                {giver ? <span className="font-mono">{shortAccount(giver)}</span> : "Whoever sent this link"} still has a copy of it.
+                Opening the link doesn&apos;t change that: until you move the vault, anyone holding a copy can take it.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2.5">
+                <PassOn vault={vault} accountId={accountId} nearLeft={nearLeft} onPassOn={onPassOn} />
+                <Button onClick={() => setSending(true)} disabled={!vault.keys}>
+                  <Send className="size-4" />
+                  Move it to my NEAR account
+                </Button>
+              </div>
+              <p className="mt-3 text-[12.5px] leading-relaxed text-fg-3">
+                Either way, every copy of this link is left empty, and nothing moves on Bitcoin, Base or Solana: same addresses, same
+                coins, a new holder.
+              </p>
+            </div>
+            <div className="mt-6">
+              <p className="text-[14px] font-medium">Then, when you&apos;re ready, open it</p>
+              <p className="mt-1 text-[13.5px] leading-relaxed text-fg-2">
+                Breaking the seal lets you withdraw to any address. It&apos;s permanent: an opened vault can never change hands again.
+              </p>
+              <Link href={`/v/${vault.token_id}`} className={buttonVariants({ variant: "ghost", className: "mt-2 -ml-3" })}>
                 <PackageOpen className="size-4" />
                 Break the seal and withdraw
               </Link>
@@ -330,7 +343,7 @@ function PassOn({
       }}
     >
       <Link2 className="size-4" />
-      Pass it on as a new link
+      Move it to a new private link
     </Button>
   );
 }
@@ -421,16 +434,30 @@ function PassOnPanel({ pending, onClose }: { pending: PendingPass; onClose: () =
         <div className="min-w-0">
           <p className="inline-flex items-center gap-1.5 text-[13px] font-medium text-accent">
             {moved ? <ShieldCheck className="size-4" /> : <Link2 className="size-4" />}
-            {moved ? "Passed on, still sealed" : "Passing it on: save the new link first"}
+            {moved ? "Moved, still sealed" : "Moving it: save the new link first"}
           </p>
           <h2 className="mt-2 text-[26px] font-semibold leading-tight tracking-[-0.03em]">
             {moved ? `Vault ${vaultNumber(pending.tokenId)} is in the new link` : `The new link for vault ${vaultNumber(pending.tokenId)}`}
           </h2>
           <p className="mt-2 text-[14.5px] leading-relaxed text-fg-2">
             {moved
-              ? "Send this link to whoever should have it. The one you opened is empty now: anyone holding a copy of it gets nothing. Nothing moved on Bitcoin, Base or Solana."
+              ? "Keep this link to hold the vault yourself, or send it to give the vault to someone. The link you opened is empty now: anyone holding a copy of it gets nothing."
               : "Copy it, or scan the QR code, and keep it somewhere only you can open. Nothing has moved yet. Once it's saved, move the vault into it."}
           </p>
+          {moved && vault?.btc_address ? (
+            <p className="mt-3 text-[13.5px] leading-relaxed text-fg-2">
+              Same Bitcoin address, same coins:{" "}
+              <a
+                href={`https://mempool.space/testnet4/address/${vault.btc_address}`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-accent hover:underline"
+              >
+                {vault.btc_address.slice(0, 8)}…{vault.btc_address.slice(-6)}
+              </a>
+              . Only who holds it changed.
+            </p>
+          ) : null}
           <div className="mt-4 flex min-w-0 items-center gap-2 rounded-control border border-line-strong bg-surface px-3 py-2">
             <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-fg-2">{url}</span>
             <Button size="sm" onClick={copy}>

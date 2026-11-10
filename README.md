@@ -195,9 +195,9 @@ You should see 35 ✓ in under a minute, ending `35 claims in … s: 35 ✓, 0 �
   described, and the second T10 transaction never confirmed.
 
 `✗` means the chain disagrees, and the command exits 1. `?` means a public endpoint didn't answer;
-run it again. `--json report.json` writes every result with its source. The
-[Claims on chain](https://github.com/successaje/bearer/actions/workflows/claims.yml) workflow runs it
-daily.
+run it again, and `--strict` makes that fail too (exit 2). `--json report.json` writes every result
+with its source. The [Claims on chain](https://github.com/successaje/bearer/actions/workflows/claims.yml)
+workflow runs it daily with `--strict`, so its badge is green only when every claim was checked.
 
 ## Try it
 

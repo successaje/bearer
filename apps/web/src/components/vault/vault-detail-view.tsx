@@ -162,7 +162,7 @@ export function VaultDetailView() {
           </div>
 
           <div className="mt-6">
-            <p className="text-[13px] text-fg-3">Observed value</p>
+            <p className="text-[13px] text-fg-3">Observed value, at mainnet prices</p>
             <div className="mt-1.5 flex items-baseline gap-2.5">
               {observations ? (
                 <span className="tabular text-[clamp(40px,5vw,52px)] font-semibold leading-none tracking-[-0.04em]">{formatUsd(value)}</span>
@@ -172,7 +172,10 @@ export function VaultDetailView() {
               <span className="text-[15px] text-fg-3">est.</span>
             </div>
             <p className="mt-2 text-[13.5px] text-fg-2">
-              Across Bitcoin, Base and Solana, from public data.{pending ? <span className="text-info"> A deposit is pending.</span> : null}
+              {IS_SIMULATED
+                ? "Simulated balances, priced as if they were real."
+                : "Testnet coins have no value: this is what they'd be worth at mainnet prices, from public data."}
+              {pending ? <span className="text-info"> A deposit is pending.</span> : null}
             </p>
           </div>
 
@@ -283,6 +286,7 @@ export function VaultDetailView() {
         <aside className="flex flex-col gap-5 lg:sticky lg:top-24 lg:order-last">
           <SealPanel
             tokenId={vault.token_id}
+            owner={vault.owner_id}
             report={report}
             now={now}
             checkedAt={obs.dataUpdatedAt}

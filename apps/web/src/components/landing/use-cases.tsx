@@ -8,11 +8,11 @@ import { cn } from "@/lib/utils";
 
 const USES: { tag: string; name: string; finish: Finish; title: string; body: string }[] = [
   {
-    tag: "A gift",
-    name: "Theo's birthday",
-    finish: "obsidian",
-    title: "Like cash in a card, on any chain.",
-    body: "Fill it with a little Bitcoin and send it on the day. They open it when they're ready, and withdraw where they like.",
+    tag: "From a parent",
+    name: "1st Son College Fund",
+    finish: "midnight",
+    title: "Like cash in a card, for your child.",
+    body: "Fill it with Bitcoin and send it as a link or to their account. They check it's untouched, make it theirs alone, and open it when they're ready.",
   },
   {
     tag: "An OTC hand-off",

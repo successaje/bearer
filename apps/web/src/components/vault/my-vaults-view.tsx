@@ -234,7 +234,7 @@ function Stats({ rows }: { rows: Row[] }) {
   return (
     <div className="grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line bg-line lg:grid-cols-4 [&>*]:bg-surface">
       <div className={cell}>
-        <p className="text-[13px] text-fg-3">Observed value</p>
+        <p className="text-[13px] text-fg-3">Observed value, at mainnet prices</p>
         <div className={cn(big, "tabular")}>
           {loaded ? formatUsd(total) : <Skeleton className="h-8 w-28" />}
           <span className={cn(note, "text-fg-3")}>est.</span>

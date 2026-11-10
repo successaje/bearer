@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldMessage, Input, Label } from "@/components/ui/primitives";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { MARKET_CONTRACT } from "@/lib/config";
 import { errorCopy } from "@/lib/vault/errors";
 import { useAccountExists, useContractFacts, useTransfer } from "@/lib/vault/hooks";
 import { CHAIN_META, formatAmount, formatUsd, vaultNumber } from "@/lib/vault/format";
@@ -125,6 +126,19 @@ export function TransferSheet({
               <li>Break the seal or withdraw</li>
               <li>Take it back. Only {receiver} can transfer it on</li>
             </ReviewBlock>
+
+            <p className="rounded-control border border-line bg-surface px-3.5 py-3 text-[13px] leading-relaxed text-fg-2">
+              Selling it? A transfer doesn&apos;t collect payment, so get paid first.{" "}
+              {MARKET_CONTRACT ? (
+                <>
+                  Or{" "}
+                  <Link href="/market" className="text-accent hover:underline">
+                    list it on the market
+                  </Link>
+                  , which holds the vault and hands it over only when the exact price is paid.
+                </>
+              ) : null}
+            </p>
 
             <div className="flex flex-col gap-2.5">
               <Button

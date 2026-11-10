@@ -24,19 +24,21 @@ export default function HomePage() {
             <span className="hidden sm:inline">Native BTC, ETH on Base and SOL</span>
           </div>
           <h1 className="text-balance mt-7 max-w-[660px] text-[clamp(42px,5.3vw,68px)] font-semibold leading-[1.02] tracking-[-0.045em]">
-            Bitcoin that changes hands <span className="text-fg-3">without a Bitcoin transaction.</span>
+            Send Bitcoin like a gift. <span className="text-fg-3">Pass the vault, not the coins.</span>
           </h1>
           <p className="text-pretty mt-7 max-w-[540px] text-[18px] leading-relaxed text-fg-2 md:text-[19px]">
-            A sealed Bearer vault holds native BTC, plus ETH on Base and SOL. It moves to its next owner in one NEAR
-            transaction, with no Bitcoin fee, and they can check nothing was ever signed for it. Only whoever holds it
-            can break the seal.
+            Put real Bitcoin in a sealed vault and hand it to someone, as a link or to their account. Nothing moves on
+            Bitcoin, and they can check that nobody signed a withdrawal before it reached them. Only they can open it.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
-            <Link href="/create" className={buttonVariants({ variant: "primary", size: "lg" })}>
-              Create a vault
+            <Link href="/try" className={buttonVariants({ variant: "primary", size: "lg" })}>
+              Try it in 60 seconds
               <ArrowRight className="size-[18px]" />
             </Link>
-            <Link href="/verify" className={buttonVariants({ variant: "secondary", size: "lg" })}>
+            <Link href="/create" className={buttonVariants({ variant: "secondary", size: "lg" })}>
+              Create a vault
+            </Link>
+            <Link href="/verify" className={buttonVariants({ variant: "ghost", size: "lg" })}>
               <ShieldCheck className="size-[18px]" />
               Verify a vault
             </Link>
@@ -45,7 +47,8 @@ export default function HomePage() {
             <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-line-strong text-fg-2">
               <Lock className="size-4" />
             </span>
-            No bridge, no custodian key. You trust NEAR&apos;s MPC network and a locked, open-source contract.
+            Under the hood: a NEAR NFT that controls native Bitcoin, Base and Solana addresses through NEAR Chain
+            Signatures. No bridge, no custodian key; a locked, open-source contract.
           </div>
         </div>
         <HeroArt />

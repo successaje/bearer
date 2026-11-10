@@ -5,9 +5,11 @@
  *
  *   pnpm verify                      # or: node scripts/verify.mjs
  *   pnpm verify --json report.json   # also writes every result, with its source, as JSON
+ *   pnpm verify --strict             # a claim that couldn't be checked fails too (exit 2)
  *
  * Each line is ✓ (the chain agrees), ✗ (it doesn't) or ? (a public endpoint didn't answer; run it
- * again). Exits 1 if anything is ✗.
+ * again). Exits 1 if anything is ✗; with --strict, 2 if anything is ?, so a pass means every claim
+ * was checked.
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -516,4 +518,4 @@ if (jsonAt > 0 && process.argv[jsonAt + 1]) {
   console.log(`Report: ${process.argv[jsonAt + 1]}`);
 }
 
-process.exit(count("fail") ? 1 : 0);
+process.exit(count("fail") ? 1 : process.argv.includes("--strict") && count("unknown") ? 2 : 0);

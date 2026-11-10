@@ -12,7 +12,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 const description =
-  "Bitcoin that changes hands without a Bitcoin transaction. A sealed vault of native Bitcoin, Base and Solana moves to its next owner in one NEAR transaction, and they can check nothing was ever signed for it.";
+  "Send Bitcoin like a gift: pass the vault, not the coins. A sealed vault of native Bitcoin, Base and Solana moves to its next owner, as a link or to their account, and they can check nothing was ever signed for it.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

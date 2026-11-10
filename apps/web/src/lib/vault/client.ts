@@ -10,7 +10,7 @@ export async function getVaultClient(): Promise<BearerClient> {
     client = new MockBearerClient();
   } else {
     // The live adapter: public RPCs for reads, the near-connect wallet for writes.
-    const [{ TestnetBearerClient }, { nearConnectWallet }, { RECORDED_ATTACKS }] = await Promise.all([
+    const [{ TestnetBearerClient }, { appWallet }, { RECORDED_ATTACKS }] = await Promise.all([
       import("@bearer/sdk"),
       import("./wallet-bridge"),
       import("./recorded-attacks"),
@@ -21,7 +21,7 @@ export async function getVaultClient(): Promise<BearerClient> {
       holdings: HOLDINGS,
       scheduleId: SCHEDULE_CONTRACT,
       recordedAttacks: RECORDED_ATTACKS,
-      wallet: nearConnectWallet,
+      wallet: appWallet,
       endpoints: { near: NEAR_RPC, esplora: ESPLORA_API, evm: BASE_RPC, solana: SOLANA_RPC },
     });
   }

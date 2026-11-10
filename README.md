@@ -12,8 +12,8 @@ for 0.0004 NEAR in gas, with no Bitcoin fee and nothing moving on Bitcoin. Whoev
 check that no withdrawal was ever signed for it. On Bitcoin itself, coins change owner only through
 a Bitcoin transaction, and handing over a key leaves the giver a copy.
 
-So you can give someone Bitcoin as a gift, pass a prize to a winner, sell a set of assets as one
-package, or schedule a vault to be handed over on a date. The question each of those raises is how
+So you can give someone Bitcoin as a gift, send it as a link, pass a prize to a winner, sell a set of
+assets as one package, or schedule a vault to be handed over on a date. The question each of those raises is how
 the next owner can know you didn't sign a withdrawal before giving it away. Bearer answers it.
 
 While the vault is sealed, its owner can transfer it but can't request a withdrawal signature. Once
@@ -93,7 +93,8 @@ in [docs/SPIKES.md](docs/SPIKES.md).
 **1. Local sandbox (simulated chains).** The contracts run in a real NEAR sandbox with a mock MPC
 signer. These are simulations, not transactions on Bitcoin, Base or Solana.
 
-- 54 sandbox tests (28 for the vault, 13 for the market, 13 for the schedule) and 51 unit tests. Each signed
+- 57 sandbox tests (28 for the vault, 13 for the market, 13 for the schedule, 3 for a receiver that
+  breaks the seal in its transfer callback and asks for the vault back) and 51 unit tests. Each signed
   transaction is checked independently: viem for Base, bitcoinjs-lib and noble for Bitcoin,
   `@solana/web3.js` for Solana.
 - `pnpm demo:dry` runs the vault's lifecycle and the attacks against simulated ledgers that apply
@@ -124,8 +125,8 @@ other chain accepts it, not a payout to a separate person.
   These weren't broadcast: those vaults held no funds.
 - **Bitcoin that changed hands without a Bitcoin transaction.** Sealed vault No. 0006 held 684,666
   sats of testnet Bitcoin. The owner's wallet handed it to a second account in one NEAR transaction
-  ([handover](https://testnet.nearblocks.io/txns/H3XPWh2n5cvDKaqKS8pY4kSCjXDCaPgG3fp6E8beJJYj)), and nothing happened on Bitcoin: the vault's address shows only the deposit
-  and, later, the new holder's withdrawal of that same coin ([address](https://blockstream.info/testnet4/address/tb1qqtlwr0xlr8ex8qldu3nea5s2kc4ajzrsnd2g4g)). The new holder
+  ([handover](https://testnet.nearblocks.io/txns/H3XPWh2n5cvDKaqKS8pY4kSCjXDCaPgG3fp6E8beJJYj)), and nothing happened on Bitcoin: the coin deposited at
+  the vault's address stayed there until the new holder's withdrawal spent it ([address](https://blockstream.info/testnet4/address/tb1qqtlwr0xlr8ex8qldu3nea5s2kc4ajzrsnd2g4g)). The new holder
   broke the seal and withdrew 300,000 sats into sealed vault No. 0009
   ([Bitcoin](https://blockstream.info/testnet4/tx/6002c967889d8185b4457837db9c44369b06af0208998cb445a64cea2b5e1e23), confirmed in testnet4 block 160,228). They also withdrew 0.5 SOL
   ([Solana](https://explorer.solana.com/tx/5FQ1wbWQrcLEpb4aqBgpCb3KC5D1UQvPR1aWFjaeEfLBW3eNqFQp2aLMxMKd4NwSeBy86sznnyDvAgoXe4T5XSqm?cluster=devnet), finalized).
@@ -179,22 +180,24 @@ keys and sends nothing:
 pnpm verify        # or: node scripts/verify.mjs  (Node 22+, nothing to install)
 ```
 
-You should see 33 ✓ in under a minute, ending `33 claims in … s: 33 ✓, 0 ✗`. Among them:
+You should see 35 ✓ in under a minute, ending `35 claims in … s: 35 ✓, 0 ✗`. Among them:
 
 - each of the three contracts has no access keys, runs the wasm committed in `contracts/res/`, and
   names a commit that is in this repository;
-- vault No. 0006's Bitcoin was deposited once and spent once, and that spend is, byte for byte, the
-  withdrawal the contract signed after its new holder broke the seal;
+- the coin deposited at vault No. 0006's address stayed put until a withdrawal spent it, and that
+  spend is, byte for byte, the one the contract signed after its new holder broke the seal;
 - vault No. 0009 is sealed with 0 signatures and holds 300,000 sats and 0.5 SOL;
 - every sealed vault on `bearer.testnet` has 0 signatures;
 - each recorded attack failed with its expected error;
+- vault No. 0010 went through three Bearer links and on to an account, still sealed, and a link's own
+  key, with no wallet, broke vault No. 0012's seal and withdrew its Bitcoin;
 - the sale, the scheduled handover, the wallet withdrawal and both T10 transactions are on chain as
   described, and the second T10 transaction never confirmed.
 
 `✗` means the chain disagrees, and the command exits 1. `?` means a public endpoint didn't answer;
-run it again. `--json report.json` writes every result with its source. The
-[Claims on chain](https://github.com/successaje/bearer/actions/workflows/claims.yml) workflow runs it
-daily.
+run it again, and `--strict` makes that fail too (exit 2). `--json report.json` writes every result
+with its source. The [Claims on chain](https://github.com/successaje/bearer/actions/workflows/claims.yml)
+workflow runs it daily with `--strict`, so its badge is green only when every claim was checked.
 
 ## Try it
 
@@ -251,16 +254,17 @@ pnpm spike:testnet setup
 pnpm spike:testnet run
 ```
 
-## Three ways a vault changes hands
+## Four ways a vault changes hands
 
-All three are deployed on NEAR testnet, reproducibly built and locked, and each keeps the vault
-sealed until it arrives.
+The contracts behind the first three are deployed on NEAR testnet, reproducibly built and locked. A
+link needs no contract of its own. Each way keeps the vault sealed until it arrives.
 
 | | How | Measured on testnet |
 |---|---|---|
 | **Hand over** | `nft_transfer` on `bearer.testnet`, or in person with a QR code (`/v/[id]/handover`) | 6 handovers of vault No. 0007: final in a median 4.6 s (4.0–5.8 s, timed from a laptop), 4.0 Tgas = 0.0004 NEAR each; sealed, 0 signatures after every one ([report](contracts/tests/spike/reports/testnet-handover-2026-11-09T18-05-40.934Z.json)) |
 | **Sell** | `bearer-market.testnet` holds a listed vault in escrow; the buyer pays the exact price, gets the vault, then the seller is paid | Vault No. 0004 sold for 0.1 NEAR ([purchase](https://testnet.nearblocks.io/txns/GCuy9zAFHGeN8ZsjgvUyaF8Uzz4xvW4UvNessKMMYv6F)); it arrived sealed with 0 signatures |
 | **Schedule** | `bearer-schedule.testnet` holds it until a date; on or after it, anyone can hand it over, only to the chosen recipient | Vault No. 0007 handed to bob on its date by a third account ([tx](https://testnet.nearblocks.io/txns/76eGYPzRDspJi3YXLXVGU1zDnj8wcNF14kSz8Vu2HUpt)) |
+| **Send as a link** | `/claim#<key>`: the key's NEAR account holds the vault. Whoever opens the link holds it, with no wallet, and can pass it on as a new link, which empties the old one ([docs/features/bearer-links.md](docs/features/bearer-links.md)) | Vault No. 0010 passed through three links and on to an account, sealed with 0 signatures; each earlier link then read empty. Link 2, with no wallet, broke vault No. 0012's seal and withdrew 9,718 sats in one NEAR transaction signed by its own key ([NEAR](https://testnet.nearblocks.io/txns/HDeV3xPnpxn24NbcA3ja45hZyqty8wVbrPBmo3DZrZA), [Bitcoin](https://blockstream.info/testnet4/tx/4c3191e9c2c9177654dab2a7b43459ed5800040e41fa0279eae0e81f6a3d3519), block 160,397) |
 
 What people could use them for:
 
@@ -269,6 +273,8 @@ What people could use them for:
   and nobody can withdraw, the giver included. The giver chooses whether they can cancel
   ([docs/features/schedule.md](docs/features/schedule.md)).
 - **Prizes.** Fund a vault and hand it to the winner, who can check it's untouched first.
+- **Gifts by message.** Send a vault as a link in a chat or an email. Whoever opens it holds it,
+  like cash, and passing it on leaves the old link empty.
 - **OTC hand-offs.** Sell a position without moving it: the market settles in one transaction
   ([docs/features/market.md](docs/features/market.md)).
 - **Collectibles.** A named, finished vault with a printable certificate, holding native assets,
@@ -284,6 +290,8 @@ prototypes.
 | `/v/[id]` | A vault's public page: seal, observed balances, custody, signatures, the attack lab |
 | `/market` | Sealed vaults for sale, held in escrow by the market contract; list from a vault's page, buy at exactly the listed price |
 | `/account` | Your account: what you have for sale, what sold and what you were paid, payouts to claim, and everything that happened to your vaults. The bell in the header shows what others did: a sale, a vault handed or scheduled to you |
+| `/create` | Make a vault: pick what it's for (a gift, a prize, savings, a pizza fund…) and its card shows that art ([docs/features/card-art.md](docs/features/card-art.md)) |
+| `/claim` | Open a Bearer link: see the vault it holds, pass it on as a new link, send it to a NEAR account, or break the seal and withdraw, with no wallet |
 | `/v/[id]/handover` | Hand a vault over in person: a QR code for the recipient, and the card flips when the transfer lands |
 | `/v/[id]/certificate` | A printable bearer certificate, one A4 page, with a QR code to the live seal |
 | `/proof` | Live checks against NEAR testnet, every measured number, and the threat table |
@@ -351,6 +359,7 @@ contracts/bearer    the NEAR contract (near-sdk 5.30)
 contracts/market    the market: sells sealed vaults from escrow
 contracts/schedule  the scheduled handover: holds a sealed vault until a date
 contracts/mock-signer   an MPC signer stand-in for the sandbox
+contracts/mock-receiver an NFT receiver that breaks the seal in its transfer callback (T6, sandbox only)
 contracts/tests     sandbox tests (near-sandbox) and testnet scripts
 packages/sdk        shared types and the client interface
 docs                architecture, threat model, decisions, spikes, and one page per web feature

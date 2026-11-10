@@ -34,6 +34,7 @@ export function DemoSealPanel() {
   return (
     <SealPanel
       tokenId="42"
+      owner={DEMO.owner_id}
       report={vaultReport(DEMO, [])}
       now={now}
       checkedAt={now}

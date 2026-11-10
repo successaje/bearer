@@ -277,8 +277,8 @@ export const THREATS: Threat[] = [
     id: "T6",
     attack: "Bypass the gate: approvals, the transfer_call return leg, a forgotten path",
     defence: "No approvals extension; the return leg uses the gate; a test fails if any other code writes the owner",
-    tests: ["nft_approve_not_exposed", "single_owner_write_path", "resolve_keeps_opened_vault_with_receiver (to do)"],
-    status: "partly",
+    tests: ["nft_approve_not_exposed", "single_owner_write_path", "resolve_keeps_opened_vault_with_receiver (a receiver opens it in the callback, then asks for it back: it stays opened, with the receiver)"],
+    status: "proven",
   },
   {
     id: "T7",
@@ -329,10 +329,10 @@ export const THREATS: Threat[] = [
   },
   {
     id: "T13",
-    attack: "A stale claim link after a transfer or opening",
-    defence: "Only if claim links ship: every transfer and break_seal deletes the key",
-    tests: [],
-    status: "open",
+    attack: "A stale copy of a Bearer link takes the vault after it was passed on",
+    defence: "A link is the key of the account holding the vault; passing it on moves the vault to another account, so an old copy controls an empty one",
+    tests: ["testnet, 10 Nov: vault No. 0010 through three links and on to an account; each earlier link read empty"],
+    status: "proven",
   },
   {
     id: "T14",
@@ -362,6 +362,20 @@ export const THREATS: Threat[] = [
     tests: ["rejects_signature_from_wrong_key", "wrong-key Bitcoin and Ed25519 cases"],
     status: "proven",
     chains: "Base, Bitcoin, Solana",
+  },
+  {
+    id: "T18",
+    attack: "Someone who sees a Bearer link takes the vault first",
+    defence: "By design, like cash: the page says so and offers to move it out; the key stays after #, never sent to a server",
+    tests: [],
+    status: "policy",
+  },
+  {
+    id: "T19",
+    attack: "Passing a vault on, or making links, stops halfway and loses the new key",
+    defence: "The new link is stored and saved before anything moves; every step checks what already happened, so it resumes",
+    tests: ["testnet, 10 Nov: a pass-on reloaded mid-move resumed and finished; a mint stopped after its vault was finished by a rerun"],
+    status: "proven",
   },
   // The market (contracts/market), rows M1–M10.
   {

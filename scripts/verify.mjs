@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 /**
  * Checks the README's claims against the public chains: NEAR testnet, Bitcoin testnet4, Base
- * Sepolia and Solana devnet. Read-only: no keys, no transactions, nothing to install (Node 22+).
+ * Sepolia and Solana devnet, through public endpoints (two each for NEAR history and Bitcoin).
+ * Read-only: no keys, no transactions, nothing to install (Node 22+).
  *
  *   pnpm verify                      # or: node scripts/verify.mjs
  *   pnpm verify --json report.json   # also writes every result, with its source, as JSON
+ *   pnpm verify --strict             # a claim that couldn't be checked fails too (exit 2)
  *
  * Each line is ✓ (the chain agrees), ✗ (it doesn't) or ? (a public endpoint didn't answer; run it
- * again). Exits 1 if anything is ✗.
+ * again). Exits 1 if anything is ✗; with --strict, 2 if anything is ?, so a pass means every claim
+ * was checked.
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -22,6 +25,7 @@ const EP = {
   archival: "https://archival-rpc.testnet.fastnear.com",
   archivalFallback: "https://archival-rpc.testnet.near.org",
   esplora: "https://blockstream.info/testnet4/api",
+  esploraFallback: "https://mempool.emzy.de/testnet4/api",
   base: "https://sepolia.base.org",
   solana: "https://api.devnet.solana.com",
 };
@@ -92,13 +96,17 @@ async function view(account, method, args = {}) {
   return JSON.parse(Buffer.from(r.result).toString());
 }
 
-// The free archival nodes rate-limit bursts, so their requests go one at a time.
-let archivalTail = Promise.resolve();
-const oneAtATime = (f) => {
-  const run = archivalTail.then(f, f);
-  archivalTail = run.then(() => sleep(200), () => sleep(200));
-  return run;
-};
+// The free archival nodes and Esplora servers rate-limit bursts, so each one's requests go one at a time.
+function inTurn() {
+  let tail = Promise.resolve();
+  return (f) => {
+    const run = tail.then(f, f);
+    tail = run.then(() => sleep(200), () => sleep(200));
+    return run;
+  };
+}
+const oneAtATime = inTurn();
+const bitcoinTurn = inTurn();
 
 /** A NEAR transaction from an archival node (FastNear, then NEAR's own); null if it doesn't exist. */
 const nearTx = (hash, sender) =>
@@ -120,7 +128,16 @@ const argsOf = (call) => JSON.parse(Buffer.from(call.args, "base64").toString())
 const tokensBurnt = (tx) => [tx.transaction_outcome, ...tx.receipts_outcome].reduce((n, o) => n + BigInt(o.outcome.tokens_burnt), 0n);
 const gasBurnt = (tx) => [tx.transaction_outcome, ...tx.receipts_outcome].reduce((n, o) => n + o.outcome.gas_burnt, 0);
 
-const esplora = (path) => get(`${EP.esplora}${path}`, undefined, path.endsWith("/hex"));
+/** Bitcoin testnet4 data from Blockstream's Esplora, or mempool.emzy.de's when Blockstream rate-limits. */
+const esplora = (path) =>
+  bitcoinTurn(async () => {
+    try {
+      return await get(`${EP.esplora}${path}`, undefined, path.endsWith("/hex"));
+    } catch (e) {
+      if (!(e instanceof Unreachable)) throw e;
+      return get(`${EP.esploraFallback}${path}`, undefined, path.endsWith("/hex"));
+    }
+  });
 const base = (method, params) => rpc(EP.base, method, params);
 const solana = (method, params) => rpc(EP.solana, method, params);
 
@@ -229,14 +246,22 @@ claim(G6, "Handed from finishr.testnet to takaba.testnet in one NEAR transaction
   return `nft_transfer of No. 0006, ${(gasBurnt(tx) / 1e12).toFixed(2)} Tgas, ${fmtNear(fee)} burnt`;
 });
 
-claim(G6, "Nothing moved on Bitcoin while it changed hands: the coin deposited was spent once, by the new holder's withdrawal", "Blockstream Esplora (testnet4)", async () => {
-  const v = await vault("6");
-  const txs = await esplora(`/address/${v.btc_address}/txs`);
-  const spends = txs.filter((t) => t.vin.some((i) => i.prevout?.scriptpubkey_address === v.btc_address));
-  expect(spends.length === 1 && spends[0].txid === BTC_SPEND, `spends from ${v.btc_address}: ${spends.map((t) => short(t.txid)).join(", ") || "none"}`);
-  const input = spends[0].vin[0];
-  const funding = await esplora(`/tx/${input.txid}`);
-  return `${v.btc_address}: one spend, ${short(BTC_SPEND)}, of ${sats(input.prevout.value)} deposited in block ${funding.status.block_height.toLocaleString("en-US")} (${short(input.txid)}:${input.vout})`;
+claim(G6, "Nothing moved on Bitcoin while it changed hands: the coin deposited stayed put until the new holder's withdrawal spent it", "Esplora (testnet4)", async () => {
+  const [v, spend] = await Promise.all([vault("6"), esplora(`/tx/${BTC_SPEND}`)]);
+  const input = spend.vin[0];
+  expect(input.prevout.scriptpubkey_address === v.btc_address, `the withdrawal spends ${input.prevout.scriptpubkey_address}`);
+  const [outspend, funding, txs] = await Promise.all([
+    esplora(`/tx/${input.txid}/outspend/${input.vout}`),
+    esplora(`/tx/${input.txid}`),
+    esplora(`/address/${v.btc_address}/txs`),
+  ]);
+  expect(outspend?.spent && outspend.txid === BTC_SPEND, `the deposited coin was spent by ${outspend?.txid ?? "nothing"}`);
+  // Anything that left the address before or alongside the withdrawal would be a spend the old owner made.
+  const earlier = txs.filter(
+    (t) => t.txid !== BTC_SPEND && t.status.confirmed && t.status.block_height <= spend.status.block_height && t.vin.some((i) => i.prevout?.scriptpubkey_address === v.btc_address),
+  );
+  expect(!earlier.length, `earlier spends from ${v.btc_address}: ${earlier.map((t) => short(t.txid)).join(", ")}`);
+  return `${sats(input.prevout.value)} deposited in block ${funding.status.block_height.toLocaleString("en-US")} (${short(input.txid)}:${input.vout}); first spent by ${short(BTC_SPEND)}, in block ${spend.status.block_height.toLocaleString("en-US")}`;
 });
 
 claim(G6, "That spend is byte for byte the withdrawal the contract signed after takaba.testnet opened the vault", "bearer.testnet withdrawals view, Esplora raw tx", async () => {
@@ -250,7 +275,7 @@ claim(G6, "That spend is byte for byte the withdrawal the contract signed after 
   return `withdrawal 0 of No. 0006 = tx ${short(BTC_SPEND)} (${raw.length / 2} bytes)`;
 });
 
-claim(G6, "It confirmed in testnet4 block 160,228, paying 300,000 sats to sealed vault No. 0009", "Blockstream Esplora (testnet4)", async () => {
+claim(G6, "It confirmed in testnet4 block 160,228, paying 300,000 sats to sealed vault No. 0009", "Esplora (testnet4)", async () => {
   const [tx, v9] = await Promise.all([esplora(`/tx/${BTC_SPEND}`), vault("9")]);
   expect(tx?.status.confirmed && tx.status.block_height === 160228, `status ${JSON.stringify(tx?.status)}`);
   const out = tx.vout.find((o) => o.scriptpubkey_address === v9.btc_address);
@@ -400,11 +425,44 @@ claim(GM, "Vault No. 0007 was handed to bob on its date by a third account, stil
   return `release(7) by ${tx.transaction.signer_id}; custody alice → schedule → bob; sealed, 0 signatures`;
 });
 
-// 7. Signed through the earlier test contract and accepted by each chain.
+// 7. Bearer links: a vault sent as a link, then passed on (docs/features/bearer-links.md).
+
+claim("Bearer links", "Vault No. 0010 passed through three links and on to an account, still sealed", "bearer.testnet vault view", async () => {
+  const v = await vault("10");
+  const ids = v.custody.map((c) => c.account_id);
+  const isLink = (id) => /^[0-9a-f]{64}$/.test(id);
+  const last = ids[ids.length - 1];
+  expect(ids.filter(isLink).length >= 3, `its custody has ${ids.filter(isLink).length} link accounts`);
+  expect(!isLink(last) && ids.findIndex(isLink) < ids.length - 1, `it ends with ${last}`);
+  expect(v.state.kind === "sealed" && v.signatures_requested === 0, `state ${v.state.kind}, ${v.signatures_requested} signatures`);
+  return `custody ${ids.map((id) => (isLink(id) ? `${id.slice(0, 4)}…` : id)).join(" → ")}; sealed, 0 signatures`;
+});
+
+const LINK_TX = "HDeV3xPnpxn24NbcA3ja45hZyqty8wVbrPBmo3DZrZA";
+const LINK_BTC = "4c3191e9c2c9177654dab2a7b43459ed5800040e41fa0279eae0e81f6a3d3519";
+
+claim("Bearer links", "With no wallet, a link's own key broke vault No. 0012's seal and withdrew its Bitcoin, confirmed in testnet4 block 160,397", `NEAR archival RPC, tx ${short(LINK_TX)}; Esplora`, async () => {
+  const v = await vault("12");
+  expect(/^[0-9a-f]{64}$/.test(v.owner_id) && v.state.kind === "opened" && v.state.by === v.owner_id, `held by ${v.owner_id}, ${JSON.stringify(v.state)}`);
+  const tx = await nearTx(LINK_TX, v.owner_id);
+  expect(tx && tx.status.SuccessValue !== undefined, "the NEAR transaction isn't a success");
+  const methods = calls(tx).map((c) => c.method_name).join(" + ");
+  expect(tx.transaction.signer_id === v.owner_id && methods === "break_seal + withdraw_btc", `${tx.transaction.signer_id} called ${methods}`);
+  const [[w], raw, btc] = await Promise.all([
+    view(BEARER, "withdrawals", { token_id: "12", from_index: 0, limit: 1 }),
+    esplora(`/tx/${LINK_BTC}/hex`),
+    esplora(`/tx/${LINK_BTC}`),
+  ]);
+  expect(raw?.toLowerCase() === w?.signed_raw_tx?.toLowerCase(), "the Bitcoin transaction's bytes differ from the contract's signed record");
+  expect(btc.status.confirmed && btc.status.block_height === 160397, `status ${JSON.stringify(btc.status)}`);
+  return `${methods} signed by ${v.owner_id.slice(0, 4)}…, ${(gasBurnt(tx) / 1e12).toFixed(1)} Tgas; ${sats(btc.vout[0].value)} in ${short(LINK_BTC)}, block 160,397`;
+});
+
+// 8. Signed through the earlier test contract and accepted by each chain.
 
 const GE = "Signed through an earlier test contract and accepted on each chain";
 
-claim(GE, "Bitcoin: confirmed in testnet4 block 159,948", "Blockstream Esplora (testnet4)", async () => {
+claim(GE, "Bitcoin: confirmed in testnet4 block 159,948", "Esplora (testnet4)", async () => {
   const tx = await esplora("/tx/ce01f9fffdf0f362641a4f6882257295ae63de6146c5a3478704ef809bf958b6");
   expect(tx?.status.confirmed && tx.status.block_height === 159948, `status ${JSON.stringify(tx?.status)}`);
   return `ce01f9ff… in block 159,948, ${tx.vin.length} input(s)`;
@@ -475,4 +533,4 @@ if (jsonAt > 0 && process.argv[jsonAt + 1]) {
   console.log(`Report: ${process.argv[jsonAt + 1]}`);
 }
 
-process.exit(count("fail") ? 1 : 0);
+process.exit(count("fail") ? 1 : process.argv.includes("--strict") && count("unknown") ? 2 : 0);

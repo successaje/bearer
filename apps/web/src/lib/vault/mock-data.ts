@@ -27,7 +27,7 @@ export interface MockVault {
 }
 
 export interface MockState {
-  version: 8;
+  version: 10;
   nextId: number;
   vaults: Record<string, MockVault>;
   accounts: string[];
@@ -332,7 +332,7 @@ export function seedState(now: number): MockState {
     const created = now - DAY;
     const addresses = mockAddresses(id);
     vaults[id] = {
-      view: mockView(id, "ada.testnet", created, addresses, { name: "For Mira", finish: "midnight" }),
+      view: mockView(id, "ada.testnet", created, addresses, { name: "💌 For Mira", finish: "midnight" }),
       addresses,
       ledger: {
         btc: ledger([0n, [deposit("63b", sats(0.0001), now - 4 * MIN, false)]]),
@@ -351,7 +351,7 @@ export function seedState(now: number): MockState {
     const created = now - 4 * DAY;
     const opened = now - 3 * DAY;
     const addresses = mockAddresses(id);
-    const view = mockView(id, "ada.testnet", created, addresses, { name: "Rent split", finish: "graphite" });
+    const view = mockView(id, "ada.testnet", created, addresses, { name: "🍕 Pizza money", finish: "graphite" });
     view.state = { kind: "opened", at_ns: ns(opened), by: "ada.testnet" };
     const w: Withdrawal = {
       index: 0,
@@ -460,7 +460,7 @@ export function seedState(now: number): MockState {
     const id = "21";
     const created = now - 3 * DAY;
     const addresses = mockAddresses(id);
-    const view = mockView(id, MOCK_SCHEDULE, created, addresses, { name: "For your next chapter", finish: "ivory" });
+    const view = mockView(id, MOCK_SCHEDULE, created, addresses, { name: "⏳ For your next chapter", finish: "ivory" });
     view.custody = [
       { account_id: "ada.testnet", since_ns: ns(created) },
       { account_id: MOCK_SCHEDULE, since_ns: ns(now - 2 * DAY) },
@@ -490,7 +490,7 @@ export function seedState(now: number): MockState {
   }
 
   return {
-    version: 8,
+    version: 10,
     nextId: 64,
     vaults,
     accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", ATTACKER, "near.testnet", MOCK_MARKET, MOCK_SCHEDULE],

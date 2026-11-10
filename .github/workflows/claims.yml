@@ -25,7 +25,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node scripts/verify.mjs --json claims.json
+      # --strict: a claim an endpoint didn't answer for fails too, so green means every claim was
+      # checked. Free public endpoints rate-limit now and then, so one retry, a minute later.
+      - name: pnpm verify --strict
+        run: |
+          node scripts/verify.mjs --strict --json claims.json && exit 0
+          code=$?
+          [ "$code" = "2" ] || exit "$code"
+          echo "Some endpoints didn't answer; checking again in 60 s."
+          sleep 60
+          node scripts/verify.mjs --strict --json claims.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -3,6 +3,24 @@
 **For:** anyone wondering why Bearer is built the way it is.
 Newest first. Each entry: date, decision, reason, alternatives considered.
 
+## 2026-11-10 · Card art by category, read from the name
+
+- **Decision:** a vault's card shows art for what it's for (gift, birthday, prize, savings, time capsule, love letter, and three fun ones: pizza money, to the moon, treasure). The category is read from the name: a leading emoji, which the create form adds, or else a few whole words; no match keeps the classic card. The same SVG art is drawn on the site, in the NFT image and in link previews.
+- **Reason:** the owner asked for images that fit the occasion, not only cards. The contract is locked and stores just a name and a finish, so the name is the only place a category can live; an emoji there is visible in wallets too and costs 4 or 5 of its 32 bytes.
+- **Alternatives:** mapping categories onto the six finishes (would change what existing vaults look like, and ties colour to occasion); a category stored off chain (the site has no database, and wallets wouldn't see it); a new contract field (the contract is locked).
+
+## 2026-11-10 · Bearer links: the new key is saved before anything moves
+
+- **Decision:** "Pass it on" stores the new link in the browser and shows it to be saved before any transaction; every step checks what already happened, so the old link resumes or cancels an interrupted pass-on. `pnpm spike:links mint` writes each key to disk before any transaction and finishes unfinished links on the next run.
+- **Reason:** a reviewer reading the code found that the new key lived only in the page's memory (and, in the script, was saved only after the vault and its coins had moved). An interruption at the wrong moment would have left a vault nobody could reach. Tested by interrupting both on testnet (T19).
+- **Alternatives:** keeping the new key in sessionStorage only (lost with the tab); sending the vault and the key in one step (no such thing: the key has to exist before the vault can move to it).
+
+## 2026-11-10 · Bearer links: a vault sent as a link, with no contract change
+
+- **Decision:** a link `/claim#<seed>` holds a vault through the seed's NEAR implicit account. The page signs with the key in the browser (`apps/web/src/lib/vault/bearer-link.ts`: Borsh, ed25519, `send_tx`), and the app's wallet bridge uses it while the link is open, so every vault page works without a wallet. "Pass it on" moves the vault to a new link's account, which empties the old link. `pnpm spike:links` makes links: a sealed vault per link, handed to a fresh key's account with 0.2 NEAR for fees, its Bitcoin paid from one opened treasury vault.
+- **Reason:** judges and recipients without a NEAR wallet could only read; now they can hold, pass on and open a vault with real testnet coins from a link. It also shows Bearer's point directly: an old copy of a passed-on link is worth nothing. The contracts are locked, so the brief's claim keys in the contract (T13) were out; this needs none, and T13 is met by moving the vault, not by deleting a key.
+- **Alternatives:** claim keys inside the contract (needs a new deployment); a server that holds the keys and claims for you (custody); near-api-js in the browser (a much larger bundle for one transaction type).
+
 ## 2026-11-09 · v2 staking: one pool fixed at creation, shares per vault, batched unstaking
 
 - **Decision:** v2 vaults can stake their NEAR (`contracts/bearer/src/staking.rs`). The pool is set once, in `new` (or by `migrate_add_staking` on the unlocked testnet deployment), and nothing changes it. The owner of a vault, sealed or opened, stakes from the vault's NEAR and unstakes back into it. Each vault holds shares of the contract's stake, priced at the pool's balance read right after `ping`, minus requests queued to leave. Unstake requests are batched: the contract calls the pool's `unstake` only when nothing is unlocking, and `process_unstaking` (anyone) withdraws an unlocked batch before unstaking the next. One pool call at a time. Testnet uses `stakely_v2.pool.f863973.m0`: standard pool code, no access keys, a 3% fee, producing blocks.

@@ -26,6 +26,7 @@ export function errorCopy(error: unknown): string {
   if (error instanceof VaultError) return error.detail;
   const text = error instanceof Error ? error.message : String(error);
   if (text.includes("ERR_NOT_OWNER")) return "Only the vault's current owner can do that.";
+  if (text.includes("NotEnoughBalance")) return "This account doesn't have enough NEAR to pay this transaction's fee up front.";
   if (text.includes("ERR_VAULT_OPENED")) return "Opened vaults can't change hands.";
   if (text.includes("ERR_VAULT_SEALED")) return "Break the seal first. That's what makes withdrawals possible, and it can't be undone.";
   if (text.includes("ERR_WRONG_PRICE")) return "The price changed. Check the listing and try again.";

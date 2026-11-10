@@ -91,6 +91,9 @@ export function formatDate(at: number) {
   return new Date(at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+/** `3f9a…c21e` for a NEAR implicit account (64 hex characters, as a Bearer link's); other accounts as they are. */
+export const shortAccount = (id: string) => (/^[0-9a-f]{64}$/.test(id) ? `${id.slice(0, 4)}…${id.slice(-4)}` : id);
+
 export function vaultNumber(id: string) {
   return `No. ${id.padStart(4, "0")}`;
 }

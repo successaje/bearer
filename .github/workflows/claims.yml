@@ -1,0 +1,33 @@
+# Checks the README's on-chain claims against NEAR testnet, Bitcoin testnet4, Base Sepolia and
+# Solana devnet (scripts/verify.mjs): read-only, no keys. Daily, so a claim that stops holding shows.
+name: Claims on chain
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: pnpm verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Full history: each locked contract names the commit it was built from.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node scripts/verify.mjs --json claims.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: claims
+          path: claims.json

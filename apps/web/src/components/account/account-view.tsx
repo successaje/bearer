@@ -8,7 +8,7 @@ import { EmptyState, ErrorState } from "@/components/layout/page-states";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
-import { IS_SIMULATED } from "@/lib/config";
+import { IS_SIMULATED, MARKET_CONTRACT } from "@/lib/config";
 import { errorCopy } from "@/lib/vault/errors";
 import { formatNear, nsToMs, relativeTime, vaultNumber } from "@/lib/vault/format";
 import { useAccountActivity, useListings, useMarketBalances, useMarketPayout, useNow, useVault } from "@/lib/vault/hooks";
@@ -93,7 +93,7 @@ export function AccountView() {
         </div>
         <div className={cell}>
           <dt className="text-[13px] text-fg-3">Waiting to claim</dt>
-          <dd className={big}>{balances.data ? formatNear(claimable, 3) : <Skeleton className="h-8 w-24" />}</dd>
+          <dd className={big}>{balances.data || !MARKET_CONTRACT ? formatNear(claimable, 3) : <Skeleton className="h-8 w-24" />}</dd>
           <dd className="mt-1">
             {claimable > 0n ? (
               <Button size="sm" variant="primary" onClick={() => collect("claim")} disabled={payout.isPending}>
@@ -101,7 +101,7 @@ export function AccountView() {
                 Claim it
               </Button>
             ) : (
-              <span className="text-[12.5px] text-fg-3">Every payout reached you</span>
+              <span className="text-[12.5px] text-fg-3">{MARKET_CONTRACT ? "Every payout reached you" : "No market on this contract"}</span>
             )}
           </dd>
         </div>

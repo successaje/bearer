@@ -327,8 +327,8 @@ Built for the NEAR Hackathon (window starting 2026-10-19). Libraries: near-sdk,
 near-contract-standards, k256 and ed25519-dalek (mock signer), Next.js, React, TanStack Query,
 Radix, near-connect (@hot-labs), qrcode.react, viem, bitcoinjs-lib, @noble and @scure,
 @solana/web3.js. AI tools: Claude Code (Anthropic) was used throughout for code, tests and
-documentation. The same team lead also submitted **Sudo by Contract**, an independent project. The
-two share no code.
+documentation. The same team lead also submitted **Bakeoff**, an independent project. The two share
+no code.
 
 ## License
 

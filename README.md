@@ -1,5 +1,8 @@
 # Bearer
 
+[![CI](https://github.com/successaje/bearer/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/successaje/bearer/actions/workflows/ci.yml)
+[![Locked contracts](https://github.com/successaje/bearer/actions/workflows/locked-contracts.yml/badge.svg?branch=main)](https://github.com/successaje/bearer/actions/workflows/locked-contracts.yml)
+
 **Bitcoin that changes hands without a Bitcoin transaction.**
 
 A Bearer vault is a NEAR NFT that controls its own Bitcoin address, plus Base and Solana ones.
@@ -207,6 +210,10 @@ git checkout 71f194e
 cargo near build reproducible-wasm --manifest-path contracts/bearer/Cargo.toml
 shasum -a 256 contracts/target/near/bearer/bearer.wasm   # 05b27506…8619, as in contracts/res/SHA256SUMS
 ```
+
+The [Locked contracts](https://github.com/successaje/bearer/actions/workflows/locked-contracts.yml)
+workflow does this on GitHub for all three locked contracts, each from the commit it names, and
+also compares the result with the code hash on NEAR testnet.
 
 **Repeat the testnet runs** from `contracts/tests`. This needs `BEARER_TESTNET_PARENT` in `.env`,
 a faucet-created testnet account:

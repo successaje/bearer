@@ -30,14 +30,38 @@ passing the vault on leaves nothing behind for an old copy of the link.
 
 A link whose vault has moved on says so: "This link is empty."
 
+## Interruptions
+
+A link's key is the only way to its vault, so no step may leave a key only in memory.
+
+- **Passing it on.** The page makes the new key and stores it in this browser (localStorage, keyed
+  by the old link) before anything moves. It shows the new link, with a QR code, and asks the
+  holder to save it; only then does "Move the vault into it" work. Every step checks what already
+  happened: funding the new link, moving the vault, sweeping the rest. So reopening the old link
+  after a reload, a closed tab or a crash shows the same new link and finishes the job, or cancels
+  and brings back any NEAR already sent. The stored key is deleted when the holder presses Done.
+- **Making links.** `pnpm spike:links mint` writes each key to its owner-only file before any
+  transaction and marks the link unfinished. Each step checks what already happened (the vault
+  exists, the account is funded, the vault is handed over, the Bitcoin is paid), so the next run
+  finishes a halfway link without paying twice. A stop after the vault exists but before it's
+  saved leaves a spare vault with the parent, not a lost one.
+
+Tested on testnet on 2026-11-10: a pass-on reloaded mid-move, after the new link was funded and
+before the vault moved, came back with the same new link and finished (vault No. 0019, custody
+parent → link → new link, sealed). A mint stopped after creating its vault
+(`LINKS_CRASH_AFTER=vault`) was finished by a plain rerun. Found by a reviewer reading the code
+before the links were shared.
+
 ## Fees
 
 NEAR takes a call's prepaid gas up front, at about ten times the base gas price, and refunds the
 unused part a block later. On testnet on 2026-11-10 a 30 Tgas `nft_transfer` needed 0.031 NEAR
 available (measured: `NotEnoughBalance … cost 30919635923605000000001`). Breaking the seal and
 withdrawing Bitcoin is about 105 Tgas, so about 0.12 NEAR with the withdrawal deposit. Each link's
-account gets 0.2 NEAR. "Pass it on" keeps 0.04 NEAR back to move the vault, then sweeps the rest
-to the new link once the refund lands.
+account gets 0.2 NEAR. A transfer to a link's account is also charged about 0.0076 NEAR up front,
+as if it created that account (measured: `NotEnoughBalance … cost 38126145788121799999999` for a
+0.0305 NEAR transfer). So "Pass it on" keeps 0.05 NEAR back to move the vault, then sweeps the rest
+to the new link once the refunds land, leaving 0.01 NEAR behind.
 
 ## Making links
 

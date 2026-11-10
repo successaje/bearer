@@ -2,7 +2,8 @@
  * Bearer links on bearer.testnet: sealed vaults sent as links (apps/web/src/lib/vault/bearer-link.ts).
  *
  *   node spike/bearer-links.ts treasury              # the parent creates and opens a treasury vault; prints its Bitcoin address
- *   node spike/bearer-links.ts mint <count> <sats>   # each link: a sealed vault handed to a fresh key's account, paid from the treasury
+ *   node spike/bearer-links.ts mint <count> <sats>   # each link: a sealed vault handed to a fresh key's account, paid from the treasury;
+ *                                                    # finishes any link a stopped run left halfway first
  *   node spike/bearer-links.ts status                # which links still hold their vault
  *
  * A link is https://bearer-near.vercel.app/claim#<seed>: the seed's NEAR implicit account holds
@@ -35,7 +36,11 @@ const FINISHES = ["champagne", "ivory", "sage", "midnight", "obsidian"];
 const DIR = join(homedir(), ".near-credentials", "bearer-links");
 const STATE = join(DIR, "links.json");
 
-type Link = { n: number; token_id: string; account: string; seed: string; url: string; btc_sats: number; btc_txid: string | null; minted_at: string };
+/**
+ * A link is written here, key first, before any transaction. `done: false` marks one an
+ * interruption left halfway; the next `mint` finishes it. Links from before this field are done.
+ */
+type Link = { n: number; token_id: string | null; account: string; seed: string; url: string; btc_sats: number; btc_txid: string | null; minted_at: string; done?: boolean };
 type State = { treasury: string | null; links: Link[] };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -52,7 +57,7 @@ function save(state: State, ready?: Set<number>) {
   chmodSync(DIR, 0o700);
   writeFileSync(STATE, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
   chmodSync(STATE, 0o600);
-  const line = (l: Link) => `- No. ${l.token_id.padStart(4, "0")} · ${l.btc_sats.toLocaleString("en-US")} sats · ${l.url}`;
+  const line = (l: Link) => `- No. ${(l.token_id ?? "????").padStart(4, "0")} · ${l.btc_sats.toLocaleString("en-US")} sats · ${l.url}${l.done === false ? " (unfinished: run mint again)" : ""}`;
   const md = [
     "# Bearer links (testnet)",
     "",
@@ -181,15 +186,56 @@ async function treasury() {
   const parent = account(PARENT as string);
   if (!state.treasury) {
     const v = await createVault(parent, "Bearer links treasury", "graphite");
-    await call(parent, "break_seal", { token_id: v.token_id }, 30n * TGAS, ONE_YOCTO);
     state.treasury = v.token_id;
     save(state);
   }
-  const v = await view<Vault>("vault", { token_id: state.treasury });
+  let v = await view<Vault>("vault", { token_id: state.treasury });
+  if (v.state.kind === "sealed") {
+    await call(parent, "break_seal", { token_id: v.token_id }, 30n * TGAS, ONE_YOCTO);
+    v = await view<Vault>("vault", { token_id: state.treasury });
+  }
   const coins = await utxos(v.btc_address as string);
   console.log(`treasury: vault No. ${v.token_id.padStart(4, "0")}, ${v.state.kind}, held by ${v.owner_id}`);
   console.log(`Bitcoin testnet4 address: ${v.btc_address}`);
   console.log(`holds ${coins.reduce((s, c) => s + c.value, 0)} sats in ${coins.length} coin(s), ${coins.filter((c) => !c.status.confirmed).length} unconfirmed`);
+}
+
+/** Stops the run after a step, to test that `mint` finishes the link next time (LINKS_CRASH_AFTER=key|vault|funded|handed). */
+function crashAfter(step: string) {
+  if (process.env.LINKS_CRASH_AFTER === step) throw new Error(`stopped after "${step}" (LINKS_CRASH_AFTER)`);
+}
+
+/**
+ * Brings a saved link to done. Every step first checks whether it already happened, so it also
+ * finishes a link that an interruption stopped anywhere.
+ */
+async function complete(state: State, link: Link, parent: Account, treasuryVault: Vault | null) {
+  if (!link.token_id) {
+    const v = await createVault(parent, "A Bearer link", FINISHES[link.n % FINISHES.length]);
+    link.token_id = v.token_id;
+    save(state);
+  }
+  crashAfter("vault");
+  const v = await view<Vault>("vault", { token_id: link.token_id });
+  const funded = await rpc("query", { request_type: "view_account", finality: "final", account_id: link.account }).then(() => true, () => false);
+  if (!funded) await parent.transfer({ receiverId: link.account, amount: LINK_NEAR });
+  crashAfter("funded");
+  if (v.owner_id !== link.account) {
+    if (v.owner_id !== PARENT) throw new Error(`vault ${link.token_id} is held by ${v.owner_id}, not the parent or the link`);
+    await call(parent, "nft_transfer", { receiver_id: link.account, token_id: link.token_id }, 30n * TGAS, ONE_YOCTO);
+  }
+  crashAfter("handed");
+  if (link.btc_sats > 0 && !link.btc_txid) {
+    if (!treasuryVault) throw new Error("run `treasury` first and fund it");
+    // A run stopped after broadcasting leaves the payment on chain: look before paying again.
+    const seen = (await (await fetch(`${ESPLORA}/address/${v.btc_address}/txs`)).json()) as { txid: string; vout: { scriptpubkey_address?: string }[] }[];
+    const earlier = seen.find((t) => t.vout.some((o) => o.scriptpubkey_address === v.btc_address));
+    link.btc_txid = earlier?.txid ?? (await payFromTreasury(parent, treasuryVault, v.btc_address as string, link.btc_sats)).txid;
+    save(state);
+  }
+  link.done = true;
+  save(state);
+  console.log(`link ${link.n}: vault No. ${link.token_id.padStart(4, "0")} → ${link.account.slice(0, 8)}…, ${link.btc_txid ? `${link.btc_sats} sats in ${link.btc_txid}` : "no Bitcoin"}`);
 }
 
 async function mint(count: number, sats: number) {
@@ -197,27 +243,29 @@ async function mint(count: number, sats: number) {
   if (!state.treasury && sats > 0) throw new Error("run `treasury` first and fund it");
   const parent = account(PARENT as string);
   const treasuryVault = state.treasury ? await view<Vault>("vault", { token_id: state.treasury }) : null;
+  // First, finish any link an interruption left halfway.
+  for (const l of state.links.filter((x) => x.done === false)) {
+    console.log(`link ${l.n} was left unfinished; finishing it`);
+    await complete(state, l, parent, treasuryVault);
+  }
   for (let i = 0; i < count; i++) {
-    const n = state.links.length + 1;
     const seed = randomBytes(32);
-    const id = Buffer.from(ed25519.getPublicKey(seed)).toString("hex");
-    const v = await createVault(parent, "A Bearer link", FINISHES[n % FINISHES.length]);
-    await parent.transfer({ receiverId: id, amount: LINK_NEAR });
-    await call(parent, "nft_transfer", { receiver_id: id, token_id: v.token_id }, 30n * TGAS, ONE_YOCTO);
-    const paid = sats > 0 && treasuryVault ? await payFromTreasury(parent, treasuryVault, v.btc_address as string, sats) : null;
     const link: Link = {
-      n,
-      token_id: v.token_id,
-      account: id,
+      n: state.links.length + 1,
+      token_id: null,
+      account: Buffer.from(ed25519.getPublicKey(seed)).toString("hex"),
       seed: base58(seed),
       url: `${SITE}/claim#${base58(seed)}`,
-      btc_sats: paid ? sats : 0,
-      btc_txid: paid?.txid ?? null,
+      btc_sats: sats,
+      btc_txid: null,
       minted_at: new Date().toISOString(),
+      done: false,
     };
+    // The key is on disk before anything is sent, so no step can strand a vault or its coins.
     state.links.push(link);
     save(state);
-    console.log(`link ${n}: vault No. ${v.token_id.padStart(4, "0")} → ${id.slice(0, 8)}…, ${paid ? `${sats} sats in ${paid.txid} (fee ${paid.fee})` : "no Bitcoin"}`);
+    crashAfter("key");
+    await complete(state, link, parent, treasuryVault);
   }
   console.log(`links written to ${join(DIR, "links.md")} (owner-only)`);
 }
@@ -226,6 +274,10 @@ async function status() {
   const state = load();
   const ready = new Set<number>();
   for (const l of state.links) {
+    if (!l.token_id || l.done === false) {
+      console.log(`link ${l.n}: unfinished; run mint again to finish it`);
+      continue;
+    }
     const v = await view<Vault>("vault", { token_id: l.token_id });
     const still = v.owner_id === l.account && v.state.kind === "sealed";
     if (still) ready.add(l.n);

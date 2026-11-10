@@ -14,19 +14,35 @@ import { TransferSheet } from "@/components/vault/transfer-sheet";
 import { VaultCard } from "@/components/vault/vault-card";
 import { useWallet } from "@/components/wallet/wallet-provider";
 import { BEARER_CONTRACT, IS_SIMULATED } from "@/lib/config";
-import { linkBalance, linkUrl, linkWallet, newLinkKey, parseLinkKey, shortAccount, storedLinkKey, type LinkKey } from "@/lib/vault/bearer-link";
+import {
+  clearPendingPass,
+  linkBalance,
+  linkUrl,
+  linkWallet,
+  newPendingPass,
+  parseLinkKey,
+  pendingPasses,
+  savePendingPass,
+  shortAccount,
+  storedLinkKey,
+  type LinkKey,
+  type PendingPass,
+} from "@/lib/vault/bearer-link";
 import { getVaultClient } from "@/lib/vault/client";
 import { errorCopy } from "@/lib/vault/errors";
 import { CHAIN_META, formatAmount, formatNear, formatUsd, vaultNumber } from "@/lib/vault/format";
-import { useObservation, useVaults } from "@/lib/vault/hooks";
+import { useObservation, useVault, useVaults } from "@/lib/vault/hooks";
 import { isSealed, observedUsd } from "@/lib/vault/report";
 
 const NEAR = 10n ** 24n;
 /**
  * What the old link keeps to move the vault: NEAR takes a call's gas up front (30 Tgas is about
- * 0.031 NEAR) and refunds the unused part. Whatever is left afterwards is swept to the new link.
+ * 0.031 NEAR), and charges a transfer to a link's account about 0.0076 NEAR up front as if it
+ * created that account, refunding the unused parts. What's left afterwards is swept to the new link.
  */
-const KEEP_FOR_TRANSFER = (4n * NEAR) / 100n;
+const KEEP_FOR_TRANSFER = (5n * NEAR) / 100n;
+/** Left behind by a sweep, to cover that up-front charge on the sweep itself. */
+const SWEEP_MARGIN = NEAR / 100n;
 /** The least worth sending a new link: enough for its holder to move the vault on again. */
 const MIN_FORWARD = (2n * NEAR) / 100n;
 
@@ -39,7 +55,8 @@ const MIN_FORWARD = (2n * NEAR) / 100n;
 export function ClaimView() {
   const { ready, link, accountId, openLink } = useWallet();
   const [problem, setProblem] = useState<string | null>(null);
-  const [passed, setPassed] = useState<{ url: string; vault: VaultView } | null>(null);
+  // A pass-on in progress: started here, or left in this browser by a reload, a closed tab or a crash.
+  const [pending, setPending] = useState<PendingPass | null>(null);
 
   // A key in the address opens the link, then leaves the address bar.
   useEffect(() => {
@@ -51,6 +68,13 @@ export function ClaimView() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     else setProblem("This address doesn't hold a Bearer link's key. Check that the whole link was copied.");
   }, [openLink]);
+
+  useEffect(() => {
+    if (!ready || IS_SIMULATED) return;
+    const all = pendingPasses();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPending((link && accountId ? all.find((p) => p.from === accountId) : all[0]) ?? null);
+  }, [ready, link, accountId]);
 
   if (IS_SIMULATED) {
     return (
@@ -73,14 +97,14 @@ export function ClaimView() {
 
   return (
     <Frame>
-      {passed ? <PassedOn url={passed.url} vault={passed.vault} onDone={() => setPassed(null)} /> : null}
+      {pending ? <PassOnPanel pending={pending} onClose={() => setPending(null)} /> : null}
       {problem ? (
         <Callout tone="danger" className="mb-6">
           {problem}
         </Callout>
       ) : null}
       {link && accountId ? (
-        <Holding accountId={accountId} onPassed={setPassed} hide={Boolean(passed)} />
+        <Holding accountId={accountId} onPassOn={setPending} hide={Boolean(pending)} />
       ) : (
         <OpenLink
           onOpen={(key) => {
@@ -134,7 +158,7 @@ function OpenLink({ onOpen }: { onOpen: (key: LinkKey) => void }) {
   );
 }
 
-function Holding({ accountId, onPassed, hide }: { accountId: string; onPassed: (p: { url: string; vault: VaultView }) => void; hide: boolean }) {
+function Holding({ accountId, onPassOn, hide }: { accountId: string; onPassOn: (p: PendingPass) => void; hide: boolean }) {
   const vaults = useVaults(accountId);
   const balance = useQuery({ queryKey: ["link-balance", accountId], queryFn: () => linkBalance(accountId), refetchInterval: 15_000 });
   const { disconnect } = useWallet();
@@ -168,7 +192,7 @@ function Holding({ accountId, onPassed, hide }: { accountId: string; onPassed: (
   return (
     <div className="flex flex-col gap-14">
       {list.map((v) => (
-        <VaultInLink key={v.token_id} vault={v} accountId={accountId} nearLeft={balance.data?.spendable ?? 0n} onPassed={onPassed} />
+        <VaultInLink key={v.token_id} vault={v} accountId={accountId} nearLeft={balance.data?.spendable ?? 0n} onPassOn={onPassOn} />
       ))}
     </div>
   );
@@ -178,12 +202,12 @@ function VaultInLink({
   vault,
   accountId,
   nearLeft,
-  onPassed,
+  onPassOn,
 }: {
   vault: VaultView;
   accountId: string;
   nearLeft: bigint;
-  onPassed: (p: { url: string; vault: VaultView }) => void;
+  onPassOn: (p: PendingPass) => void;
 }) {
   const observations = useObservation(vault).data;
   const sealed = isSealed(vault);
@@ -245,7 +269,7 @@ function VaultInLink({
               new link that only you have.
             </Callout>
             <div className="mt-5 flex flex-wrap gap-2.5">
-              <PassOn vault={vault} accountId={accountId} nearLeft={nearLeft} onPassed={onPassed} />
+              <PassOn vault={vault} accountId={accountId} nearLeft={nearLeft} onPassOn={onPassOn} />
               <Button onClick={() => setSending(true)} disabled={!vault.keys}>
                 <Send className="size-4" />
                 Send it to a NEAR account
@@ -277,104 +301,189 @@ function VaultInLink({
 }
 
 /**
- * Moves the vault into a new link: funds the new link's account from this one, then transfers
- * the vault to it. This link is then empty, so passing it on leaves the giver nothing.
+ * Starts passing the vault into a new link. The new key is made and kept in this browser before
+ * anything moves; PassOnPanel shows it to be saved, then moves the vault.
  */
 function PassOn({
   vault,
   accountId,
   nearLeft,
-  onPassed,
+  onPassOn,
 }: {
   vault: VaultView;
   accountId: string;
   nearLeft: bigint;
-  onPassed: (p: { url: string; vault: VaultView }) => void;
+  onPassOn: (p: PendingPass) => void;
 }) {
-  const qc = useQueryClient();
-  const [busy, setBusy] = useState(false);
-  // Made once and kept, so a retry after a failed step reuses the new link it already funded.
-  const [next, setNext] = useState<LinkKey | null>(null);
-  const affordable = next ? nearLeft >= KEEP_FOR_TRANSFER : nearLeft - KEEP_FOR_TRANSFER >= MIN_FORWARD;
+  return (
+    <Button
+      variant="primary"
+      disabled={!vault.keys || nearLeft - KEEP_FOR_TRANSFER < MIN_FORWARD}
+      onClick={() => {
+        const p = newPendingPass(accountId, vault.token_id);
+        if (!savePendingPass(p)) {
+          return toast.error("This browser won't store the new link, so passing it on here could lose the vault.", {
+            description: "Send it to a NEAR account instead.",
+          });
+        }
+        onPassOn(p);
+      }}
+    >
+      <Link2 className="size-4" />
+      Pass it on as a new link
+    </Button>
+  );
+}
 
-  async function pass() {
-    const current = storedLinkKey();
-    if (!current || current.accountId !== accountId) return toast.error("Open the link again: this tab no longer holds it.");
-    const key = next ?? newLinkKey();
-    setNext(key);
-    setBusy(true);
+/**
+ * A pass-on, from saving the new link to Done. Every step checks what's already happened, so
+ * "Move the vault into it" also finishes one that an interruption stopped halfway. The new link
+ * stays in this browser until Done.
+ */
+function PassOnPanel({ pending, onClose }: { pending: PendingPass; onClose: () => void }) {
+  const qc = useQueryClient();
+  const { accountId } = useWallet();
+  const key = parseLinkKey(pending.seed) as LinkKey;
+  const url = linkUrl(key);
+  const vault = useVault(pending.tokenId).data;
+  const moved = vault?.owner_id === key.accountId;
+  const stillInOld = vault?.owner_id === pending.from;
+  const signing = accountId === pending.from;
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState<"move" | "cancel" | null>(null);
+
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ["vaults"] });
+    void qc.invalidateQueries({ queryKey: ["vault"] });
+    void qc.invalidateQueries({ queryKey: ["link-balance"] });
+  };
+
+  async function move() {
+    const from = storedLinkKey();
+    if (!from || from.accountId !== pending.from) return toast.error("Open the old link in this tab to finish moving the vault.");
+    setBusy("move");
     try {
-      // Fund the new link first, so it never holds the vault without NEAR for fees.
-      if (!(await linkBalance(key.accountId))) await linkWallet(current).transfer(key.accountId, nearLeft - KEEP_FOR_TRANSFER);
-      await (await getVaultClient()).transfer(vault.token_id, key.accountId, accountId);
+      const client = await getVaultClient();
+      const now = await client.getVault(pending.tokenId);
+      if (now?.owner_id !== key.accountId) {
+        if (now?.owner_id !== pending.from) throw new Error("The vault isn't in the old link any more.");
+        // Fund the new link first, so it never holds the vault without NEAR for fees.
+        if (!(await linkBalance(key.accountId))) {
+          const spendable = (await linkBalance(pending.from))?.spendable ?? 0n;
+          if (spendable - KEEP_FOR_TRANSFER < MIN_FORWARD) throw new Error("The old link doesn't have enough NEAR left to fund a new one.");
+          await linkWallet(from).transfer(key.accountId, spendable - KEEP_FOR_TRANSFER);
+        }
+        await client.transfer(pending.tokenId, key.accountId, pending.from);
+      }
       // Sweep what the transfer didn't use, once its gas refund has landed (a block or two);
       // the old link keeps only its storage.
       let left = -1n;
       for (let i = 0; i < 8; i++) {
         await new Promise((r) => setTimeout(r, 800));
-        const now = (await linkBalance(current.accountId, "optimistic"))?.spendable ?? 0n;
-        if (now === left) break;
-        left = now;
+        const n = (await linkBalance(from.accountId, "optimistic"))?.spendable ?? 0n;
+        if (n === left) break;
+        left = n;
       }
-      if (left > NEAR / 500n) await linkWallet(current).transfer(key.accountId, left - NEAR / 500n).catch(() => undefined);
-      void qc.invalidateQueries({ queryKey: ["vaults"] });
-      void qc.invalidateQueries({ queryKey: ["link-balance"] });
-      onPassed({ url: linkUrl(key), vault });
+      if (left > SWEEP_MARGIN) await linkWallet(from).transfer(key.accountId, left - SWEEP_MARGIN).catch(() => undefined);
     } catch (e) {
       toast.error("It didn't pass on", { description: errorCopy(e) });
     } finally {
-      setBusy(false);
+      refresh();
+      setBusy(null);
     }
   }
 
-  return (
-    <Button variant="primary" onClick={() => void pass()} disabled={busy || !vault.keys || !affordable}>
-      {busy ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />}
-      {busy ? "Passing it on…" : "Pass it on as a new link"}
-    </Button>
-  );
-}
+  /** Before the vault moves: forget the new link, and bring back any NEAR already sent to it. */
+  async function cancel() {
+    setBusy("cancel");
+    try {
+      const funded = await linkBalance(key.accountId);
+      if (funded && funded.spendable > SWEEP_MARGIN) await linkWallet(key).transfer(pending.from, funded.spendable - SWEEP_MARGIN);
+      clearPendingPass(pending.from);
+      refresh();
+      onClose();
+    } catch (e) {
+      toast.error("Couldn't cancel", { description: errorCopy(e) });
+    } finally {
+      setBusy(null);
+    }
+  }
 
-function PassedOn({ url, vault, onDone }: { url: string; vault: VaultView; onDone: () => void }) {
-  const [copied, setCopied] = useState(false);
+  const copy = () =>
+    void navigator.clipboard.writeText(url).then(() => {
+      setSaved(true);
+      toast.success("New link copied. Anyone who has it can take the vault.");
+    });
+
   return (
     <section className="mb-12 overflow-hidden rounded-panel border border-gold/40 bg-gold/[0.06]">
       <div className="grid gap-6 p-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:p-8">
         <div className="min-w-0">
           <p className="inline-flex items-center gap-1.5 text-[13px] font-medium text-accent">
-            <ShieldCheck className="size-4" />
-            Passed on, still sealed
+            {moved ? <ShieldCheck className="size-4" /> : <Link2 className="size-4" />}
+            {moved ? "Passed on, still sealed" : "Passing it on: save the new link first"}
           </p>
-          <h2 className="mt-2 text-[26px] font-semibold leading-tight tracking-[-0.03em]">Vault {vaultNumber(vault.token_id)} is in a new link</h2>
+          <h2 className="mt-2 text-[26px] font-semibold leading-tight tracking-[-0.03em]">
+            {moved ? `Vault ${vaultNumber(pending.tokenId)} is in the new link` : `The new link for vault ${vaultNumber(pending.tokenId)}`}
+          </h2>
           <p className="mt-2 text-[14.5px] leading-relaxed text-fg-2">
-            Send this link to whoever should have it. The one you opened is empty now: anyone holding a copy of it gets nothing. Nothing
-            moved on Bitcoin, Base or Solana.
+            {moved
+              ? "Send this link to whoever should have it. The one you opened is empty now: anyone holding a copy of it gets nothing. Nothing moved on Bitcoin, Base or Solana."
+              : "Copy it, or scan the QR code, and keep it somewhere only you can open. Nothing has moved yet. Once it's saved, move the vault into it."}
           </p>
           <div className="mt-4 flex min-w-0 items-center gap-2 rounded-control border border-line-strong bg-surface px-3 py-2">
             <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-fg-2">{url}</span>
-            <Button
-              size="sm"
-              onClick={() =>
-                void navigator.clipboard.writeText(url).then(() => {
-                  setCopied(true);
-                  toast.success("Link copied. Anyone who has it can take the vault.");
-                })
-              }
-            >
-              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-              {copied ? "Copied" : "Copy"}
+            <Button size="sm" onClick={copy}>
+              {saved ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+              {saved ? "Copied" : "Copy"}
             </Button>
           </div>
-          <p className="mt-3 text-[12.5px] text-fg-3">
-            This page won&apos;t show the link again once you leave it. The vault&apos;s{" "}
-            <Link href={`/v/${vault.token_id}`} className="text-accent hover:underline">
+
+          {moved ? (
+            <Button variant="primary" className="mt-5" onClick={() => (clearPendingPass(pending.from), onClose())}>
+              Done
+            </Button>
+          ) : !vault ? (
+            <Skeleton className="mt-5 h-10 w-56" />
+          ) : stillInOld ? (
+            <>
+              <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-[14px]">
+                <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="mt-1 size-4 accent-[var(--color-gold)]" />
+                I&apos;ve saved the new link. If I lose it, nobody can get the vault back.
+              </label>
+              <div className="mt-4 flex flex-wrap gap-2.5">
+                <Button variant="primary" onClick={() => void move()} disabled={!saved || !signing || busy !== null}>
+                  {busy === "move" ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                  {busy === "move" ? "Moving it…" : "Move the vault into it"}
+                </Button>
+                <Button variant="ghost" onClick={() => void cancel()} disabled={busy !== null}>
+                  {busy === "cancel" ? <Loader2 className="size-4 animate-spin" /> : null}
+                  Cancel
+                </Button>
+              </div>
+              {!signing ? (
+                <p className="mt-3 text-[13px] text-fg-3">Open the old link in this tab to move the vault.</p>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <Callout tone="warn" className="mt-5">
+                The vault isn&apos;t in the old link any more, and it didn&apos;t go to this one.
+              </Callout>
+              <Button variant="ghost" className="mt-3 -ml-2" onClick={() => void cancel()} disabled={busy !== null}>
+                Forget this link
+              </Button>
+            </>
+          )}
+
+          <p className="mt-4 text-[12.5px] leading-relaxed text-fg-3">
+            This browser keeps the new link until you press {moved ? "Done" : "Done or Cancel"}, so a reload or a closed tab can&apos;t lose
+            it. The vault&apos;s{" "}
+            <Link href={`/v/${pending.tokenId}`} className="text-accent hover:underline">
               public page
             </Link>{" "}
             shows it changing hands on {BEARER_CONTRACT}.
           </p>
-          <Button variant="ghost" size="sm" className="mt-3 -ml-2" onClick={onDone}>
-            Done
-          </Button>
         </div>
         <div className="mx-auto rounded-[14px] bg-white p-3 sm:mx-0">
           <QRCodeSVG value={url} size={168} level="M" marginSize={0} role="img" aria-label="QR code of the new link" />

@@ -3,6 +3,12 @@
 **For:** anyone wondering why Bearer is built the way it is.
 Newest first. Each entry: date, decision, reason, alternatives considered.
 
+## 2026-11-10 · Bearer links: the new key is saved before anything moves
+
+- **Decision:** "Pass it on" stores the new link in the browser and shows it to be saved before any transaction; every step checks what already happened, so the old link resumes or cancels an interrupted pass-on. `pnpm spike:links mint` writes each key to disk before any transaction and finishes unfinished links on the next run.
+- **Reason:** a reviewer reading the code found that the new key lived only in the page's memory (and, in the script, was saved only after the vault and its coins had moved). An interruption at the wrong moment would have left a vault nobody could reach. Tested by interrupting both on testnet (T19).
+- **Alternatives:** keeping the new key in sessionStorage only (lost with the tab); sending the vault and the key in one step (no such thing: the key has to exist before the vault can move to it).
+
 ## 2026-11-10 · Bearer links: a vault sent as a link, with no contract change
 
 - **Decision:** a link `/claim#<seed>` holds a vault through the seed's NEAR implicit account. The page signs with the key in the browser (`apps/web/src/lib/vault/bearer-link.ts`: Borsh, ed25519, `send_tx`), and the app's wallet bridge uses it while the link is open, so every vault page works without a wallet. "Pass it on" moves the vault to a new link's account, which empties the old link. `pnpm spike:links` makes links: a sealed vault per link, handed to a fresh key's account with 0.2 NEAR for fees, its Bitcoin paid from one opened treasury vault.

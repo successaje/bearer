@@ -370,6 +370,13 @@ export const THREATS: Threat[] = [
     tests: [],
     status: "policy",
   },
+  {
+    id: "T19",
+    attack: "Passing a vault on, or making links, stops halfway and loses the new key",
+    defence: "The new link is stored and saved before anything moves; every step checks what already happened, so it resumes",
+    tests: ["testnet, 10 Nov: a pass-on reloaded mid-move resumed and finished; a mint stopped after its vault was finished by a rerun"],
+    status: "proven",
+  },
   // The market (contracts/market), rows M1–M10.
   {
     id: "M1",

@@ -65,6 +65,54 @@ export function storeLinkKey(key: LinkKey | null) {
   }
 }
 
+/* ---------- passing a vault on: the new link is saved before anything moves ---------- */
+
+/**
+ * A pass-on in progress: the new link's seed, kept in this browser (localStorage) from before
+ * the first transaction until the holder presses Done, so a reload, a closed tab or a crash
+ * halfway can't lose the vault. Keyed by the old link's account.
+ */
+export interface PendingPass {
+  from: string;
+  tokenId: string;
+  seed: string;
+  startedAt: number;
+}
+
+const PASS_PREFIX = "bearer:pass-on:";
+
+export function newPendingPass(from: string, tokenId: string): PendingPass {
+  return { from, tokenId, seed: base58.encode(newLinkKey().seed), startedAt: Date.now() };
+}
+
+export function pendingPasses(): PendingPass[] {
+  try {
+    return Object.keys(localStorage)
+      .filter((k) => k.startsWith(PASS_PREFIX))
+      .map((k) => JSON.parse(localStorage.getItem(k) as string) as PendingPass)
+      .filter((p) => p && parseLinkKey(p.seed))
+      .sort((a, b) => b.startedAt - a.startedAt);
+  } catch {
+    return [];
+  }
+}
+
+/** Returns false if the browser won't keep it, so the caller doesn't move anything. */
+export function savePendingPass(p: PendingPass) {
+  try {
+    localStorage.setItem(PASS_PREFIX + p.from, JSON.stringify(p));
+    return localStorage.getItem(PASS_PREFIX + p.from) !== null;
+  } catch {
+    return false;
+  }
+}
+
+export function clearPendingPass(from: string) {
+  try {
+    localStorage.removeItem(PASS_PREFIX + from);
+  } catch {}
+}
+
 /* ---------- signing NEAR transactions with the link's key ---------- */
 
 type Action = { kind: "call"; call: FunctionCall } | { kind: "transfer"; yocto: bigint };

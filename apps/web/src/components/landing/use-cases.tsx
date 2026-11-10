@@ -104,7 +104,7 @@ export function UseCases() {
               <div className={cn("relative flex items-center justify-center overflow-hidden px-10 py-9", i % 2 ? "bg-surface-2" : "bg-raised")}>
                 <div aria-hidden className="guilloche absolute inset-0 opacity-60" />
                 <div className="relative w-full max-w-[260px] -rotate-2 transition-transform duration-300 hover:rotate-0">
-                  <BearerCard name={u.name} finish={u.finish} chains={["btc", "evm", "sol"]} />
+                  <BearerCard name={u.name} finish={u.finish} />
                 </div>
               </div>
               <div className="flex flex-1 flex-col p-6">

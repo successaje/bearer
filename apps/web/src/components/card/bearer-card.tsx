@@ -1,10 +1,11 @@
 import type { CSSProperties } from "react";
 import { Seal, type SealVariant } from "@/components/brand/seal";
-import { ChainStack } from "@/components/brand/chain-icon";
-import type { ChainTag, Finish } from "@bearer/sdk";
+import { ChainStack, type CardChain } from "@/components/brand/chain-icon";
+import type { Finish } from "@bearer/sdk";
 import { readName } from "@/lib/vault/category";
 import { categoryArt } from "@/lib/vault/category-art";
 import { formatUsd, vaultNumber } from "@/lib/vault/format";
+import { HOLDINGS } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
 interface FinishStyle {
@@ -89,12 +90,15 @@ export const FINISH_ORDER: Finish[] = ["obsidian", "champagne", "graphite", "ivo
  * from a 90px illustration up to the hero. A name that picks a category
  * (lib/vault/category.ts) puts that category's art on the face.
  */
+/** A v2 vault holds NEAR itself, beside its Bitcoin, Base and Solana addresses. */
+const CARD_CHAINS: CardChain[] = HOLDINGS ? ["btc", "evm", "sol", "near"] : ["btc", "evm", "sol"];
+
 export function BearerCard({
   name,
   id,
   finish,
   valueUsd,
-  chains = ["btc", "evm", "sol"],
+  chains = CARD_CHAINS,
   seal = "monogram",
   className,
   style,
@@ -106,7 +110,7 @@ export function BearerCard({
   id?: string;
   finish: Finish;
   valueUsd?: number | null;
-  chains?: ChainTag[];
+  chains?: CardChain[];
   seal?: SealVariant;
   className?: string;
   style?: CSSProperties;

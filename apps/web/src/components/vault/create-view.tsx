@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { FieldMessage, Input, Label } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
 import { BearerCard, FINISHES, FINISH_ORDER } from "@/components/card/bearer-card";
-import { CREATE_DEPOSIT_NEAR } from "@/lib/config";
+import { CREATE_DEPOSIT_NEAR, HOLDINGS } from "@/lib/config";
 import { CATEGORIES, nameBytes, nameWith, type Category } from "@/lib/vault/category";
 import { useCreateVault } from "@/lib/vault/hooks";
 import { cn } from "@/lib/utils";
@@ -166,10 +166,12 @@ export function CreateView() {
 
           <div className="overflow-hidden rounded-panel border border-line bg-surface">
             <div className="flex items-center gap-3 border-b border-line px-4 py-3.5">
-              <ChainStack chains={["btc", "evm", "sol"]} ring="var(--surface)" />
+              <ChainStack chains={HOLDINGS ? ["btc", "evm", "sol", "near"] : ["btc", "evm", "sol"]} ring="var(--surface)" />
               <div className="min-w-0">
-                <p className="text-[14px] font-medium">Three addresses, ready to fill</p>
-                <p className="mt-0.5 text-[12.5px] text-fg-3">Bitcoin testnet4 · Base Sepolia · Solana devnet</p>
+                <p className="text-[14px] font-medium">{HOLDINGS ? "Three addresses, and NEAR in the vault itself" : "Three addresses, ready to fill"}</p>
+                <p className="mt-0.5 text-[12.5px] text-fg-3">
+                  Bitcoin testnet4 · Base Sepolia · Solana devnet{HOLDINGS ? " · NEAR, tokens and NFTs" : ""}
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3 border-b border-line px-4 py-3.5">

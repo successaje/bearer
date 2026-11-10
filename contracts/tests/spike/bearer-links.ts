@@ -46,17 +46,29 @@ function load(): State {
   return existsSync(STATE) ? JSON.parse(readFileSync(STATE, "utf8")) : { treasury: null, links: [] };
 }
 
-function save(state: State) {
+/** Writes the state and links.md, owner-only. `ready` (from `status`) splits the links into ready and used. */
+function save(state: State, ready?: Set<number>) {
   mkdirSync(DIR, { recursive: true, mode: 0o700 });
   chmodSync(DIR, 0o700);
   writeFileSync(STATE, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
   chmodSync(STATE, 0o600);
+  const line = (l: Link) => `- No. ${l.token_id.padStart(4, "0")} · ${l.btc_sats.toLocaleString("en-US")} sats · ${l.url}`;
   const md = [
     "# Bearer links (testnet)",
     "",
     "Each link holds a sealed vault on bearer.testnet. Anyone who opens a link can take its vault, so share each one once.",
     "",
-    ...state.links.map((l) => `- No. ${l.token_id.padStart(4, "0")} · ${l.btc_sats.toLocaleString("en-US")} sats · ${l.url}`),
+    ...(ready
+      ? [
+          "## Ready to share (still in its link, sealed)",
+          "",
+          ...state.links.filter((l) => ready.has(l.n)).map(line),
+          "",
+          "## Used (moved on or opened)",
+          "",
+          ...state.links.filter((l) => !ready.has(l.n)).map(line),
+        ]
+      : state.links.map(line)),
     "",
   ].join("\n");
   writeFileSync(join(DIR, "links.md"), md, { mode: 0o600 });
@@ -212,11 +224,15 @@ async function mint(count: number, sats: number) {
 
 async function status() {
   const state = load();
+  const ready = new Set<number>();
   for (const l of state.links) {
     const v = await view<Vault>("vault", { token_id: l.token_id });
-    const still = v.owner_id === l.account;
-    console.log(`link ${l.n}: No. ${l.token_id.padStart(4, "0")} ${still ? `still in the link (${v.state.kind})` : `taken: now held by ${v.owner_id}, ${v.state.kind}`}`);
+    const still = v.owner_id === l.account && v.state.kind === "sealed";
+    if (still) ready.add(l.n);
+    console.log(`link ${l.n}: No. ${l.token_id.padStart(4, "0")} ${v.owner_id === l.account ? `in the link (${v.state.kind})` : `moved on: now held by ${v.owner_id.length === 64 ? `${v.owner_id.slice(0, 8)}…` : v.owner_id}, ${v.state.kind}`}`);
   }
+  save(state, ready);
+  console.log(`${ready.size} ready to share; ${join(DIR, "links.md")} updated (owner-only)`);
 }
 
 const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";

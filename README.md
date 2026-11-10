@@ -93,8 +93,9 @@ in [docs/SPIKES.md](docs/SPIKES.md).
 **1. Local sandbox (simulated chains).** The contracts run in a real NEAR sandbox with a mock MPC
 signer. These are simulations, not transactions on Bitcoin, Base or Solana.
 
-- 57 sandbox tests (28 for the vault, 13 for the market, 13 for the schedule, 3 for a receiver that
-  breaks the seal in its transfer callback and asks for the vault back) and 51 unit tests. Each signed
+- 74 sandbox tests (28 for the vault, 13 for the market, 13 for the schedule, 9 for holdings, 8 for
+  staking, 3 for a receiver that breaks the seal in its transfer callback and asks for the vault back)
+  and 65 unit tests. Each signed
   transaction is checked independently: viem for Base, bitcoinjs-lib and noble for Bitcoin,
   `@solana/web3.js` for Solana.
 - `pnpm demo:dry` runs the vault's lifecycle and the attacks against simulated ledgers that apply

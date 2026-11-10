@@ -21,7 +21,7 @@ the owner opens it, withdrawals work and transfers are disabled for good. So con
 assets changes hands without moving them, and without the previous owner keeping a way to take
 them back.
 
-[Try Bearer](https://bearer-near.vercel.app) · [Verify the deployment](https://bearer-near.vercel.app/proof) · [Check the claims: `pnpm verify`](#check-the-claims-yourself) · [Read the threat model](docs/THREAT_MODEL.md)
+[Try Bearer](https://bearer-near.vercel.app) · [Verify the deployment](https://bearer-near.vercel.app/proof) · [Check the claims: `pnpm verify`](#check-the-claims-yourself) · [Read the threat model](docs/THREAT_MODEL.md) · [Use cases](docs/USE_CASES.md)
 
 Testnet prototype, built for the NEAR Hackathon (Nov 2026). Not audited. Don't use real funds.
 

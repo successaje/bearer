@@ -1,0 +1,39 @@
+{
+  "measured_at": "2026-11-09T18:29:49.246Z",
+  "contract": "bearer.testnet",
+  "token_id": "1",
+  "vault_address": "0x02f7ad77c02397a941ba832a866a24bec64b81e8",
+  "nonce": 0,
+  "transactions": [
+    {
+      "withdrawal_index": 15,
+      "signed_through": "https://testnet.nearblocks.io/txns/45FpKwNt4KrjSLJiudXC94tEoFpupx6cMxKWHq5199Qj",
+      "amount_wei": "1000000000000",
+      "hash": "0xcda94fc2657424ccc34d972c4015e517f12a75bfaca0aeeeea52d7b89ffded00",
+      "explorer": "https://sepolia.basescan.org/tx/0xcda94fc2657424ccc34d972c4015e517f12a75bfaca0aeeeea52d7b89ffded00",
+      "broadcast": "accepted by the RPC",
+      "receipt": {
+        "status": "success",
+        "block": 56635535
+      }
+    },
+    {
+      "withdrawal_index": 16,
+      "signed_through": "https://testnet.nearblocks.io/txns/7bW2Nvxza4zZhMyMAb1eGkpLnESdvd6Ns3398TtNDahE",
+      "amount_wei": "2000000000000",
+      "hash": "0xec7e7f860048c298ddfa502c01d1925e2f4e786d84354afc0d83334e702f8b60",
+      "explorer": "https://sepolia.basescan.org/tx/0xec7e7f860048c298ddfa502c01d1925e2f4e786d84354afc0d83334e702f8b60",
+      "broadcast": "refused: Error: eth_sendRawTransaction: {\"code\":-32000,\"message\":\"replacement transaction underpriced\"}",
+      "receipt": null
+    }
+  ],
+  "confirmed": 1,
+  "nonce_after": 1,
+  "balance_change_wei": "-126000000095",
+  "second_resent_after_the_first_confirmed": {
+    "resent_at": "2026-11-09T18:30:06.658Z",
+    "withdrawal_index": 16,
+    "read_from": "bearer.testnet withdrawals view (public)",
+    "rpc_answer": "nonce too low: next nonce 1, tx nonce 0"
+  }
+}

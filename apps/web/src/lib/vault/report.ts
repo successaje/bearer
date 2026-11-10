@@ -155,8 +155,11 @@ export interface Answer {
   a: string;
 }
 
+/** Who holds a vault in escrow, when the owner on record is the market or the schedule contract. */
+export type Escrow = { kind: "market"; seller: string } | { kind: "schedule"; giver: string; recipient: string };
+
 /** Brief 3.7: every vault page answers these, in plain words. */
-export function fiveQuestions(v: VaultView, obs: ChainObservation[] | undefined, viewer: string | null): Answer[] {
+export function fiveQuestions(v: VaultView, obs: ChainObservation[] | undefined, viewer: string | null, escrow: Escrow | null = null): Answer[] {
   const sealed = isSealed(v);
   const isOwner = viewer === v.owner_id;
   const contents = obs
@@ -175,9 +178,14 @@ export function fiveQuestions(v: VaultView, obs: ChainObservation[] | undefined,
     { q: "What's in it?", a: obs ? `Observed: ${contents}` : contents },
     {
       q: "Who can withdraw?",
-      a: sealed
-        ? `Only the current owner (${v.owner_id}), and only after breaking the seal. Right now nobody has.`
-        : `Only ${v.owner_id}. The vault is opened and can't change hands.`,
+      a:
+        escrow?.kind === "schedule"
+          ? `Nobody while it's scheduled: the schedule contract holds it and never breaks seals. On its date it goes to ${escrow.recipient}, who can then break the seal.`
+          : escrow?.kind === "market"
+            ? "Nobody while it's for sale: the market holds it and never breaks seals. Whoever buys it can break the seal once it's theirs."
+            : sealed
+              ? `Only the current owner (${v.owner_id}), and only after breaking the seal. Right now nobody has.`
+              : `Only ${v.owner_id}. The vault is opened and can't change hands.`,
     },
     {
       q: "What changes if it's transferred?",

@@ -1,0 +1,82 @@
+{
+  "measured_at": "2026-11-09T18:05:40.931Z",
+  "contract": "bearer.testnet",
+  "token_id": "7",
+  "rpc": "https://test.rpc.fastnear.com",
+  "gas_price_yocto": "100000000",
+  "runs": 6,
+  "final_after_ms": {
+    "median": 4590,
+    "min": 3998,
+    "max": 5845
+  },
+  "note": "final_after_ms: from sending the signed transaction to the RPC answering with wait_until FINAL, measured from this machine",
+  "moves": [
+    {
+      "from": "bob.bearer-1108-ffb3.testnet",
+      "to": "alice.bearer-1108-ffb3.testnet",
+      "tx": "https://testnet.nearblocks.io/txns/2piakyBUWQwxevp1FZZQDTAKDv9ZKxCkZTMdYSoq9pqo",
+      "final_after_ms": 5845,
+      "gas_tgas": 3.971,
+      "gas_cost_near": 0.000397,
+      "owner_after": "alice.bearer-1108-ffb3.testnet",
+      "state_after": "sealed",
+      "signatures_requested_after": 0
+    },
+    {
+      "from": "alice.bearer-1108-ffb3.testnet",
+      "to": "bob.bearer-1108-ffb3.testnet",
+      "tx": "https://testnet.nearblocks.io/txns/DnmMTCaQzhx8cqSg2rKXFnM4QHxwPTTnTq6E46AxkphU",
+      "final_after_ms": 4312,
+      "gas_tgas": 3.989,
+      "gas_cost_near": 0.000398,
+      "owner_after": "bob.bearer-1108-ffb3.testnet",
+      "state_after": "sealed",
+      "signatures_requested_after": 0
+    },
+    {
+      "from": "bob.bearer-1108-ffb3.testnet",
+      "to": "alice.bearer-1108-ffb3.testnet",
+      "tx": "https://testnet.nearblocks.io/txns/F3i6DXbvhqoTeKncyNRTnsQGewViiyTnfM7z2nPswEAq",
+      "final_after_ms": 4532,
+      "gas_tgas": 3.998,
+      "gas_cost_near": 0.000399,
+      "owner_after": "alice.bearer-1108-ffb3.testnet",
+      "state_after": "sealed",
+      "signatures_requested_after": 0
+    },
+    {
+      "from": "alice.bearer-1108-ffb3.testnet",
+      "to": "bob.bearer-1108-ffb3.testnet",
+      "tx": "https://testnet.nearblocks.io/txns/8gyVGvx2c1XVajB2hygmvJUu7sJZuCmWutvzetKVH9cx",
+      "final_after_ms": 4664,
+      "gas_tgas": 4.016,
+      "gas_cost_near": 0.000401,
+      "owner_after": "bob.bearer-1108-ffb3.testnet",
+      "state_after": "sealed",
+      "signatures_requested_after": 0
+    },
+    {
+      "from": "bob.bearer-1108-ffb3.testnet",
+      "to": "alice.bearer-1108-ffb3.testnet",
+      "tx": "https://testnet.nearblocks.io/txns/BanKpQMg7kkH7reVNHWT26JHx3kob1Un2PELFrYwQ8Af",
+      "final_after_ms": 4648,
+      "gas_tgas": 4.024,
+      "gas_cost_near": 0.000402,
+      "owner_after": "alice.bearer-1108-ffb3.testnet",
+      "state_after": "sealed",
+      "signatures_requested_after": 0
+    },
+    {
+      "from": "alice.bearer-1108-ffb3.testnet",
+      "to": "bob.bearer-1108-ffb3.testnet",
+      "tx": "https://testnet.nearblocks.io/txns/8YwoLMCDcjP3X4uEAsKinquhnsr45hZoTd2oH1mJ39v5",
+      "final_after_ms": 3998,
+      "gas_tgas": 4.042,
+      "gas_cost_near": 0.000404,
+      "owner_after": "bob.bearer-1108-ffb3.testnet",
+      "state_after": "sealed",
+      "signatures_requested_after": 0
+    }
+  ]
+}

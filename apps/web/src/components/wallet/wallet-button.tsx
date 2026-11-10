@@ -1,7 +1,7 @@
 "use client";
 
 import { DropdownMenu } from "radix-ui";
-import { ChevronDown, Copy, Layers, LogOut, Repeat } from "lucide-react";
+import { ChevronDown, Copy, Layers, LogOut, Repeat, UserRound } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,12 @@ export function WalletButton() {
             <Link href="/vaults">
               <Layers className="size-4" />
               My vaults
+            </Link>
+          </DropdownMenu.Item>
+          <DropdownMenu.Item asChild className={itemClass}>
+            <Link href="/account">
+              <UserRound className="size-4" />
+              Your account
             </Link>
           </DropdownMenu.Item>
           <DropdownMenu.Item

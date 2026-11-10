@@ -1,6 +1,6 @@
 import type { ChainObservation, VaultView, Withdrawal } from "@bearer/sdk";
 import { ArrowDownLeft, PackageOpen, PenLine, Plus, Send, type LucideIcon } from "lucide-react";
-import { MARKET_CONTRACT } from "@/lib/config";
+import { MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
 import { withdrawalAmount } from "@/lib/vault/report";
 import { CHAIN_META, formatAmount, nsToMs, relativeTime } from "@/lib/vault/format";
 import { cn } from "@/lib/utils";
@@ -35,8 +35,15 @@ export function Activity({
     } else {
       const from = vault.custody[i - 1]?.account_id;
       const market = MARKET_CONTRACT;
+      const scheduler = SCHEDULE_CONTRACT;
       const { title, detail } =
-        market && c.account_id === market
+        scheduler && c.account_id === scheduler
+          ? { title: "Scheduled for a handover", detail: `By ${from ?? "its holder"}. Held, sealed, until its date.` }
+          : scheduler && from === scheduler
+            ? c.account_id === vault.custody[i - 2]?.account_id
+              ? { title: `Back with ${c.account_id}`, detail: "The schedule was cancelled, or refused. Still sealed." }
+              : { title: `Handed over to ${c.account_id}`, detail: `On schedule, from ${vault.custody[i - 2]?.account_id ?? "its giver"}. Still sealed.` }
+            : market && c.account_id === market
           ? { title: "Listed on the market", detail: `By ${from ?? "its holder"}. The market holds it in escrow, sealed.` }
           : market && from === market
             ? c.account_id === vault.custody[i - 2]?.account_id

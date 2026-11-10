@@ -1,4 +1,4 @@
-import type { ChainTag, Finish, Holdings, MarketListing, ObservedDeposit, TokenInfo, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
+import type { ChainTag, Finish, HandoverSchedule, Holdings, MarketListing, ObservedDeposit, TokenInfo, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
 import { vaultPath } from "@bearer/sdk";
 
 /** Simulated chain state for one vault: what an explorer would show at its addresses. */
@@ -27,7 +27,7 @@ export interface MockVault {
 }
 
 export interface MockState {
-  version: 5;
+  version: 8;
   nextId: number;
   vaults: Record<string, MockVault>;
   accounts: string[];
@@ -38,6 +38,10 @@ export interface MockState {
   /** v2 staking, added on first use: the simulated pool position and each vault's stake. */
   staking?: MockStaking;
   stakes?: Record<string, MockStake>;
+  /** Scheduled handovers, by token. Their vaults are held by MOCK_SCHEDULE. */
+  schedules: Record<string, HandoverSchedule>;
+  /** Market sales, for prices and payouts: on testnet these come from the index. */
+  sales: MockSale[];
 }
 
 export interface MockStaking {
@@ -68,6 +72,21 @@ export const MOCK_TOKENS: Record<string, TokenInfo> = {
 export const MOCK_NFT_CONTRACT = "tickets.mock.testnet";
 /** Storage the demo charges per held entry, from the vault's NEAR, like the contract (H6). */
 export const MOCK_ENTRY_STORAGE = 10n ** 21n;
+
+export interface MockSale {
+  tokenId: string;
+  seller: string;
+  buyer: string;
+  price: string;
+  /** What the market sent the seller: the price plus the listing deposit back. */
+  paid: string;
+  atMs: number;
+}
+
+/** The simulated schedule contract (SCHEDULE_CONTRACT in mock mode). */
+export const MOCK_SCHEDULE = "schedule.testnet";
+/** 0.01 NEAR, as on the testnet schedule. */
+export const MOCK_SCHEDULE_DEPOSIT = (10n ** 22n).toString();
 
 /** The simulated market contract (MARKET_CONTRACT in mock mode). */
 export const MOCK_MARKET = "market.testnet";
@@ -405,12 +424,79 @@ export function seedState(now: number): MockState {
     },
   };
 
+  // 34: ada listed it for 1.5 NEAR and mira bought it two hours ago: the demo's sale notification.
+  const sales: MockSale[] = [];
+  {
+    const id = "34";
+    const created = now - 4 * DAY;
+    const listed = now - 1 * DAY;
+    const sold = now - 2 * HOUR;
+    const addresses = mockAddresses(id);
+    const view = mockView(id, "mira.testnet", created, addresses, { name: "Prize · Round 2", finish: "sage" });
+    view.custody = [
+      { account_id: "ada.testnet", since_ns: ns(created) },
+      { account_id: MOCK_MARKET, since_ns: ns(listed) },
+      { account_id: "mira.testnet", since_ns: ns(sold) },
+    ];
+    vaults[id] = {
+      view,
+      addresses,
+      ledger: {
+        btc: ledger([sats(0.0009), [deposit("34b", sats(0.0009), now - 3 * DAY)]]),
+        evm: ledger([0n, []]),
+        sol: ledger([0n, []]),
+      },
+      withdrawals: [],
+      progress: {},
+      keysAt: created,
+    };
+    const price = 15n * 10n ** 23n;
+    sales.push({ tokenId: id, seller: "ada.testnet", buyer: "mira.testnet", price: price.toString(), paid: (price + BigInt(MOCK_LISTING_DEPOSIT)).toString(), atMs: sold });
+  }
+
+  // 21: ada's gift for theo, handed over in six months. Can't be cancelled.
+  const schedules: Record<string, HandoverSchedule> = {};
+  {
+    const id = "21";
+    const created = now - 3 * DAY;
+    const addresses = mockAddresses(id);
+    const view = mockView(id, MOCK_SCHEDULE, created, addresses, { name: "For your next chapter", finish: "ivory" });
+    view.custody = [
+      { account_id: "ada.testnet", since_ns: ns(created) },
+      { account_id: MOCK_SCHEDULE, since_ns: ns(now - 2 * DAY) },
+    ];
+    vaults[id] = {
+      view,
+      addresses,
+      ledger: {
+        btc: ledger([sats(0.0025), [deposit("21b", sats(0.0025), now - 3 * DAY + 4 * HOUR)]]),
+        evm: ledger([0n, []]),
+        sol: ledger([lamports(0.5), [deposit("21s", lamports(0.5), now - DAY)]]),
+      },
+      withdrawals: [],
+      progress: {},
+      keysAt: created,
+    };
+    schedules[id] = {
+      token_id: id,
+      giver: "ada.testnet",
+      recipient: "theo.testnet",
+      release_at_ns: ns(now + 182 * DAY),
+      cancellable: false,
+      scheduled_at_ns: ns(now - 2 * DAY),
+      deposit: MOCK_SCHEDULE_DEPOSIT,
+      state: { kind: "waiting" },
+    };
+  }
+
   return {
-    version: 5,
+    version: 8,
     nextId: 64,
     vaults,
-    accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", ATTACKER, "near.testnet", MOCK_MARKET],
+    accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", ATTACKER, "near.testnet", MOCK_MARKET, MOCK_SCHEDULE],
     listings,
     holdings,
+    schedules,
+    sales,
   };
 }

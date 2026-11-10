@@ -3,6 +3,111 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-09 · Bitcoin that changed hands without a Bitcoin transaction, with real coins
+
+On `bearer.testnet`, through the owner's own wallets on the live site:
+
+| Step | Result | Tx |
+|---|---|---|
+| The owner funds sealed vault No. 0006 | 684,666 sats at `tb1qqtlw…g4g` (testnet4 block 160,224), 1 SOL, 0.001 ETH | [address](https://blockstream.info/testnet4/address/tb1qqtlwr0xlr8ex8qldu3nea5s2kc4ajzrsnd2g4g) |
+| `finishr.testnet` creates vault No. 0009, "1st Son College Fund" | sealed, keys set | [7YMBr4VB…](https://testnet.nearblocks.io/txns/7YMBr4VBUJW99szKvjFg1aXJXeqF7RU1HTC2BnHSpQT8) |
+| `finishr.testnet` hands sealed No. 0006 to `takaba.testnet` | one NEAR transaction, 4.2 Tgas. Nothing on Bitcoin: the address's whole history is the deposit and the withdrawal below, which spends that same coin (`def9e35c…:0`) | [H3XPWh2n…](https://testnet.nearblocks.io/txns/H3XPWh2n5cvDKaqKS8pY4kSCjXDCaPgG3fp6E8beJJYj) |
+| `takaba.testnet` breaks the seal and asks for a Bitcoin withdrawal, in one transaction | events `vault_opened`, `withdrawal_requested` and `withdrawal_signed`; 17.2 Tgas | [3vEJFVpA…](https://testnet.nearblocks.io/txns/3vEJFVpAM5TQjNRz57mmFHsnHPs8QUi65SyQFR4tMpQQ) |
+| The signed Bitcoin spend | 300,000 sats to No. 0009's `tb1qw7v4…tzct`, 384,384 sats change back to No. 0006, 282 sats fee. Confirmed in testnet4 block 160,228 | [6002c967…](https://blockstream.info/testnet4/tx/6002c967889d8185b4457837db9c44369b06af0208998cb445a64cea2b5e1e23) |
+| `takaba.testnet` asks for a Solana withdrawal | 14.8 Tgas | [4dABcJcu…](https://testnet.nearblocks.io/txns/4dABcJcuWaHzzJA4Z2kaGLqR1qT1c4A9wgjW3bQEqekp) |
+| The signed Solana transfer | 0.5 SOL to No. 0009's `2xrCWyaN…diuDW`, fee 5,000 lamports. Finalized in devnet slot 520,527,063 | [5FQ1wbWQ…](https://explorer.solana.com/tx/5FQ1wbWQrcLEpb4aqBgpCb3KC5D1UQvPR1aWFjaeEfLBW3eNqFQp2aLMxMKd4NwSeBy86sznnyDvAgoXe4T5XSqm?cluster=devnet) |
+
+No. 0009 is now a sealed vault holding testnet Bitcoin and SOL, with 0 signatures. N = 1.
+
+## 2026-11-09 · Every flow through browser wallets, including a funded withdrawal
+
+The owner used the live site with two of their own testnet wallets. Read back from the chain:
+
+| Step | Result | Tx |
+|---|---|---|
+| `finishr.testnet` schedules vault No. 0006 for `takaba.testnet`, cancellable | `deposit_for_schedule` (0.01 NEAR), then `nft_transfer_call` to `bearer-schedule.testnet`; event `scheduled` | [deposit](https://testnet.nearblocks.io/txns/3Kapx6YPAhsAp5HK7sWhQqFYWzE5RsaH8Q4kSEedGPCE), [schedule](https://testnet.nearblocks.io/txns/FcWrDXuxvEWdu7nxyVm3vcWvbGESDUtGKvYxspJ3QXUn) |
+| `finishr.testnet` cancels it two minutes later | the vault came back sealed, and the 0.01 NEAR deposit with it; event `cancelled` | [HK2Si4jG…](https://testnet.nearblocks.io/txns/HK2Si4jGa4YBg4DbCUBxEBhXbg74wj68tfLwa8zGiBdf) |
+| `takaba.testnet` buys vault No. 0005, listed by `finishr.testnet` at 2 NEAR | event `sold` (price 2 NEAR); the vault moved to the buyer, then the market paid `finishr.testnet` 2.01 NEAR, the price plus the listing deposit | [2wReQN8A…](https://testnet.nearblocks.io/txns/2wReQN8Ajer7Cx93KYFnZyxFncpo2KVQFBT3vTsxnmxm) |
+
+| `takaba.testnet` hands vault No. 0005 back to `finishr.testnet` with `nft_transfer` | 3.8 Tgas; the vault arrived sealed with 0 signatures. Its custody log reads `finishr.testnet` → market → `takaba.testnet` → `finishr.testnet` | [ER7uyXcZ…](https://testnet.nearblocks.io/txns/ER7uyXcZiQsHnz7QoiAGepwx5gJKd4nYZasRHY1BwSxf) |
+
+| `finishr.testnet` breaks the seal on vault No. 0005 and withdraws 0.0002 ETH to `0x9384…edda`, in one transaction | events `vault_opened`, `withdrawal_requested` and `withdrawal_signed`; 16.6 Tgas. The vault is opened, with 1 signature | [9ioTWzeb…](https://testnet.nearblocks.io/txns/9ioTWzebJRgkTaRLG9ZVNQzFKdyX9RSqkxMKwjN4UKwf) |
+| The signed transaction on Base Sepolia | from the vault's address `0x9df2…6d4b` to `0x9384…edda`, 0.0002 ETH, nonce 0. Confirmed in block 56,685,109; fee 0.000000126 ETH. The vault's address then held 0.00029987 ETH | [0x1678…5017](https://sepolia.basescan.org/tx/0x167897cae482d693f5a321ec459c3204270efcd735d11bb5ff95c0ea0ab65017) |
+
+Through a wallet, every flow is now done: creating, listing, buying, transferring, scheduling,
+cancelling, breaking the seal and withdrawing. It's also the first funded withdrawal from the final
+contract to a separate address.
+
+The seller had no way to see the sale on the site, which is why the notifications bell and the
+account page exist (docs/features/account.md).
+
+## 2026-11-09 · Two signatures for one nonce on Base Sepolia (T10)
+
+Vault No. 0001 on `bearer.testnet` (opened, held by bob's test account) got 0.0005 Base Sepolia
+ETH from the owner. `BEARER_CONTRACT_ID=bearer.testnet pnpm spike:testnet same-nonce 1` then:
+
+1. requested two `withdraw_evm` for nonce 0, paying the vault's own address 1,000 and 2,000 gwei
+   (withdrawals 15 and 16, [signed](https://testnet.nearblocks.io/txns/45FpKwNt4KrjSLJiudXC94tEoFpupx6cMxKWHq5199Qj)
+   [twice](https://testnet.nearblocks.io/txns/7bW2Nvxza4zZhMyMAb1eGkpLnESdvd6Ns3398TtNDahE)), as a
+   retry after a timeout could leave them;
+2. broadcast both at once. Base Sepolia accepted the first and confirmed it in block 56,635,535
+   ([0xcda9…ed00](https://sepolia.basescan.org/tx/0xcda94fc2657424ccc34d972c4015e517f12a75bfaca0aeeeea52d7b89ffded00));
+   it refused the second (`0xec7e7f86…8b60`, "replacement transaction underpriced");
+3. 17 s later the second, read again from the contract's public view, was sent again: "nonce too
+   low: next nonce 1, tx nonce 0". It can never confirm.
+
+The vault's nonce went from 0 to 1, and its balance fell by the fee only (126,000,000,095 wei),
+since it paid itself. N = 1. Report:
+[`base-same-nonce-2026-11-09T18-29-49.254Z.json`](../contracts/tests/spike/reports/base-same-nonce-2026-11-09T18-29-49.254Z.json).
+
+## 2026-11-09 · A sealed handover: time to final and cost
+
+`BEARER_CONTRACT_ID=bearer.testnet pnpm spike:testnet handover 7 6` handed sealed vault No. 0007
+between alice's and bob's test accounts six times with `nft_transfer`. N = 6:
+
+- **Final after** a median 4.6 s (4.0–5.8 s), timed on a laptop from sending the signed
+  transaction to the RPC answering with `wait_until: FINAL`. That includes the round trip to the
+  RPC, so the chain itself is faster.
+- **Gas** 3.97–4.04 Tgas each (it grows slightly as the custody log fills up), which is 0.0004 NEAR
+  at testnet's gas price of 100,000,000 yoctoNEAR per gas.
+- After every handover the vault was sealed with 0 signatures requested. Nothing moved on Bitcoin,
+  Base or Solana, so there was no fee there.
+
+Report: [`testnet-handover-2026-11-09T18-05-40.934Z.json`](../contracts/tests/spike/reports/testnet-handover-2026-11-09T18-05-40.934Z.json).
+
+## 2026-11-09 · Scheduled handover, on the locked contract
+
+`bearer-schedule.testnet` (faucet-created) runs `contracts/res/schedule.wasm`, the reproducible
+build of `47b5d25`: two builds from a clean checkout gave identical bytes (sha256
+`83c2ea97…a247`); on-chain code hash `9sLo27AU…JSkE`, which matches. It sells nothing: it holds a
+sealed `bearer.testnet` vault until a date, then hands it to the recipient chosen at scheduling.
+Locked the same day (S10): `CONFIRM_LOCK=bearer-schedule.testnet pnpm spike:schedule lock`
+checked the code hash, then deleted its one full-access key
+([tx](https://testnet.nearblocks.io/txns/6wAyfjD218s7DvCwuzK7nEtAdLDQK5eZujY3caDJRekx)). Afterwards
+three RPCs (rpc.testnet.near.org, test.rpc.fastnear.com, archival-rpc.testnet.fastnear.com)
+reported 0 keys and the same code hash. Report:
+[`testnet-schedule-lock-2026-11-09T16-11-33.926Z.json`](../contracts/tests/spike/reports/testnet-schedule-lock-2026-11-09T16-11-33.926Z.json).
+
+`pnpm spike:schedule run`:
+- A cancellable schedule (No. 0008) was cancelled and the vault returned.
+- An early release was refused (`ERR_TOO_EARLY`).
+- Cancelling an irrevocable schedule was refused (`ERR_NOT_CANCELLABLE`).
+- The giver breaking the seal on a scheduled vault was refused (`ERR_NOT_OWNER`).
+- On the date, a third account released No. 0007 to bob ([tx](https://testnet.nearblocks.io/txns/76eGYPzRDspJi3YXLXVGU1zDnj8wcNF14kSz8Vu2HUpt)):
+  - it arrived sealed with 0 signatures;
+  - custody shows alice, then the schedule, then bob;
+  - alice's balance rose by exactly the 0.01 NEAR deposit.
+- No. 0002, scheduled for an unregistered name, stayed put on release (`recipient_missing`,
+  [tx](https://testnet.nearblocks.io/txns/zaDjCK5w2x8MQG87vhQ3pL6VWdQPSymutSGDKL5NqUZ)), and went to that account once it existed
+  ([tx](https://testnet.nearblocks.io/txns/9fVdTyuJWyabMsZMbe17p1t2wv2MqJYwMUmooxbFBisB)).
+
+Release took 15.2 Tgas and scheduling 9.0–9.3 Tgas, one run each. Report:
+[`testnet-schedule-2026-11-09T14-37-57.715Z.json`](../contracts/tests/spike/reports/testnet-schedule-2026-11-09T14-37-57.715Z.json).
+
+An earlier attempt the same day also handed No. 0002 to bob and showed No. 0004 waiting for
+`nobody.…` until that account was created; its script stopped on the expected failed account
+check before saving a report, so it isn't counted as evidence.
+
 ## 2026-11-09 · v2 staking with a real pool
 
 `bearer-v2.testnet` was migrated in place to the staking build (3 vaults kept) and stakes with

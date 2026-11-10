@@ -1,4 +1,5 @@
 import type {
+  AccountActivity,
   AttackKind,
   AttackResult,
   BearerClient,
@@ -6,6 +7,8 @@ import type {
   ChainTag,
   Finish,
   Holdings,
+  HandoverSchedule,
+  MarketBalances,
   MarketConfig,
   MarketListing,
   NftInfo,
@@ -17,7 +20,7 @@ import type {
   WithdrawalProgress,
   WithdrawRequest,
 } from "@bearer/sdk";
-import { CHAIN_TAGS } from "@bearer/sdk";
+import { CHAIN_TAGS, custodyEvents } from "@bearer/sdk";
 import { validateAddress } from "@/lib/validation";
 import { CHAIN_META } from "./format";
 import {
@@ -29,6 +32,8 @@ import {
   MOCK_TOKENS,
   MOCK_MARKET,
   MOCK_POOL,
+  MOCK_SCHEDULE,
+  MOCK_SCHEDULE_DEPOSIT,
   mockAddresses,
   mockHex,
   mockView,
@@ -43,7 +48,7 @@ import {
 import { ATTACK_TESTS, VaultError } from "./errors";
 import { withdrawalAmount } from "./report";
 
-const STORAGE_KEY = "bearer:mock:v5";
+const STORAGE_KEY = "bearer:mock:v8";
 const CUSTODY_CAP = 16;
 const KEYS_DELAY_MS = 1_500;
 
@@ -76,7 +81,7 @@ export class MockBearerClient implements BearerClient {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as MockState;
-        if (parsed.version === 5) return (this.state = parsed);
+        if (parsed.version === 8) return (this.state = parsed);
       }
     } catch {
       // Private mode or corrupt storage: start fresh.
@@ -621,6 +626,73 @@ export class MockBearerClient implements BearerClient {
     return this.staking();
   }
 
+  /* ---------- the simulated schedule: same rules as contracts/schedule ---------- */
+
+  readonly scheduleId = MOCK_SCHEDULE;
+
+  async schedules() {
+    await jitter(150, 300);
+    return clone(Object.values(this.load().schedules));
+  }
+
+  async getSchedule(tokenId: string) {
+    await jitter(100, 200);
+    return clone(this.load().schedules[tokenId] ?? null);
+  }
+
+  async scheduleHandover(tokenId: string, recipient: string, releaseAtMs: number, cancellable: boolean, signer: string) {
+    await jitter(1200, 1800);
+    const v = this.vault(tokenId);
+    this.assertOwner(v, signer);
+    if (v.view.state.kind !== "sealed") throw new VaultError("ERR_VAULT_OPENED", "Opened vaults can't change hands, so they can't be scheduled.");
+    if (recipient === signer) throw new VaultError("ERR_RECIPIENT", "Choose someone else to hand it to.");
+    if (releaseAtMs < Date.now() + 60_000) throw new VaultError("ERR_DATE_TOO_SOON", "Pick a time at least a minute from now.");
+    const s: HandoverSchedule = {
+      token_id: tokenId,
+      giver: signer,
+      recipient,
+      release_at_ns: ns(releaseAtMs),
+      cancellable,
+      scheduled_at_ns: ns(Date.now()),
+      deposit: MOCK_SCHEDULE_DEPOSIT,
+      state: { kind: "waiting" },
+    };
+    this.moveTo(v, MOCK_SCHEDULE);
+    this.load().schedules[tokenId] = s;
+    this.save();
+    return clone(s);
+  }
+
+  async releaseHandover(tokenId: string, signer: string) {
+    void signer;
+    await jitter(1500, 2200);
+    const s = this.load().schedules[tokenId];
+    if (!s) throw new VaultError("ERR_NOT_SCHEDULED", "This vault isn't scheduled.");
+    if (Date.now() * 1e6 < Number(s.release_at_ns)) throw new VaultError("ERR_TOO_EARLY", "It can't be handed over before its date.");
+    if (!this.load().accounts.includes(s.recipient)) {
+      throw new VaultError("ERR_RECIPIENT_MISSING", `${s.recipient} doesn't exist on NEAR yet, so the vault stays scheduled until it does.`);
+    }
+    const v = this.vault(tokenId);
+    this.moveTo(v, s.recipient);
+    delete this.load().schedules[tokenId];
+    this.save();
+    return this.publicView(v);
+  }
+
+  async cancelHandover(tokenId: string, signer: string) {
+    await jitter(1200, 1800);
+    const s = this.load().schedules[tokenId];
+    if (!s) throw new VaultError("ERR_NOT_SCHEDULED", "This vault isn't scheduled.");
+    if (s.giver !== signer) throw new VaultError("ERR_NOT_GIVER", `Only ${s.giver} can cancel it.`);
+    if (!s.cancellable) throw new VaultError("ERR_NOT_CANCELLABLE", "This handover was scheduled so that nobody can cancel it.");
+    if (Date.now() * 1e6 >= Number(s.release_at_ns)) throw new VaultError("ERR_TOO_LATE", "The date has passed, so it can only be handed over now.");
+    const v = this.vault(tokenId);
+    this.moveTo(v, signer);
+    delete this.load().schedules[tokenId];
+    this.save();
+    return this.publicView(v);
+  }
+
   /* ---------- the simulated market: same rules as contracts/market ---------- */
 
   readonly marketId = MOCK_MARKET;
@@ -674,6 +746,8 @@ export class MockBearerClient implements BearerClient {
     const v = this.vault(tokenId);
     this.moveTo(v, signer);
     delete this.load().listings[tokenId];
+    const paid = (BigInt(listing.price) + BigInt(listing.deposit)).toString();
+    this.load().sales.push({ tokenId, seller: listing.seller, buyer: signer, price: listing.price, paid, atMs: Date.now() });
     this.save();
     return this.publicView(v);
   }
@@ -688,6 +762,44 @@ export class MockBearerClient implements BearerClient {
     delete this.load().listings[tokenId];
     this.save();
     return this.publicView(v);
+  }
+
+  async marketBalances(accountId: string): Promise<MarketBalances> {
+    void accountId;
+    await jitter(120, 240);
+    // The simulated market pays sellers straight away, so nothing bounces and nothing waits.
+    return { claimable: "0", deposit: "0" };
+  }
+
+  async claimPayout(signer: string): Promise<MarketBalances> {
+    await jitter(900, 1300);
+    throw new VaultError("ERR_NOTHING_TO_CLAIM", `Nothing is waiting for ${signer}.`);
+  }
+
+  async withdrawListingDeposit(signer: string): Promise<MarketBalances> {
+    await jitter(900, 1300);
+    throw new VaultError("ERR_NOTHING_TO_WITHDRAW", `No listing deposit is waiting for ${signer}.`);
+  }
+
+  /** Same reading as testnet: custody logs for what happened, the sales record for prices. */
+  async accountActivity(accountId: string): Promise<AccountActivity> {
+    await jitter(200, 400);
+    this.advance();
+    const state = this.load();
+    const events = Object.values(state.vaults).flatMap((v) => custodyEvents(this.publicView(v), accountId, MOCK_MARKET, MOCK_SCHEDULE));
+    for (const e of events) {
+      if (e.kind !== "sold") continue;
+      const sale = state.sales.find((x) => x.tokenId === e.tokenId && Math.abs(x.atMs - e.atMs) < 60_000);
+      e.priceYocto = sale?.price ?? null;
+      e.paidYocto = sale?.paid ?? null;
+    }
+    for (const s of Object.values(state.schedules)) {
+      if (s.recipient !== accountId || s.state.kind !== "waiting") continue;
+      const atMs = Number(BigInt(s.scheduled_at_ns) / 1_000_000n);
+      events.push({ id: `scheduled_for_you:${s.token_id}:${s.scheduled_at_ns}`, kind: "scheduled_for_you", tokenId: s.token_id, atMs, counterparty: s.giver, byOthers: true, releaseAtMs: Number(BigInt(s.release_at_ns) / 1_000_000n) });
+    }
+    events.sort((a, b) => b.atMs - a.atMs);
+    return { events, source: "the simulated demo", partial: false };
   }
 
   async simulateDeposit(tokenId: string, chain: ChainTag) {

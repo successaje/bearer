@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Logo } from "@/components/brand/logo";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ThemeMenu } from "@/components/theme/theme-controls";
 import { WalletButton } from "@/components/wallet/wallet-button";
 import { IS_SIMULATED } from "@/lib/config";
@@ -117,6 +118,7 @@ export function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           <NetworkPill className="hidden sm:inline-flex" />
           <ThemeMenu />
+          <NotificationBell />
           <div className="hidden md:block">
             <WalletButton />
           </div>

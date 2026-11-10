@@ -45,5 +45,11 @@ export function errorCopy(error: unknown): string {
   if (text.includes("ERR_NOT_UNLOCKED")) return "The unstaked NEAR is still unlocking at the pool.";
   if (text.includes("ERR_NOTHING_TO_DO")) return "Nothing is waiting to be unstaked or withdrawn from the pool.";
   if (text.includes("ERR_AMOUNT")) return "Check the amount: it must be above zero and no more than the vault holds.";
+  if (text.includes("ERR_TOO_EARLY")) return "It can't be handed over before its date.";
+  if (text.includes("ERR_TOO_LATE")) return "The date has passed, so it can only be handed over now.";
+  if (text.includes("ERR_NOT_CANCELLABLE")) return "This handover was scheduled so that nobody can cancel it.";
+  if (text.includes("ERR_NOT_GIVER")) return "Only the person who scheduled it can cancel it.";
+  if (text.includes("ERR_DATE_TOO_SOON")) return "Pick a time at least a minute from now.";
+  if (text.includes("ERR_IN_PROGRESS")) return "A handover or cancellation is already settling. Try again in a moment.";
   return text;
 }

@@ -24,11 +24,12 @@ export default function HomePage() {
             <span className="hidden sm:inline">Native BTC, ETH on Base and SOL</span>
           </div>
           <h1 className="text-balance mt-7 max-w-[660px] text-[clamp(42px,5.3vw,68px)] font-semibold leading-[1.02] tracking-[-0.045em]">
-            Hand someone Bitcoin <span className="text-fg-3">like you&apos;d hand them a sealed envelope.</span>
+            Bitcoin that changes hands <span className="text-fg-3">without a Bitcoin transaction.</span>
           </h1>
           <p className="text-pretty mt-7 max-w-[540px] text-[18px] leading-relaxed text-fg-2 md:text-[19px]">
-            A Bearer vault holds native BTC, ETH on Base and SOL. Hand it to anyone in one NEAR transaction. Whoever
-            holds it can break the seal; nobody before them can.
+            A sealed Bearer vault holds native BTC, plus ETH on Base and SOL. It moves to its next owner in one NEAR
+            transaction, with no Bitcoin fee, and they can check nothing was ever signed for it. Only whoever holds it
+            can break the seal.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <Link href="/create" className={buttonVariants({ variant: "primary", size: "lg" })}>

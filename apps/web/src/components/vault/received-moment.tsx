@@ -5,7 +5,7 @@ import { Dialog } from "radix-ui";
 import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { MARKET_CONTRACT } from "@/lib/config";
+import { MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
 import { formatDate, formatUsd, nsToMs, vaultNumber } from "@/lib/vault/format";
 import { isSealed, observedUsd } from "@/lib/vault/report";
 import { cn } from "@/lib/utils";
@@ -56,6 +56,8 @@ export function ReceivedMoment({
   const from = vault.custody[vault.custody.length - 2];
   // Bought through the market: name the seller, not the escrow account in between.
   const seller = MARKET_CONTRACT && from?.account_id === MARKET_CONTRACT ? vault.custody[vault.custody.length - 3] : undefined;
+  // Handed over on schedule: name the giver, not the escrow account in between.
+  const giver = SCHEDULE_CONTRACT && from?.account_id === SCHEDULE_CONTRACT ? vault.custody[vault.custody.length - 3] : undefined;
   const since = vault.custody[vault.custody.length - 1];
   const sealed = isSealed(vault);
   const value = observations ? observedUsd(observations) : null;
@@ -107,8 +109,8 @@ export function ReceivedMoment({
               {from ? (
                 <>
                   {seller ? "Bought from " : "From "}
-                  <span className="font-mono text-white/90">{(seller ?? from).account_id}</span>
-                  {seller ? " through the market" : null} on {formatDate(nsToMs(since.since_ns))}.{" "}
+                  <span className="font-mono text-white/90">{(seller ?? giver ?? from).account_id}</span>
+                  {seller ? " through the market" : giver ? ", as scheduled," : null} on {formatDate(nsToMs(since.since_ns))}.{" "}
                 </>
               ) : null}
               {sealed

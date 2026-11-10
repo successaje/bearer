@@ -1,16 +1,21 @@
 # Bearer
 
-**A sealed vault you can hand over, with native assets inside.**
+**Bitcoin that changes hands without a Bitcoin transaction.**
 
-You want to give someone Bitcoin as a gift. Or pass a prize to the winner of a competition. Or sell
-a set of assets as one package. But handing over a wallet has a catch: how can the next owner know
-you didn't sign a withdrawal before giving it away?
+A Bearer vault is a NEAR NFT that controls its own Bitcoin address, plus Base and Solana ones.
+While it's sealed, it moves to its next owner in one NEAR transaction: final in about 5 seconds,
+for 0.0004 NEAR in gas, with no Bitcoin fee and nothing moving on Bitcoin. Whoever receives it can
+check that no withdrawal was ever signed for it. On Bitcoin itself, coins change owner only through
+a Bitcoin transaction, and handing over a key leaves the giver a copy.
 
-Bearer is an answer to that, built on NEAR. A vault is a NEAR NFT that controls its own addresses
-on Bitcoin, Base and Solana. While the vault is sealed, its owner can transfer it but can't request
-a withdrawal signature. Once the owner opens it, withdrawals work and transfers are disabled for
-good. So control of native assets can change hands without moving them, and without the previous
-owner keeping a way to take them back.
+So you can give someone Bitcoin as a gift, pass a prize to a winner, sell a set of assets as one
+package, or schedule a vault to be handed over on a date. The question each of those raises is how
+the next owner can know you didn't sign a withdrawal before giving it away. Bearer answers it.
+
+While the vault is sealed, its owner can transfer it but can't request a withdrawal signature. Once
+the owner opens it, withdrawals work and transfers are disabled for good. So control of native
+assets changes hands without moving them, and without the previous owner keeping a way to take
+them back.
 
 [Try Bearer](https://bearer-near.vercel.app) · [Verify the deployment](https://bearer-near.vercel.app/proof) · [Read the threat model](docs/THREAT_MODEL.md)
 
@@ -84,7 +89,7 @@ in [docs/SPIKES.md](docs/SPIKES.md).
 **1. Local sandbox (simulated chains).** The contracts run in a real NEAR sandbox with a mock MPC
 signer. These are simulations, not transactions on Bitcoin, Base or Solana.
 
-- 41 sandbox tests (28 for the vault, 13 for the market) and 37 unit tests. Each signed
+- 54 sandbox tests (28 for the vault, 13 for the market, 13 for the schedule) and 51 unit tests. Each signed
   transaction is checked independently: viem for Base, bitcoinjs-lib and noble for Bitcoin,
   `@solana/web3.js` for Solana.
 - `pnpm demo:dry` runs the vault's lifecycle and the attacks against simulated ledgers that apply
@@ -112,7 +117,23 @@ other chain accepts it, not a payout to a separate person.
   - Bitcoin: 1–4 joined inputs, verified.
   - Solana: signed and verified.
 
-  None was broadcast: these vaults hold no funds yet.
+  These weren't broadcast: those vaults held no funds.
+- **Bitcoin that changed hands without a Bitcoin transaction.** Sealed vault No. 0006 held 684,666
+  sats of testnet Bitcoin. The owner's wallet handed it to a second account in one NEAR transaction
+  ([handover](https://testnet.nearblocks.io/txns/H3XPWh2n5cvDKaqKS8pY4kSCjXDCaPgG3fp6E8beJJYj)), and nothing happened on Bitcoin: the vault's address shows only the deposit
+  and, later, the new holder's withdrawal of that same coin ([address](https://blockstream.info/testnet4/address/tb1qqtlwr0xlr8ex8qldu3nea5s2kc4ajzrsnd2g4g)). The new holder
+  broke the seal and withdrew 300,000 sats into sealed vault No. 0009
+  ([Bitcoin](https://blockstream.info/testnet4/tx/6002c967889d8185b4457837db9c44369b06af0208998cb445a64cea2b5e1e23), confirmed in testnet4 block 160,228). They also withdrew 0.5 SOL
+  ([Solana](https://explorer.solana.com/tx/5FQ1wbWQrcLEpb4aqBgpCb3KC5D1UQvPR1aWFjaeEfLBW3eNqFQp2aLMxMKd4NwSeBy86sznnyDvAgoXe4T5XSqm?cluster=devnet), finalized).
+- **A funded withdrawal through a wallet.** The owner opened vault No. 0005 and withdrew 0.0002 ETH
+  to a separate Base Sepolia address, in one NEAR transaction from their own wallet
+  ([NEAR](https://testnet.nearblocks.io/txns/9ioTWzebJRgkTaRLG9ZVNQzFKdyX9RSqkxMKwjN4UKwf)). Base Sepolia confirmed it in block 56,685,109
+  ([0x1678…5017](https://sepolia.basescan.org/tx/0x167897cae482d693f5a321ec459c3204270efcd735d11bb5ff95c0ea0ab65017)).
+- **Two signatures for one nonce, on a real chain (T10).** Vault No. 0001 requested two Base
+  withdrawals for the same nonce, as a retry could leave them, and both were broadcast together.
+  Base Sepolia confirmed one
+  ([0xcda9…ed00](https://sepolia.basescan.org/tx/0xcda94fc2657424ccc34d972c4015e517f12a75bfaca0aeeeea52d7b89ffded00))
+  and refused the other; sent again afterwards, it got "nonce too low".
 - **Five attacks, sent as real transactions, all refused.** A former owner withdrawing and breaking
   a seal, an opened vault transferred, a sealed vault withdrawn, a raw `sign` call. Each got its
   expected error and none reached the signer. The attack lab on the site re-reads these
@@ -123,8 +144,23 @@ other chain accepts it, not a payout to a separate person.
   The market contract (`bearer-market.testnet`) is reproducibly built and locked too
   ([tx](https://testnet.nearblocks.io/txns/G8t9cc9xKa7ymc84hCtk8xeRG2JKBao8auFLKLg1SHVK)).
 
-**Through a browser wallet.** On the live site, the owner's own testnet wallet created two vaults and
-listed one on the market (docs/SPIKES.md).
+**Through a browser wallet.** On the live site, the owner's own testnet wallets did every flow:
+- created two vaults;
+- listed one and bought it from a second account (the seller was paid 2.01 NEAR: the price plus
+  the listing deposit);
+- handed it back;
+- scheduled a handover, then cancelled it;
+- opened the vault and withdrew Base Sepolia ETH to a separate address.
+
+Details are in docs/SPIKES.md.
+
+**A scheduled handover.** Vault No. 0007, scheduled by alice for bob and not cancellable, was
+handed over on its date by a third account
+([tx](https://testnet.nearblocks.io/txns/76eGYPzRDspJi3YXLXVGU1zDnj8wcNF14kSz8Vu2HUpt)). It arrived
+sealed with 0 signatures. Earlier moves were refused: an early release, a cancel, and alice
+breaking the seal. A vault scheduled for an unregistered name waited until that account existed.
+The schedule contract (`bearer-schedule.testnet`) is reproducibly built and locked
+([tx](https://testnet.nearblocks.io/txns/6wAyfjD218s7DvCwuzK7nEtAdLDQK5eZujY3caDJRekx)).
 
 A signature, a self-transfer or one sale is not proof of every possible withdrawal, or of the full
 flow in a browser wallet. What's left is listed under [What comes next](#what-comes-next).
@@ -180,17 +216,31 @@ pnpm spike:testnet setup
 pnpm spike:testnet run
 ```
 
-## What you can use it for
+## Three ways a vault changes hands
+
+All three are deployed on NEAR testnet, reproducibly built and locked, and each keeps the vault
+sealed until it arrives.
+
+| | How | Measured on testnet |
+|---|---|---|
+| **Hand over** | `nft_transfer` on `bearer.testnet`, or in person with a QR code (`/v/[id]/handover`) | 6 handovers of vault No. 0007: final in a median 4.6 s (4.0–5.8 s, timed from a laptop), 4.0 Tgas = 0.0004 NEAR each; sealed, 0 signatures after every one ([report](contracts/tests/spike/reports/testnet-handover-2026-11-09T18-05-40.934Z.json)) |
+| **Sell** | `bearer-market.testnet` holds a listed vault in escrow; the buyer pays the exact price, gets the vault, then the seller is paid | Vault No. 0004 sold for 0.1 NEAR ([purchase](https://testnet.nearblocks.io/txns/GCuy9zAFHGeN8ZsjgvUyaF8Uzz4xvW4UvNessKMMYv6F)); it arrived sealed with 0 signatures |
+| **Schedule** | `bearer-schedule.testnet` holds it until a date; on or after it, anyone can hand it over, only to the chosen recipient | Vault No. 0007 handed to bob on its date by a third account ([tx](https://testnet.nearblocks.io/txns/76eGYPzRDspJi3YXLXVGU1zDnj8wcNF14kSz8Vu2HUpt)) |
+
+What people could use them for:
 
 - **Gifts.** Put coins in a sealed vault and hand it to someone, who opens it when they want.
+- **Gifts for a day.** Schedule a vault for a birthday or a graduation. Until then it stays sealed
+  and nobody can withdraw, the giver included. The giver chooses whether they can cancel
+  ([docs/features/schedule.md](docs/features/schedule.md)).
 - **Prizes.** Fund a vault and hand it to the winner, who can check it's untouched first.
-- **Collectibles.** A named, finished vault with a printable certificate, holding native assets, that
-  can be handed on again while sealed.
-- **Selling.** The market contract lists sealed vaults for a NEAR price and settles each sale itself:
-  the vault moves first, then the seller is paid; a vault that can't move refunds the buyer
+- **OTC hand-offs.** Sell a position without moving it: the market settles in one transaction
   ([docs/features/market.md](docs/features/market.md)).
+- **Collectibles.** A named, finished vault with a printable certificate, holding native assets,
+  that can be handed on again while sealed.
 
-These show what the model can do. The market is a testnet prototype like the rest.
+These show what the model can do. Like the rest, the market and the schedule are testnet
+prototypes.
 
 ## The web app
 
@@ -198,6 +248,7 @@ These show what the model can do. The market is a testnet prototype like the res
 |---|---|
 | `/v/[id]` | A vault's public page: seal, observed balances, custody, signatures, the attack lab |
 | `/market` | Sealed vaults for sale, held in escrow by the market contract; list from a vault's page, buy at exactly the listed price |
+| `/account` | Your account: what you have for sale, what sold and what you were paid, payouts to claim, and everything that happened to your vaults. The bell in the header shows what others did: a sale, a vault handed or scheduled to you |
 | `/v/[id]/handover` | Hand a vault over in person: a QR code for the recipient, and the card flips when the transfer lands |
 | `/v/[id]/certificate` | A printable bearer certificate, one A4 page, with a QR code to the live seal |
 | `/proof` | Live checks against NEAR testnet, every measured number, and the threat table |
@@ -227,8 +278,8 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 - **Testnet prototype, not audited.**
 - **Trust.** It relies on NEAR, its MPC signing network, the deployed contracts and each external
-  chain's normal operation. Both contracts, Bearer's and the market's, are open source,
-  reproducibly built and locked.
+  chain's normal operation. Bearer's, the market's and the schedule's contracts are open source,
+  reproducibly built and locked: none has a key, so nobody can change them.
 - **Opened is final.** Once opened, a vault can't be transferred or sealed again.
 - **Balances.** The ones shown come from public data sources (Blockstream Esplora, Base Sepolia RPC,
   Solana devnet RPC), with their source, time and confirmation status. They can lag or be
@@ -242,13 +293,20 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## What comes next
 
-- Finish the browser-wallet flow by hand. Creating vaults and listing one worked from a real testnet
-  wallet on the live site (9 Nov); transfer, opening, withdrawal and buying are proven with
-  key-backed test accounts but not yet through a wallet.
-- A funded withdrawal from the final contract to a separate recipient.
-- More adversarial tests: the `nft_transfer_call` return path (T6) and duplicate signatures on real
-  chains (T10, so far shown on a simulated ledger).
+- Email alerts. The bell and browser alerts only work while the site is open; email needs a small
+  service that watches the chain and keeps addresses, which isn't built.
+- More adversarial tests: the `nft_transfer_call` return path (T6), and duplicate Bitcoin spends on
+  testnet4 (T10 is shown on Base Sepolia, and for Bitcoin on a simulated ledger).
 - An independent security review before anything on mainnet.
+
+## Sustainability
+
+- **Revenue.** The market contract on testnet takes no fee. The mainnet market would take 0.5% of
+  each sale; it would be a new contract, since the testnet one is locked and can't change.
+- **Integration.** `packages/sdk` is the surface for wallets and OTC desks: read a vault, check its
+  seal and signatures, then create, transfer, list, buy or schedule, with its testnet client.
+- **Mainnet.** An independent audit is the gate to mainnet. We'd fund it with a NEAR ecosystem
+  grant.
 
 ## Repository
 
@@ -256,6 +314,7 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 apps/web            Next.js app: a simulated demo, or the testnet contract with NEAR wallets
 contracts/bearer    the NEAR contract (near-sdk 5.30)
 contracts/market    the market: sells sealed vaults from escrow
+contracts/schedule  the scheduled handover: holds a sealed vault until a date
 contracts/mock-signer   an MPC signer stand-in for the sandbox
 contracts/tests     sandbox tests (near-sandbox) and testnet scripts
 packages/sdk        shared types and the client interface

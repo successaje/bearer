@@ -12,6 +12,8 @@
  *   CONFIRM_LOCK=<contract> node spike/testnet-sign.ts lock  # delete every key; only if the code is BEARER_WASM
  *   node spike/testnet-sign.ts attacks  # the attack lab's attacks as real transactions; each must be refused
  *   node spike/testnet-sign.ts holdings # v2: load NEAR, wNEAR and an NFT, hand over, open, withdraw
+ *   node spike/testnet-sign.ts handover <token> <runs>  # hand a sealed vault back and forth; time to final, gas
+ *   node spike/testnet-sign.ts same-nonce <token>  # T10: two signed Base withdrawals on one nonce, both broadcast
  *
  * Needs BEARER_TESTNET_PARENT: a faucet-created testnet account whose key is in
  * ~/.near-credentials/testnet. Subaccount keys are written there too, never to the repo.
@@ -25,7 +27,7 @@ import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { Transaction as SolTransaction } from "@solana/web3.js";
 import * as bitcoin from "bitcoinjs-lib";
 import { Account, KeyPair, PublicKey, actions } from "near-api-js";
-import { getAddress, parseTransaction, recoverTransactionAddress, type TransactionSerializedEIP1559 } from "viem";
+import { getAddress, keccak256, parseTransaction, recoverTransactionAddress, type TransactionSerializedEIP1559 } from "viem";
 import { publicKeyToAddress } from "viem/accounts";
 
 // rpc.testnet.near.org is deprecated and rate-limits (HTTP 429) part-way through a run.
@@ -947,6 +949,135 @@ async function lock() {
   if (after.keys.length) throw new Error(`${CONTRACT} still has ${after.keys.length} key(s)`);
 }
 
+/** Hands a sealed vault between alice and bob `runs` times: time from sending to final, and gas. */
+async function handover(tokenId: string, runs: number) {
+  const start = await view<{ owner_id: string; state: { kind: string } }>(CONTRACT, "vault", { token_id: tokenId });
+  if (start.state.kind !== "sealed") throw new Error(`vault ${tokenId} isn't sealed`);
+  if (![ALICE, BOB].includes(start.owner_id)) throw new Error(`vault ${tokenId} is held by ${start.owner_id}`);
+  const gasPrice = BigInt((await rpc<{ gas_price: string }>("gas_price", [null])).gas_price);
+  const moves: Record<string, unknown>[] = [];
+  let holder = start.owner_id;
+  for (let n = 0; n < runs; n++) {
+    const to = holder === ALICE ? BOB : ALICE;
+    const sent = Date.now();
+    const r = (await account(holder).signAndSendTransaction({
+      receiverId: CONTRACT,
+      actions: [actions.functionCall("nft_transfer", { receiver_id: to, token_id: tokenId }, 30n * TGAS, ONE_YOCTO)],
+      waitUntil: "FINAL",
+    })) as unknown as Outcome;
+    const finalMs = Date.now() - sent;
+    const gas = gasReport(r);
+    const after = await view<{ owner_id: string; state: { kind: string }; signatures_requested: number }>(CONTRACT, "vault", { token_id: tokenId });
+    moves.push({
+      from: holder,
+      to,
+      tx: explorer(r.transaction.hash),
+      final_after_ms: finalMs,
+      gas_tgas: gas.total_tgas,
+      gas_cost_near: Number((BigInt(Math.round(gas.total_tgas * 1e12)) * gasPrice * 1000000n) / NEAR) / 1e6,
+      owner_after: after.owner_id,
+      state_after: after.state.kind,
+      signatures_requested_after: after.signatures_requested,
+    });
+    holder = to;
+  }
+  const times = moves.map((m) => m.final_after_ms as number);
+  const report = {
+    measured_at: new Date().toISOString(),
+    contract: CONTRACT,
+    token_id: tokenId,
+    rpc: RPC,
+    gas_price_yocto: gasPrice.toString(),
+    runs,
+    final_after_ms: { median: median(times), min: Math.min(...times), max: Math.max(...times) },
+    note: "final_after_ms: from sending the signed transaction to the RPC answering with wait_until FINAL, measured from this machine",
+    moves,
+  };
+  console.log(JSON.stringify(report, null, 2));
+  saveReport("testnet-handover", report);
+}
+
+/**
+ * T10 on a real chain. A retried withdrawal can leave two signed transactions for one nonce; this
+ * makes that happen on purpose (two `withdraw_evm` with the same nonce and different amounts),
+ * broadcasts both at once, and records that Base Sepolia confirms one and refuses the other.
+ * Needs an opened vault held by alice or bob with a little Base Sepolia ETH for gas.
+ */
+async function sameNonce(tokenId: string) {
+  const vault = await view<VaultView & { withdrawal_count: number }>(CONTRACT, "vault", { token_id: tokenId });
+  if (vault.state.kind !== "opened") throw new Error(`vault ${tokenId} isn't opened`);
+  if (![ALICE, BOB].includes(vault.owner_id)) throw new Error(`vault ${tokenId} is held by ${vault.owner_id}`);
+  const addr = vault.evm_address as string;
+  const nonce = Number(BigInt(await baseRpc<string>("eth_getTransactionCount", [addr, "pending"])));
+  const balanceBefore = BigInt(await baseRpc<string>("eth_getBalance", [addr, "latest"]));
+  const amounts = [1_000_000_000_000n, 2_000_000_000_000n];
+  const maxFee = 2_000_000_000n;
+  const need = 21_000n * maxFee + amounts[1];
+  if (balanceBefore < need) throw new Error(`send at least ${need} wei of Base Sepolia ETH to ${addr} (vault ${tokenId}) first`);
+
+  const owner = account(vault.owner_id);
+  const first = vault.withdrawal_count;
+  const requests = [];
+  for (const [i, amount] of amounts.entries()) {
+    const params = {
+      chain_id: String(BASE_SEPOLIA),
+      nonce: String(nonce),
+      to: addr,
+      amount_wei: amount.toString(),
+      gas_limit: "21000",
+      max_fee_per_gas: maxFee.toString(),
+      max_priority_fee_per_gas: "1000000",
+    };
+    const sent = await submit(owner, CONTRACT, [actions.functionCall("withdraw_evm", { token_id: tokenId, params }, 150n * TGAS, WITHDRAW_DEPOSIT + ONE_YOCTO)]);
+    let w: Withdrawal | undefined;
+    for (let t = 0; t < 240 && !(w && w.status !== "pending"); t++) {
+      [w] = await view<Withdrawal[]>(CONTRACT, "withdrawals", { token_id: tokenId, from_index: first + i, limit: 1 });
+      if (!w || w.status === "pending") await sleep(500);
+    }
+    if (!w?.signed_raw_tx) throw new Error(`withdrawal ${first + i} wasn't signed: ${w?.status} ${w?.error ?? ""}`);
+    const raw = `0x${w.signed_raw_tx.replace(/^0x/, "")}` as TransactionSerializedEIP1559;
+    const from = await recoverTransactionAddress({ serializedTransaction: raw });
+    if (from !== getAddress(addr)) throw new Error(`withdrawal ${first + i} is signed by ${from}, not the vault`);
+    requests.push({ index: first + i, near_tx: explorer(sent.hash), amount_wei: amount.toString(), raw, hash: keccak256(raw) });
+  }
+
+  // Both at once, as two people holding the two signed transactions might.
+  const sent = await Promise.allSettled(requests.map((r) => baseRpc<string>("eth_sendRawTransaction", [r.raw])));
+  type Receipt = { status: string; blockNumber: string; gasUsed: string; effectiveGasPrice: string } | null;
+  const receipts: Receipt[] = requests.map(() => null as Receipt);
+  for (let t = 0; t < 60 && !receipts.some(Boolean); t++) {
+    await sleep(1000);
+    for (const [i, r] of requests.entries()) receipts[i] = await baseRpc<Receipt>("eth_getTransactionReceipt", [r.hash]);
+  }
+  await sleep(10_000); // time for the other one to land, if it somehow could
+  for (const [i, r] of requests.entries()) receipts[i] = await baseRpc<Receipt>("eth_getTransactionReceipt", [r.hash]);
+  const nonceAfter = Number(BigInt(await baseRpc<string>("eth_getTransactionCount", [addr, "latest"])));
+  const balanceAfter = BigInt(await baseRpc<string>("eth_getBalance", [addr, "latest"]));
+
+  const report = {
+    measured_at: new Date().toISOString(),
+    contract: CONTRACT,
+    token_id: tokenId,
+    vault_address: addr,
+    nonce,
+    transactions: requests.map((r, i) => ({
+      withdrawal_index: r.index,
+      signed_through: r.near_tx,
+      amount_wei: r.amount_wei,
+      hash: r.hash,
+      explorer: `https://sepolia.basescan.org/tx/${r.hash}`,
+      broadcast: sent[i].status === "fulfilled" ? "accepted by the RPC" : `refused: ${String((sent[i] as PromiseRejectedResult).reason).slice(0, 300)}`,
+      receipt: receipts[i] ? { status: receipts[i]!.status === "0x1" ? "success" : "reverted", block: Number(BigInt(receipts[i]!.blockNumber)) } : null,
+    })),
+    confirmed: receipts.filter((r) => r?.status === "0x1").length,
+    nonce_after: nonceAfter,
+    balance_change_wei: (balanceAfter - balanceBefore).toString(),
+  };
+  console.log(JSON.stringify(report, null, 2));
+  saveReport("base-same-nonce", report);
+  if (report.confirmed !== 1) throw new Error(`expected exactly one confirmed, got ${report.confirmed}`);
+}
+
 const cmd = process.argv[2];
 if (cmd === "setup") await setup();
 else if (cmd === "run") await run();
@@ -960,6 +1091,8 @@ else if (cmd === "sol-withdraw") await solWithdraw(process.argv[3] ?? "");
 else if (cmd === "lock") await lock();
 else if (cmd === "attacks") await attacks();
 else if (cmd === "holdings") await holdingsRun();
+else if (cmd === "same-nonce") await sameNonce(process.argv[3] ?? "");
+else if (cmd === "handover") await handover(process.argv[3] ?? "", Number(process.argv[4] ?? 4));
 else {
   console.log("usage: node spike/testnet-sign.ts setup|run|redeploy|gas-floor|broadcast|btc-joined|btc-vault|btc-withdraw|sol-withdraw|lock|attacks|holdings");
   process.exitCode = 1;

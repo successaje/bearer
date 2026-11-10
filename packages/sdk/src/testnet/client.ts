@@ -1,4 +1,5 @@
 import type {
+  AccountActivity,
   AttackKind,
   AttackResult,
   BearerClient,
@@ -9,6 +10,8 @@ import type {
   Holdings,
   StakingInfo,
   VaultStake,
+  HandoverSchedule,
+  MarketBalances,
   MarketConfig,
   MarketListing,
   NftInfo,
@@ -24,7 +27,8 @@ import type {
 import { broadcastRaw, btcParams, chainStatus, chainTxId, evmParams, solParams, txExplorer } from "./chains";
 import { TESTNET_ENDPOINTS, type TestnetEndpoints } from "./config";
 import { observeBtc, observeEvm, observeSol } from "./observe";
-import { NearRpc, jsonRpc } from "./rpc";
+import { NearRpc, getJson, jsonRpc } from "./rpc";
+import { custodyEvents } from "../activity";
 
 const TGAS = 10n ** 12n;
 const ONE_YOCTO = 1n;
@@ -51,6 +55,8 @@ export interface TestnetClientOptions {
   marketId?: string | null;
   /** True for a v2 contract, which holds NEAR, tokens and NFTs for each vault (holdings.rs). */
   holdings?: boolean;
+  /** The schedule contract (contracts/schedule) that hands this contract's vaults over on a date, if any. */
+  scheduleId?: string | null;
   /** Attacks sent to this contract as real transactions; `runAttack` re-reads their outcome. */
   recordedAttacks?: RecordedAttack[];
   wallet: WalletAdapter;
@@ -81,6 +87,7 @@ export class TestnetBearerClient implements BearerClient {
   private readonly ep: TestnetEndpoints;
   private config: Promise<ContractConfig> | null = null;
   private marketCfg: Promise<MarketConfig> | null = null;
+  private scheduleDeposit: Promise<string> | null = null;
 
   constructor(private readonly opts: TestnetClientOptions) {
     this.ep = { ...TESTNET_ENDPOINTS, ...opts.endpoints };
@@ -457,6 +464,87 @@ export class TestnetBearerClient implements BearerClient {
     return this.staking();
   }
 
+  /* ---------- scheduled handover: escrow until a date (contracts/schedule) ---------- */
+
+  get scheduleId() {
+    return this.opts.scheduleId ?? null;
+  }
+
+  private scheduler() {
+    if (!this.opts.scheduleId) throw new Error("This deployment has no scheduled handover.");
+    return this.opts.scheduleId;
+  }
+
+  async schedules() {
+    if (!this.opts.scheduleId) return [];
+    return this.near.view<HandoverSchedule[]>(this.opts.scheduleId, "schedules", { from_index: 0, limit: 100 });
+  }
+
+  async getSchedule(tokenId: string) {
+    if (!this.opts.scheduleId) return null;
+    return this.near.view<HandoverSchedule | null>(this.opts.scheduleId, "schedule", { token_id: tokenId });
+  }
+
+  async scheduleHandover(tokenId: string, recipient: string, releaseAtMs: number, cancellable: boolean, signer: string) {
+    this.signerFor(signer);
+    const scheduler = this.scheduler();
+    this.scheduleDeposit ??= this.near.view<{ schedule_deposit: string }>(scheduler, "get_config").then((c) => c.schedule_deposit);
+    const [deposit, balance] = await Promise.all([this.scheduleDeposit, this.near.view<string>(scheduler, "deposit_of", { account_id: signer })]);
+    const releaseAtNs = (BigInt(Math.floor(releaseAtMs)) * 1_000_000n).toString();
+    // nft_transfer_call forwards only 1 yoctoNEAR, so the schedule deposit is paid first.
+    const send = {
+      receiverId: this.opts.contractId,
+      calls: [
+        {
+          methodName: "nft_transfer_call",
+          args: { receiver_id: scheduler, token_id: tokenId, msg: JSON.stringify({ recipient, release_at_ns: releaseAtNs, cancellable }) },
+          gas: 100n * TGAS,
+          deposit: ONE_YOCTO,
+        },
+      ],
+    };
+    const pay = { receiverId: scheduler, calls: [{ methodName: "deposit_for_schedule", args: {}, gas: 30n * TGAS, deposit: BigInt(deposit) }] };
+    const results = await this.sendAll(BigInt(balance) >= BigInt(deposit) ? [send] : [pay, send]);
+    if (results.at(-1)?.returnValue === false) {
+      throw new Error("The schedule sent the vault back: the date must be at least a minute away, and the recipient can't be you.");
+    }
+    for (let i = 0; i < 20; i++) {
+      const s = await this.getSchedule(tokenId);
+      if (s) return s;
+      await sleep(1000);
+    }
+    throw new Error("The vault was sent, but its schedule hasn't appeared yet. Check the vault page in a moment.");
+  }
+
+  async releaseHandover(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    const s = await this.getSchedule(tokenId);
+    if (!s) throw new Error("This vault isn't scheduled.");
+    await this.opts.wallet.send(this.scheduler(), [{ methodName: "release", args: { token_id: tokenId }, gas: 100n * TGAS, deposit: 0n }]);
+    // The schedule checks the recipient's account first, then moves the vault.
+    for (let i = 0; i < 20; i++) {
+      const vault = await this.getVault(tokenId);
+      if (vault?.owner_id === s.recipient) return vault;
+      const now = await this.getSchedule(tokenId);
+      if (i > 2 && now?.state.kind === "waiting") {
+        throw new Error(`${s.recipient} doesn't exist on NEAR yet, so the vault stays scheduled until it does.`);
+      }
+      await sleep(1000);
+    }
+    throw new Error("The handover hasn't settled yet. Check the vault page in a moment.");
+  }
+
+  async cancelHandover(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.scheduler(), [{ methodName: "cancel", args: { token_id: tokenId }, gas: 80n * TGAS, deposit: ONE_YOCTO }]);
+    for (let i = 0; i < 20; i++) {
+      const vault = await this.getVault(tokenId);
+      if (vault?.owner_id === signer) return vault;
+      await sleep(1000);
+    }
+    throw new Error("The vault hasn't come back yet. Check the vault page in a moment.");
+  }
+
   /* ---------- the market: escrow by transfer (docs/features/market.md) ---------- */
 
   get marketId() {
@@ -545,6 +633,92 @@ export class TestnetBearerClient implements BearerClient {
       await sleep(1000);
     }
     throw new Error("The vault hasn't come back yet. Check the vault page in a moment.");
+  }
+
+  async marketBalances(accountId: string): Promise<MarketBalances> {
+    const market = this.market();
+    const [claimable, deposit] = await Promise.all([
+      this.near.view<string>(market, "claimable_of", { account_id: accountId }, "final"),
+      this.near.view<string>(market, "deposit_of", { account_id: accountId }, "final"),
+    ]);
+    return { claimable, deposit };
+  }
+
+  async claimPayout(signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.market(), [{ methodName: "claim", args: {}, gas: 50n * TGAS, deposit: ONE_YOCTO }]);
+    return this.marketBalances(signer);
+  }
+
+  async withdrawListingDeposit(signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.market(), [{ methodName: "withdraw_deposit", args: {}, gas: 50n * TGAS, deposit: ONE_YOCTO }]);
+    return this.marketBalances(signer);
+  }
+
+  /** Transactions never change, so each is read once, from an archival node. */
+  private txCache = new Map<string, Promise<{ method: string | null; deposit: string }>>();
+
+  private txCall(hash: string, signer: string) {
+    let hit = this.txCache.get(hash);
+    if (!hit) {
+      type Tx = { transaction: { actions: ({ FunctionCall?: { method_name: string; deposit: string } } | string)[] } };
+      hit = jsonRpc<Tx>(this.ep.nearArchival, "tx", { tx_hash: hash, sender_account_id: signer, wait_until: "NONE" }).then((r) => {
+        const call = r.transaction.actions.map((a) => (typeof a === "string" ? undefined : a.FunctionCall)).find(Boolean);
+        return { method: call?.method_name ?? null, deposit: call?.deposit ?? "0" };
+      });
+      hit.catch(() => this.txCache.delete(hash));
+      this.txCache.set(hash, hit);
+    }
+    return hit;
+  }
+
+  /**
+   * Which vaults moved through the account comes from NearBlocks' index (rate-limited, so two
+   * calls); what happened to each is read from its custody log on-chain. A sale's payout is the
+   * market's transfer to the seller, and its price is what the buyer attached to that transaction,
+   * read from an archival node. Throws if the index can't be read, so callers keep what they had.
+   */
+  async accountActivity(accountId: string): Promise<AccountActivity> {
+    const nb = this.ep.nearblocks;
+    const enc = encodeURIComponent(accountId);
+    type Move = { contract_account_id: string; token_id: string };
+    type Receipt = { predecessor_account_id: string; transaction_hash: string; actions: { action: string }[]; actions_agg: { deposit: string }; block: { block_timestamp: string } };
+    const [moves, receipts, owned, schedules] = await Promise.all([
+      getJson<{ data: Move[] }>(`${nb}/accounts/${enc}/nft-txns?limit=100`),
+      this.opts.marketId ? getJson<{ data: Receipt[] }>(`${nb}/accounts/${enc}/receipts?limit=100`).catch(() => null) : null,
+      this.listVaults(accountId),
+      this.opts.scheduleId ? this.schedules() : Promise.resolve([] as HandoverSchedule[]),
+    ]);
+    const ids = new Set(owned.map((v) => v.token_id));
+    for (const m of moves?.data ?? []) if (m.contract_account_id === this.opts.contractId) ids.add(m.token_id);
+    const vaults = await Promise.all([...ids].map((id) => this.getVault(id)));
+    const market = this.opts.marketId ?? null;
+    const events = vaults.flatMap((v) => (v ? custodyEvents(v, accountId, market, this.opts.scheduleId ?? null) : []));
+
+    // Match each sale to the market's payment to the seller, made in the same transaction a moment after the vault moved.
+    const payouts = (receipts?.data ?? [])
+      .filter((r) => r.predecessor_account_id === market && r.actions.some((a) => a.action === "TRANSFER"))
+      .map((r) => ({ tx: r.transaction_hash, atMs: Number(BigInt(r.block.block_timestamp) / 1_000_000n), amount: r.actions_agg.deposit }));
+    await Promise.all(
+      events
+        .filter((e) => e.kind === "sold")
+        .map(async (e) => {
+          const p = payouts.find((x) => x.atMs >= e.atMs - 5_000 && x.atMs <= e.atMs + 60_000);
+          if (!p) return;
+          const tx = e.counterparty ? await this.txCall(p.tx, e.counterparty).catch(() => null) : null;
+          e.paidYocto = p.amount;
+          e.tx = p.tx;
+          e.priceYocto = tx?.method === "buy" ? tx.deposit : null;
+        }),
+    );
+    for (const s of schedules) {
+      if (s.recipient !== accountId || s.state.kind !== "waiting") continue;
+      const atMs = Number(BigInt(s.scheduled_at_ns) / 1_000_000n);
+      events.push({ id: `scheduled_for_you:${s.token_id}:${s.scheduled_at_ns}`, kind: "scheduled_for_you", tokenId: s.token_id, atMs, counterparty: s.giver, byOthers: true, releaseAtMs: Number(BigInt(s.release_at_ns) / 1_000_000n) });
+    }
+    events.sort((a, b) => b.atMs - a.atMs);
+    return { events, source: "NearBlocks index and the contracts' own records", partial: !receipts && Boolean(market) };
   }
 
   /**

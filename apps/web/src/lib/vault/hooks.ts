@@ -3,7 +3,7 @@
 import type { AttackKind, ChainTag, Finish, Holdings, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { HOLDINGS, IS_SIMULATED, MARKET_CONTRACT } from "@/lib/config";
+import { HOLDINGS, IS_SIMULATED, MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
 import { getVaultClient } from "./client";
 import { fetchContractFacts } from "./contract-facts";
 
@@ -16,6 +16,8 @@ export const keys = {
   account: (id: string) => ["account", id] as const,
   listings: ["listings"] as const,
   holdings: (id: string) => ["holdings", id] as const,
+  schedules: ["schedules"] as const,
+  schedule: (id: string) => ["schedule", id] as const,
   listing: (id: string) => ["listing", id] as const,
 };
 
@@ -125,6 +127,9 @@ function useRefresh() {
     void qc.invalidateQueries({ queryKey: keys.observe(id) });
     void qc.invalidateQueries({ queryKey: keys.listings });
     void qc.invalidateQueries({ queryKey: keys.holdings(id) });
+    void qc.invalidateQueries({ queryKey: ["activity"] });
+    void qc.invalidateQueries({ queryKey: keys.schedules });
+    void qc.invalidateQueries({ queryKey: keys.schedule(id) });
     void qc.invalidateQueries({ queryKey: keys.listing(id) });
   };
 }
@@ -266,6 +271,87 @@ export function useStakingAction() {
       void qc.invalidateQueries({ queryKey: ["staking"] });
       void qc.invalidateQueries({ queryKey: ["stake"] });
       refresh(v.id);
+    },
+  });
+}
+
+/* ---------- scheduled handover ---------- */
+
+export function useSchedules() {
+  return useQuery({ queryKey: keys.schedules, queryFn: async () => (await getVaultClient()).schedules(), refetchInterval: POLL_MS });
+}
+
+export function useSchedule(id: string) {
+  return useQuery({ queryKey: keys.schedule(id), queryFn: async () => (await getVaultClient()).getSchedule(id), refetchInterval: POLL_MS });
+}
+
+export function useScheduleFacts() {
+  return useQuery({
+    queryKey: ["schedule-facts", SCHEDULE_CONTRACT],
+    queryFn: () => fetchContractFacts(SCHEDULE_CONTRACT as string),
+    enabled: Boolean(SCHEDULE_CONTRACT),
+    staleTime: 60_000,
+  });
+}
+
+export function useScheduleHandover() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; recipient: string; releaseAtMs: number; cancellable: boolean; signer: string }) =>
+      (await getVaultClient()).scheduleHandover(v.id, v.recipient, v.releaseAtMs, v.cancellable, v.signer),
+    onSuccess: (_s, v) => refresh(v.id),
+  });
+}
+
+export function useReleaseHandover() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).releaseHandover(v.id, v.signer),
+    onSettled: (_r, _e, v) => refresh(v.id),
+  });
+}
+
+export function useCancelHandover() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).cancelHandover(v.id, v.signer),
+    onSuccess: (_r, v) => refresh(v.id),
+  });
+}
+
+/* ---------- an account's activity: the bell and the account page ---------- */
+
+export function useAccountActivity(accountId: string | null) {
+  return useQuery({
+    queryKey: ["activity", accountId],
+    queryFn: async () => (await getVaultClient()).accountActivity(accountId as string),
+    enabled: Boolean(accountId),
+    // NearBlocks' free index is rate-limited, so once a minute; a failed read keeps the last one.
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+export function useMarketBalances(accountId: string | null) {
+  return useQuery({
+    queryKey: ["market-balances", accountId],
+    queryFn: async () => (await getVaultClient()).marketBalances(accountId as string),
+    enabled: Boolean(accountId && MARKET_CONTRACT),
+    refetchInterval: 60_000,
+  });
+}
+
+export function useMarketPayout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ kind, signer }: { kind: "claim" | "deposit"; signer: string }) => {
+      const c = await getVaultClient();
+      return kind === "claim" ? c.claimPayout(signer) : c.withdrawListingDeposit(signer);
+    },
+    onSuccess: (b, v) => {
+      qc.setQueryData(["market-balances", v.signer], b);
+      void qc.invalidateQueries({ queryKey: ["activity"] });
     },
   });
 }

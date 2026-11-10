@@ -12,6 +12,8 @@ export interface TestnetEndpoints {
   evm: string;
   /** Solana devnet JSON-RPC. */
   solana: string;
+  /** NearBlocks' public index (API v3): which vaults moved through an account, and payments to it. */
+  nearblocks: string;
 }
 
 export const TESTNET_ENDPOINTS: TestnetEndpoints = {
@@ -20,6 +22,7 @@ export const TESTNET_ENDPOINTS: TestnetEndpoints = {
   esplora: "https://blockstream.info/testnet4/api",
   evm: "https://sepolia.base.org",
   solana: "https://api.devnet.solana.com",
+  nearblocks: "https://api-testnet.nearblocks.io/v3",
 };
 
 /** Data sources as the UI names them next to every balance (brief 3.4 Flow B). */

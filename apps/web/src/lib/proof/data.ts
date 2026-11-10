@@ -34,6 +34,22 @@ export interface Series {
 
 export const LATENCY: Series[] = [
   {
+    id: "handover",
+    title: "Sealed handover",
+    detail: "nft_transfer of vault No. 0007 on bearer.testnet, alice ↔ bob · nothing moves on Bitcoin, Base or Solana · 0.0004 NEAR in gas each",
+    measures: "Send → final (wait_until FINAL), timed from a laptop",
+    kind: "repeats",
+    runs: [
+      { ms: 5845, tgas: 3.971, tx: "https://testnet.nearblocks.io/txns/2piakyBUWQwxevp1FZZQDTAKDv9ZKxCkZTMdYSoq9pqo" },
+      { ms: 4312, tgas: 3.989, tx: "https://testnet.nearblocks.io/txns/DnmMTCaQzhx8cqSg2rKXFnM4QHxwPTTnTq6E46AxkphU" },
+      { ms: 4532, tgas: 3.998, tx: "https://testnet.nearblocks.io/txns/F3i6DXbvhqoTeKncyNRTnsQGewViiyTnfM7z2nPswEAq" },
+      { ms: 4664, tgas: 4.016, tx: "https://testnet.nearblocks.io/txns/8gyVGvx2c1XVajB2hygmvJUu7sJZuCmWutvzetKVH9cx" },
+      { ms: 4648, tgas: 4.024, tx: "https://testnet.nearblocks.io/txns/BanKpQMg7kkH7reVNHWT26JHx3kob1Un2PELFrYwQ8Af" },
+      { ms: 3998, tgas: 4.042, tx: "https://testnet.nearblocks.io/txns/8YwoLMCDcjP3X4uEAsKinquhnsr45hZoTd2oH1mJ39v5" },
+    ],
+    source: `${REPORTS}/testnet-handover-2026-11-09T18-05-40.934Z.json`,
+  },
+  {
     id: "evm",
     title: "Base withdrawal",
     detail: "withdraw_evm through the contract · secp256k1 (domain 0)",
@@ -129,6 +145,56 @@ export const MARKET_SALE = {
   source: `${REPORTS}/testnet-market-sale-2026-11-09T12-21-46.716Z.json`,
 };
 
+/**
+ * The headline with real coins, on the locked contract, through the owner's own wallets
+ * (docs/SPIKES.md, 2026-11-09): a sealed vault holding testnet Bitcoin changed hands on NEAR, and
+ * the new holder opened it and withdrew Bitcoin and SOL.
+ */
+export const HEADLINE_RUN = {
+  vault: "6",
+  into: "9",
+  heldSats: "684,666",
+  handoverTx: "https://testnet.nearblocks.io/txns/H3XPWh2n5cvDKaqKS8pY4kSCjXDCaPgG3fp6E8beJJYj",
+  openTx: "https://testnet.nearblocks.io/txns/3vEJFVpAM5TQjNRz57mmFHsnHPs8QUi65SyQFR4tMpQQ",
+  solTx: "https://testnet.nearblocks.io/txns/4dABcJcuWaHzzJA4Z2kaGLqR1qT1c4A9wgjW3bQEqekp",
+  btcAddress: "https://blockstream.info/testnet4/address/tb1qqtlwr0xlr8ex8qldu3nea5s2kc4ajzrsnd2g4g",
+  btc: "https://blockstream.info/testnet4/tx/6002c967889d8185b4457837db9c44369b06af0208998cb445a64cea2b5e1e23",
+  /** Testnet4 block that confirmed the withdrawal; null while it waits. */
+  btcBlock: 160228 as number | null,
+  sol: "https://explorer.solana.com/tx/5FQ1wbWQrcLEpb4aqBgpCb3KC5D1UQvPR1aWFjaeEfLBW3eNqFQp2aLMxMKd4NwSeBy86sznnyDvAgoXe4T5XSqm?cluster=devnet",
+  solSlot: "520,527,063",
+};
+
+/**
+ * The first funded withdrawal from the locked contract, through the owner's own wallet
+ * (docs/SPIKES.md, 2026-11-09).
+ */
+export const WALLET_WITHDRAWAL = {
+  tokenId: "5",
+  detail:
+    "The owner's wallet broke the seal and asked for a Base withdrawal in one NEAR transaction; 0.0002 ETH went to a separate address, confirmed on Base Sepolia in block 56,685,109",
+  nearTx: "https://testnet.nearblocks.io/txns/9ioTWzebJRgkTaRLG9ZVNQzFKdyX9RSqkxMKwjN4UKwf",
+  baseTx: "https://sepolia.basescan.org/tx/0x167897cae482d693f5a321ec459c3204270efcd735d11bb5ff95c0ea0ab65017",
+};
+
+/**
+ * T10 on a real chain: two signed Base withdrawals for one nonce, from the locked contract
+ * (contracts/tests/spike/reports/base-same-nonce-2026-11-09T18-29-49.254Z.json).
+ */
+export const SAME_NONCE = {
+  tokenId: "1",
+  nonce: 0,
+  detail:
+    "Two Base withdrawals signed for the same nonce, as a retry could leave them, broadcast together. Base Sepolia confirmed one in block 56,635,535 and refused the other; sent again afterwards, it got “nonce too low”",
+  confirmed: "https://sepolia.basescan.org/tx/0xcda94fc2657424ccc34d972c4015e517f12a75bfaca0aeeeea52d7b89ffded00",
+  refusedHash: "0xec7e7f860048c298ddfa502c01d1925e2f4e786d84354afc0d83334e702f8b60",
+  signedTxs: [
+    "https://testnet.nearblocks.io/txns/45FpKwNt4KrjSLJiudXC94tEoFpupx6cMxKWHq5199Qj",
+    "https://testnet.nearblocks.io/txns/7bW2Nvxza4zZhMyMAb1eGkpLnESdvd6Ns3398TtNDahE",
+  ],
+  source: `${REPORTS}/base-same-nonce-2026-11-09T18-29-49.254Z.json`,
+};
+
 /** Withdrawals that left NEAR and reached the other chain. */
 export const LANDED: Landed[] = [
   {
@@ -169,7 +235,7 @@ export interface Threat {
   chains?: string;
 }
 
-/** docs/THREAT_MODEL.md: rows T1–T17, then the market's M1–M10. */
+/** docs/THREAT_MODEL.md: rows T1–T17, the market's M1–M10, then the schedule's S1–S10. */
 export const THREATS: Threat[] = [
   {
     id: "T1",
@@ -241,8 +307,11 @@ export const THREATS: Threat[] = [
     id: "T10",
     attack: "Two signatures exist after a retry",
     defence: "Both pay the same owner and spend the same coins or nonce; at most one confirms",
-    tests: ["pnpm demo:dry step 7 (a simulated ledger accepts one of two spends; not yet on real chains)"],
-    status: "partly",
+    tests: [
+      "spike:testnet same-nonce on bearer.testnet: two signed Base withdrawals for nonce 0, Base Sepolia confirmed one and refused the other (9 Nov)",
+      "pnpm demo:dry step 7 (Bitcoin: a simulated ledger accepts one of two spends of a coin)",
+    ],
+    status: "proven",
   },
   {
     id: "T11",
@@ -358,6 +427,17 @@ export const THREATS: Threat[] = [
     tests: ["spike:market lock (bearer-market.testnet: 0 keys, 9 Nov)"],
     status: "proven",
   },
+  // The scheduled handover (contracts/schedule), rows S1–S10.
+  { id: "S1", attack: "Fake a schedule by calling the schedule's nft_on_transfer directly", defence: "Only the Bearer contract may call it", tests: ["only_bearer_can_schedule"], status: "proven" },
+  { id: "S2", attack: "Release a scheduled vault before its date", defence: "release refuses until the block time reaches the date", tests: ["release_waits_for_the_date"], status: "proven" },
+  { id: "S3", attack: "Release it to someone other than the recipient", defence: "The recipient is fixed when scheduling; release takes no recipient", tests: ["anyone_can_release_on_the_date"], status: "proven" },
+  { id: "S4", attack: "Cancel what was promised", defence: "Only the giver, only if cancellable, only before the date", tests: ["irrevocable_schedule_cannot_be_cancelled", "only_the_giver_can_cancel", "no_cancelling_after_the_date"], status: "proven" },
+  { id: "S5", attack: "The recipient's name isn't registered, so a squatter gets the vault", defence: "release checks the account exists first; otherwise the vault stays", tests: ["missing_recipient_keeps_the_vault"], status: "proven" },
+  { id: "S6", attack: "The giver withdraws while the vault is scheduled", defence: "The schedule holds the vault and never breaks seals", tests: ["giver_cannot_withdraw_while_scheduled", "opened_vault_cannot_be_scheduled"], status: "proven" },
+  { id: "S7", attack: "Fill the schedule's storage for free", defence: "Each schedule holds a 0.01 NEAR deposit, checked against its storage", tests: ["schedule_holds_the_deposit_and_covers_its_storage", "scheduling_without_deposit_returns_the_vault"], status: "proven" },
+  { id: "S8", attack: "A handover stops halfway", defence: "Gas floors; callbacks never panic and put the schedule back to waiting", tests: ["failed_move_keeps_the_schedule"], status: "proven" },
+  { id: "S9", attack: "A vault sent without a schedule is stuck", defence: "return_unscheduled sends it back to the holder before the schedule", tests: ["return_unscheduled tests"], status: "proven" },
+  { id: "S10", attack: "The schedule account's key holder acts as the owner of a scheduled vault", defence: "No admin or upgrade methods; full-access keys deleted at the locked deploy; the site shows the lock state", tests: ["spike:schedule lock (bearer-schedule.testnet: 0 keys, 9 Nov)"], status: "proven" },
   {
     id: "M10",
     attack: "A buyer reads an observed balance as a guaranteed value",

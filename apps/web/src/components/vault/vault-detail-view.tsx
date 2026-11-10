@@ -1,7 +1,7 @@
 "use client";
 
 import type { MarketListing } from "@bearer/sdk";
-import { ArrowDownLeft, ArrowUpRight, Eye, History, Link2, PackageOpen, Presentation, ScrollText, Send, Store } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CalendarClock, Eye, History, Link2, PackageOpen, Presentation, ScrollText, Send, Store } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -11,12 +11,14 @@ import { VerifyForm } from "@/components/landing/verify-form";
 import { BuySheet } from "@/components/market/buy-sheet";
 import { ListSheet } from "@/components/market/list-sheet";
 import { ListingPanel } from "@/components/market/listing-panel";
+import { SchedulePanel } from "@/components/schedule/schedule-panel";
+import { ScheduleSheet } from "@/components/schedule/schedule-sheet";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Callout, Skeleton } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
-import { HOLDINGS, IS_SIMULATED, MARKET_CONTRACT } from "@/lib/config";
-import { useContractFacts, useListing, useNow, useObservation, useVault, useWithdrawals } from "@/lib/vault/hooks";
+import { HOLDINGS, IS_SIMULATED, MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
+import { useContractFacts, useListing, useNow, useObservation, useSchedule, useVault, useWithdrawals } from "@/lib/vault/hooks";
 import { formatDate, formatUsd, nsToMs, vaultNumber } from "@/lib/vault/format";
 import { fiveQuestions, isSealed, observedUsd, vaultReport, vaultStatus } from "@/lib/vault/report";
 import { Activity } from "./activity";
@@ -37,7 +39,7 @@ import { VaultStatusBadge } from "./vault-status-badge";
 import { WithdrawSheet } from "./withdraw-sheet";
 import { WithdrawalsList } from "./withdrawals-list";
 
-type SheetName = "transfer" | "break" | "withdraw" | "fund" | "list" | "buy";
+type SheetName = "transfer" | "break" | "withdraw" | "fund" | "list" | "buy" | "schedule";
 
 export function VaultDetailView() {
   const { id } = useParams<{ id: string }>();
@@ -47,6 +49,7 @@ export function VaultDetailView() {
   const obs = useObservation(vault);
   const withdrawals = useWithdrawals(id);
   const listingQuery = useListing(id);
+  const scheduleQuery = useSchedule(id);
   const facts = useContractFacts();
   const now = useNow(1000);
   const { accountId, ready, openConnect } = useWallet();
@@ -79,10 +82,12 @@ export function VaultDetailView() {
   const handedAt = vault.custody.at(-1);
   const listing = listingQuery.data ?? null;
   const inEscrow = !!listing && vault.owner_id === MARKET_CONTRACT;
+  const scheduled = scheduleQuery.data ?? null;
+  const inSchedule = !!scheduled && vault.owner_id === SCHEDULE_CONTRACT;
 
   return (
     <Shell>
-      {wasOwner && handedAt && !(inEscrow && listing.seller === accountId) ? (
+      {wasOwner && handedAt && !(inEscrow && listing.seller === accountId) && !(inSchedule && scheduled.giver === accountId) ? (
         <Callout tone="warn" icon={<History />} className="mb-8">
           <p className="font-medium text-fg">
             You handed this vault to {vault.owner_id} on {formatDate(nsToMs(handedAt.since_ns))}. You can&apos;t withdraw from it.
@@ -145,6 +150,10 @@ export function VaultDetailView() {
               <span className="inline-flex items-center gap-1.5">
                 Held by the market for <span className="font-mono text-fg">{listing.seller}</span>
               </span>
+            ) : inSchedule ? (
+              <span className="inline-flex items-center gap-1.5">
+                Scheduled for <span className="font-mono text-fg">{scheduled.recipient}</span>
+              </span>
             ) : (
               <span className="inline-flex items-center gap-1.5">
                 Owner <span className="font-mono text-fg">{vault.owner_id}</span>
@@ -177,6 +186,12 @@ export function VaultDetailView() {
                     <Send className="size-4" />
                     Transfer
                   </Button>
+                  {SCHEDULE_CONTRACT ? (
+                    <Button onClick={() => setSheet("schedule")} disabled={!vault.keys}>
+                      <CalendarClock className="size-4" />
+                      Schedule a handover
+                    </Button>
+                  ) : null}
                   {MARKET_CONTRACT ? (
                     <Button onClick={() => setSheet("list")} disabled={!vault.keys}>
                       <Store className="size-4" />
@@ -206,6 +221,9 @@ export function VaultDetailView() {
               )}
             </div>
           ) : null}
+          {inSchedule ? (
+            <SchedulePanel schedule={scheduled} viewer={ready ? accountId : null} now={now} onConnect={() => openConnect()} />
+          ) : null}
           {inEscrow ? (
             <ListingPanel
               listing={listing}
@@ -219,7 +237,7 @@ export function VaultDetailView() {
             />
           ) : null}
           <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
-            {sealed && !inEscrow ? (
+            {sealed && !inEscrow && !inSchedule ? (
               <Link
                 href={`/v/${vault.token_id}/handover`}
                 className="inline-flex items-center gap-1.5 text-[13.5px] font-medium text-fg-2 transition-colors hover:text-fg"
@@ -247,7 +265,18 @@ export function VaultDetailView() {
       {handover && !isOwner ? <RecipientChecklist vault={vault} viewer={accountId} /> : null}
 
       <div className="mt-10">
-        <FiveQuestions answers={fiveQuestions(vault, observations, accountId)} />
+        <FiveQuestions
+          answers={fiveQuestions(
+            vault,
+            observations,
+            accountId,
+            inSchedule
+              ? { kind: "schedule", giver: scheduled.giver, recipient: scheduled.recipient }
+              : inEscrow
+                ? { kind: "market", seller: listing.seller }
+                : null,
+          )}
+        />
       </div>
 
       <div className="my-12 h-px bg-line" />
@@ -349,6 +378,10 @@ export function VaultDetailView() {
           observations={observations}
           signer={accountId}
         />
+      ) : null}
+      {accountId && (isOwner || sheet === "schedule") ? (
+        // Stays mounted after scheduling so its success screen survives the move to the schedule.
+        <ScheduleSheet open={sheet === "schedule"} onOpenChange={(o) => setSheet(o ? "schedule" : null)} vault={vault} signer={accountId} />
       ) : null}
       {accountId && (isOwner || sheet === "list") ? (
         // Stays mounted after listing so its success screen survives the move to the market.

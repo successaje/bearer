@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/successaje/bearer/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/successaje/bearer/actions/workflows/ci.yml)
 [![Locked contracts](https://github.com/successaje/bearer/actions/workflows/locked-contracts.yml/badge.svg?branch=main)](https://github.com/successaje/bearer/actions/workflows/locked-contracts.yml)
+[![Claims on chain](https://github.com/successaje/bearer/actions/workflows/claims.yml/badge.svg?branch=main)](https://github.com/successaje/bearer/actions/workflows/claims.yml)
 
 **Bitcoin that changes hands without a Bitcoin transaction.**
 
@@ -20,7 +21,7 @@ the owner opens it, withdrawals work and transfers are disabled for good. So con
 assets changes hands without moving them, and without the previous owner keeping a way to take
 them back.
 
-[Try Bearer](https://bearer-near.vercel.app) · [Verify the deployment](https://bearer-near.vercel.app/proof) · [Read the threat model](docs/THREAT_MODEL.md)
+[Try Bearer](https://bearer-near.vercel.app) · [Verify the deployment](https://bearer-near.vercel.app/proof) · [Check the claims: `pnpm verify`](#check-the-claims-yourself) · [Read the threat model](docs/THREAT_MODEL.md)
 
 Testnet prototype, built for the NEAR Hackathon (Nov 2026). Not audited. Don't use real funds.
 
@@ -167,6 +168,33 @@ The schedule contract (`bearer-schedule.testnet`) is reproducibly built and lock
 
 A signature, a self-transfer or one sale is not proof of every possible withdrawal, or of the full
 flow in a browser wallet. What's left is listed under [What comes next](#what-comes-next).
+
+## Check the claims yourself
+
+Every on-chain claim above can be checked with one command. It only reads public endpoints (NEAR
+testnet RPC and archival nodes, Blockstream's testnet4 API, Base Sepolia, Solana devnet), holds no
+keys and sends nothing:
+
+```bash
+pnpm verify        # or: node scripts/verify.mjs  (Node 22+, nothing to install)
+```
+
+You should see 33 ✓ in under a minute, ending `33 claims in … s: 33 ✓, 0 ✗`. Among them:
+
+- each of the three contracts has no access keys, runs the wasm committed in `contracts/res/`, and
+  names a commit that is in this repository;
+- vault No. 0006's Bitcoin was deposited once and spent once, and that spend is, byte for byte, the
+  withdrawal the contract signed after its new holder broke the seal;
+- vault No. 0009 is sealed with 0 signatures and holds 300,000 sats and 0.5 SOL;
+- every sealed vault on `bearer.testnet` has 0 signatures;
+- each recorded attack failed with its expected error;
+- the sale, the scheduled handover, the wallet withdrawal and both T10 transactions are on chain as
+  described, and the second T10 transaction never confirmed.
+
+`✗` means the chain disagrees, and the command exits 1. `?` means a public endpoint didn't answer;
+run it again. `--json report.json` writes every result with its source. The
+[Claims on chain](https://github.com/successaje/bearer/actions/workflows/claims.yml) workflow runs it
+daily.
 
 ## Try it
 

@@ -13,6 +13,7 @@
     "typecheck": "pnpm --filter web typecheck",
     "build:contracts": "contracts/build.sh",
     "test:contracts": "cargo test --manifest-path contracts/Cargo.toml && pnpm --filter @bearer/contract-tests test",
-    "demo:dry": "pnpm --filter @bearer/contract-tests demo:dry"
+    "demo:dry": "pnpm --filter @bearer/contract-tests demo:dry",
+    "verify": "node scripts/verify.mjs"
   }
 }

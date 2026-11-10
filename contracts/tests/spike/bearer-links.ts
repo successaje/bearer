@@ -40,7 +40,7 @@ const STATE = join(DIR, "links.json");
  * A link is written here, key first, before any transaction. `done: false` marks one an
  * interruption left halfway; the next `mint` finishes it. Links from before this field are done.
  */
-type Link = { n: number; token_id: string | null; account: string; seed: string; url: string; btc_sats: number; btc_txid: string | null; minted_at: string; done?: boolean };
+type Link = { n: number; token_id: string | null; account: string; seed: string; url: string; btc_sats: number; btc_txid: string | null; minted_at: string; done?: boolean; name?: string; note?: string };
 type State = { treasury: string | null; links: Link[] };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -57,7 +57,7 @@ function save(state: State, ready?: Set<number>) {
   chmodSync(DIR, 0o700);
   writeFileSync(STATE, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
   chmodSync(STATE, 0o600);
-  const line = (l: Link) => `- No. ${(l.token_id ?? "????").padStart(4, "0")} · ${l.btc_sats.toLocaleString("en-US")} sats · ${l.url}${l.done === false ? " (unfinished: run mint again)" : ""}`;
+  const line = (l: Link) => `- No. ${(l.token_id ?? "????").padStart(4, "0")} · ${l.btc_sats.toLocaleString("en-US")} sats${l.note ? ` · ${l.note}` : ""} · ${l.url}${l.done === false ? " (unfinished: run mint again)" : ""}`;
   const md = [
     "# Bearer links (testnet)",
     "",
@@ -143,12 +143,19 @@ async function createVault(from: Account, name: string, finish: string) {
 
 type Utxo = { txid: string; vout: number; value: number; status: { confirmed: boolean } };
 
+/** JSON from Esplora; a refusal (HTTP 429 when it rate-limits) stops the run, which `mint` can resume. */
+async function esplora<T>(path: string): Promise<T> {
+  const res = await fetch(`${ESPLORA}${path}`);
+  if (!res.ok) throw new Error(`${new URL(ESPLORA).host} answered HTTP ${res.status} for ${path}; run mint again, or set ESPLORA_API`);
+  return (await res.json()) as T;
+}
+
 async function utxos(address: string) {
-  return (await (await fetch(`${ESPLORA}/address/${address}/utxo`)).json()) as Utxo[];
+  return esplora<Utxo[]>(`/address/${address}/utxo`);
 }
 
 async function feeRate() {
-  const estimates = (await (await fetch(`${ESPLORA}/fee-estimates`)).json()) as Record<string, number>;
+  const estimates = await esplora<Record<string, number>>("/fee-estimates");
   const fastest = Object.entries(estimates).sort(([a], [b]) => Number(a) - Number(b))[0]?.[1] ?? 0;
   return Math.max(2, Math.ceil(fastest));
 }
@@ -213,7 +220,7 @@ function crashAfter(step: string) {
  */
 async function complete(state: State, link: Link, parent: Account, treasuryVault: Vault | null) {
   if (!link.token_id) {
-    const v = await createVault(parent, "A Bearer link", FINISHES[link.n % FINISHES.length]);
+    const v = await createVault(parent, link.name ?? "A Bearer link", FINISHES[link.n % FINISHES.length]);
     link.token_id = v.token_id;
     save(state);
   }
@@ -230,7 +237,7 @@ async function complete(state: State, link: Link, parent: Account, treasuryVault
   if (link.btc_sats > 0 && !link.btc_txid) {
     if (!treasuryVault) throw new Error("run `treasury` first and fund it");
     // A run stopped after broadcasting leaves the payment on chain: look before paying again.
-    const seen = (await (await fetch(`${ESPLORA}/address/${v.btc_address}/txs`)).json()) as { txid: string; vout: { scriptpubkey_address?: string }[] }[];
+    const seen = await esplora<{ txid: string; vout: { scriptpubkey_address?: string }[] }[]>(`/address/${v.btc_address}/txs`);
     const earlier = seen.find((t) => t.vout.some((o) => o.scriptpubkey_address === v.btc_address));
     link.btc_txid = earlier?.txid ?? (await payFromTreasury(parent, treasuryVault, v.btc_address as string, link.btc_sats)).txid;
     save(state);
@@ -262,6 +269,9 @@ async function mint(count: number, sats: number) {
       btc_txid: null,
       minted_at: new Date().toISOString(),
       done: false,
+      // LINK_NAME names the vault (a leading emoji picks its card art); LINK_NOTE labels it in links.md.
+      ...(process.env.LINK_NAME ? { name: process.env.LINK_NAME } : {}),
+      ...(process.env.LINK_NOTE ? { note: process.env.LINK_NOTE } : {}),
     };
     // The key is on disk before anything is sent, so no step can strand a vault or its coins.
     state.links.push(link);

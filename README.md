@@ -181,7 +181,7 @@ flow in a browser wallet. What's left is listed under [What comes next](#what-co
 3. Open the [market](https://bearer-near.vercel.app/market). Connecting a testnet wallet lets you
    create, transfer, list and buy.
 
-**Local, simulated.** Needs Node 20.11+ and pnpm 10.2.1:
+**Local, simulated.** Needs Node 22.22+ (near-sandbox's minimum) and pnpm 10.2.1:
 
 ```bash
 pnpm install

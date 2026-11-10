@@ -1,0 +1,89 @@
+# Rebuilds each locked contract from the commit its on-chain metadata names, with the official
+# cargo-near 0.22.0 release in the pinned image, and checks the bytes against contracts/res/SHA256SUMS
+# and the code hash on NEAR testnet. Anyone can run the same commands (README, "Rebuild the deployed
+# contract and compare").
+name: Locked contracts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "contracts/res/**"
+      - ".github/workflows/locked-contracts.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild:
+    name: ${{ matrix.account }} · rebuilt from ${{ matrix.short }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - contract: bearer
+            account: bearer.testnet
+            commit: 71f194ec6a5ade7fd8f3bc37b30b11c47981652d
+            short: 71f194e
+          - contract: market
+            account: bearer-market.testnet
+            commit: 579df21fca6b54092a88711014e58a2b98cb547b
+            short: 579df21
+          - contract: schedule
+            account: bearer-schedule.testnet
+            commit: 47b5d255a9187619e627f06576a39c344d3dfa32
+            short: 47b5d25
+    steps:
+      - name: Check out this commit, for SHA256SUMS
+        uses: actions/checkout@v4
+        with:
+          path: current
+      - name: Check out the commit the contract was built from
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.commit }}
+          path: src
+          fetch-depth: 0
+      - name: Install cargo-near 0.22.0 (official release, checksum pinned)
+        run: |
+          curl -sSfL -o cargo-near.tgz https://github.com/near/cargo-near/releases/download/cargo-near-v0.22.0/cargo-near-x86_64-unknown-linux-gnu.tar.gz
+          echo "9429064e30a427e96523f539cb255f3688d2345e5000d7d4e4873a8247247d1a  cargo-near.tgz" | sha256sum -c -
+          tar xzf cargo-near.tgz
+          echo "$PWD/cargo-near-x86_64-unknown-linux-gnu" >> "$GITHUB_PATH"
+      - name: Reproducible build
+        working-directory: src
+        run: cargo near build reproducible-wasm --manifest-path contracts/${{ matrix.contract }}/Cargo.toml
+      - name: Compare with SHA256SUMS and the code on chain
+        env:
+          CONTRACT: ${{ matrix.contract }}
+          ACCOUNT: ${{ matrix.account }}
+        run: |
+          wasm=$(find src/contracts/target/near -name "$CONTRACT.wasm" | head -1)
+          built=$(sha256sum "$wasm" | cut -d' ' -f1)
+          committed=$(awk -v f="$CONTRACT.wasm" '$2 == f { print $1 }' current/contracts/res/SHA256SUMS)
+          onchain=$(curl -sS --max-time 30 https://rpc.testnet.near.org -H 'content-type: application/json' \
+            -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"query\",\"params\":{\"request_type\":\"view_account\",\"finality\":\"final\",\"account_id\":\"$ACCOUNT\"}}" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["code_hash"])')
+          # NEAR's code hash is base58(sha256(wasm)).
+          built_b58=$(python3 -c '
+          import sys
+          b = bytes.fromhex(sys.argv[1]); n = int.from_bytes(b, "big"); s = ""
+          a = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+          while n: n, r = divmod(n, 58); s = a[r] + s
+          print("1" * (len(b) - len(b.lstrip(b"\0"))) + s)' "$built")
+          {
+            echo "### $ACCOUNT"
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Rebuilt from | \`${{ matrix.commit }}\` |"
+            echo "| sha256, rebuilt | \`$built\` |"
+            echo "| sha256, contracts/res/SHA256SUMS | \`$committed\` |"
+            echo "| Code hash, rebuilt | \`$built_b58\` |"
+            echo "| Code hash, on chain | \`$onchain\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "$built" = "$committed" ] || { echo "::error::rebuilt $built, SHA256SUMS says $committed"; exit 1; }
+          [ "$built_b58" = "$onchain" ] || { echo "::error::rebuilt $built_b58, $ACCOUNT runs $onchain"; exit 1; }
+          echo "$ACCOUNT runs exactly what ${{ matrix.short }} builds: $onchain"

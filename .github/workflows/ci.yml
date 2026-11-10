@@ -1,0 +1,91 @@
+# Every push: the contracts' unit and sandbox tests, the web app and SDK, and a secret scan of the
+# whole history. Rust matches the pinned reproducible-build image; Node matches near-sandbox's floor.
+name: CI
+
+on:
+  push:
+    branches: [main, v2]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUST_TOOLCHAIN: "1.98.1"
+  NODE_VERSION: "22"
+
+jobs:
+  rust:
+    name: Rust · clippy and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contracts
+      - run: cargo clippy --manifest-path contracts/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --manifest-path contracts/Cargo.toml
+
+  sandbox:
+    name: Sandbox tests and demo:dry
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: contracts
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Builds contracts/out/ with contracts/build.sh, then runs every file against near-sandbox.
+      - run: pnpm --filter @bearer/contract-tests test
+      # The README's first command for judges: the committed wasm and simulated ledgers.
+      - run: pnpm demo:dry
+
+  web:
+    name: Web and SDK · typecheck, lint, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm --filter @bearer/sdk typecheck
+      - run: pnpm --filter @bearer/contract-tests typecheck
+      # Mock mode, the default: no environment needed.
+      - run: pnpm build
+
+  secrets:
+    name: Secrets · gitleaks over every commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Known false positives are listed, with reasons, in .gitleaksignore.
+      - run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1 git /repo --no-banner --redact --verbose

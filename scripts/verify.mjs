@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Checks the README's claims against the public chains: NEAR testnet, Bitcoin testnet4, Base
- * Sepolia and Solana devnet. Read-only: no keys, no transactions, nothing to install (Node 22+).
+ * Sepolia and Solana devnet, through public endpoints (two each for NEAR history and Bitcoin).
+ * Read-only: no keys, no transactions, nothing to install (Node 22+).
  *
  *   pnpm verify                      # or: node scripts/verify.mjs
  *   pnpm verify --json report.json   # also writes every result, with its source, as JSON
@@ -24,6 +25,7 @@ const EP = {
   archival: "https://archival-rpc.testnet.fastnear.com",
   archivalFallback: "https://archival-rpc.testnet.near.org",
   esplora: "https://blockstream.info/testnet4/api",
+  esploraFallback: "https://mempool.emzy.de/testnet4/api",
   base: "https://sepolia.base.org",
   solana: "https://api.devnet.solana.com",
 };
@@ -94,13 +96,17 @@ async function view(account, method, args = {}) {
   return JSON.parse(Buffer.from(r.result).toString());
 }
 
-// The free archival nodes rate-limit bursts, so their requests go one at a time.
-let archivalTail = Promise.resolve();
-const oneAtATime = (f) => {
-  const run = archivalTail.then(f, f);
-  archivalTail = run.then(() => sleep(200), () => sleep(200));
-  return run;
-};
+// The free archival nodes and Esplora servers rate-limit bursts, so each one's requests go one at a time.
+function inTurn() {
+  let tail = Promise.resolve();
+  return (f) => {
+    const run = tail.then(f, f);
+    tail = run.then(() => sleep(200), () => sleep(200));
+    return run;
+  };
+}
+const oneAtATime = inTurn();
+const bitcoinTurn = inTurn();
 
 /** A NEAR transaction from an archival node (FastNear, then NEAR's own); null if it doesn't exist. */
 const nearTx = (hash, sender) =>
@@ -122,7 +128,16 @@ const argsOf = (call) => JSON.parse(Buffer.from(call.args, "base64").toString())
 const tokensBurnt = (tx) => [tx.transaction_outcome, ...tx.receipts_outcome].reduce((n, o) => n + BigInt(o.outcome.tokens_burnt), 0n);
 const gasBurnt = (tx) => [tx.transaction_outcome, ...tx.receipts_outcome].reduce((n, o) => n + o.outcome.gas_burnt, 0);
 
-const esplora = (path) => get(`${EP.esplora}${path}`, undefined, path.endsWith("/hex"));
+/** Bitcoin testnet4 data from Blockstream's Esplora, or mempool.emzy.de's when Blockstream rate-limits. */
+const esplora = (path) =>
+  bitcoinTurn(async () => {
+    try {
+      return await get(`${EP.esplora}${path}`, undefined, path.endsWith("/hex"));
+    } catch (e) {
+      if (!(e instanceof Unreachable)) throw e;
+      return get(`${EP.esploraFallback}${path}`, undefined, path.endsWith("/hex"));
+    }
+  });
 const base = (method, params) => rpc(EP.base, method, params);
 const solana = (method, params) => rpc(EP.solana, method, params);
 
@@ -231,7 +246,7 @@ claim(G6, "Handed from finishr.testnet to takaba.testnet in one NEAR transaction
   return `nft_transfer of No. 0006, ${(gasBurnt(tx) / 1e12).toFixed(2)} Tgas, ${fmtNear(fee)} burnt`;
 });
 
-claim(G6, "Nothing moved on Bitcoin while it changed hands: the coin deposited stayed put until the new holder's withdrawal spent it", "Blockstream Esplora (testnet4)", async () => {
+claim(G6, "Nothing moved on Bitcoin while it changed hands: the coin deposited stayed put until the new holder's withdrawal spent it", "Esplora (testnet4)", async () => {
   const [v, spend] = await Promise.all([vault("6"), esplora(`/tx/${BTC_SPEND}`)]);
   const input = spend.vin[0];
   expect(input.prevout.scriptpubkey_address === v.btc_address, `the withdrawal spends ${input.prevout.scriptpubkey_address}`);
@@ -260,7 +275,7 @@ claim(G6, "That spend is byte for byte the withdrawal the contract signed after 
   return `withdrawal 0 of No. 0006 = tx ${short(BTC_SPEND)} (${raw.length / 2} bytes)`;
 });
 
-claim(G6, "It confirmed in testnet4 block 160,228, paying 300,000 sats to sealed vault No. 0009", "Blockstream Esplora (testnet4)", async () => {
+claim(G6, "It confirmed in testnet4 block 160,228, paying 300,000 sats to sealed vault No. 0009", "Esplora (testnet4)", async () => {
   const [tx, v9] = await Promise.all([esplora(`/tx/${BTC_SPEND}`), vault("9")]);
   expect(tx?.status.confirmed && tx.status.block_height === 160228, `status ${JSON.stringify(tx?.status)}`);
   const out = tx.vout.find((o) => o.scriptpubkey_address === v9.btc_address);
@@ -447,7 +462,7 @@ claim("Bearer links", "With no wallet, a link's own key broke vault No. 0012's s
 
 const GE = "Signed through an earlier test contract and accepted on each chain";
 
-claim(GE, "Bitcoin: confirmed in testnet4 block 159,948", "Blockstream Esplora (testnet4)", async () => {
+claim(GE, "Bitcoin: confirmed in testnet4 block 159,948", "Esplora (testnet4)", async () => {
   const tx = await esplora("/tx/ce01f9fffdf0f362641a4f6882257295ae63de6146c5a3478704ef809bf958b6");
   expect(tx?.status.confirmed && tx.status.block_height === 159948, `status ${JSON.stringify(tx?.status)}`);
   return `ce01f9ff… in block 159,948, ${tx.vin.length} input(s)`;

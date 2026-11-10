@@ -135,7 +135,7 @@ Bearer makes that contract an NFT collection. Each token is a bundle of foreign 
 
 ### 1.8 The other project (required disclosure, hackathon rule Q-015)
 
-The same team lead is also submitting an independent project, **"Sudo by Contract"**: on-chain-governed SSH access for AI agents using NEAR Chain Signatures. The two projects share no code. Bearer's README must name the other project and state that they are independent, as rule Q-015 requires. Do not import, copy or reference any code from it.
+The same team lead is also submitting an independent project, **"Bakeoff"**. The two projects share no code. Bearer's README must name the other project and state that they are independent, as rule Q-015 requires. Do not import, copy or reference any code from it.
 
 ## 2. Hackathon briefing (internalize, then re-verify)
 
@@ -715,7 +715,7 @@ Jobs:
 
 Cache cargo and pnpm. Add a status badge to the README.
 
-### 6.6 Known gotchas (verified 2026-11-08 while building the sibling project, Sudo by Contract)
+### 6.6 Known gotchas (verified 2026-11-08)
 
 These were hit for real against nearcore 2.14 sandbox and NEAR testnet. Check them on Day 1.
 
@@ -897,7 +897,7 @@ If a measured median for a hand-over exists by D6, you may replace "in one NEAR 
 12. **Hackathon disclosure:**
     - built during the window starting 2026-10-19;
     - libraries and AI tools used;
-    - *"The same team lead also submitted **Sudo by Contract**, an independent project. The two share no code."*
+    - *"The same team lead also submitted **Bakeoff**, an independent project. The two share no code."*
 13. **License** (MIT).
 
 ### 9.2 "How NEAR is used" table
@@ -946,7 +946,7 @@ Keep `idea` within 2,000 characters. Never include `website`. Save the `requestI
 - [ ] The contract is locked; the code hash is published and matches `contracts/res/SHA256SUMS`; the testnet IDs are correct.
 - [ ] The hosted demo works on a phone; judge claim links are seeded and work for someone with no wallet.
 - [ ] LICENSE is present; there are no secrets in git history (gitleaks).
-- [ ] The Q-015 disclosure naming Sudo by Contract is present.
+- [ ] The Q-015 disclosure naming Bakeoff is present.
 - [ ] The video is recorded; the X post draft is ready; **the human publishes it** and gives you the link.
 - [ ] The repo is public, **with the human's approval**.
 - [ ] The payload is printed, **the human says yes**, then you send it. On 201, tell the human. If it fails, see 2.4.

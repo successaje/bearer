@@ -124,8 +124,8 @@ other chain accepts it, not a payout to a separate person.
   These weren't broadcast: those vaults held no funds.
 - **Bitcoin that changed hands without a Bitcoin transaction.** Sealed vault No. 0006 held 684,666
   sats of testnet Bitcoin. The owner's wallet handed it to a second account in one NEAR transaction
-  ([handover](https://testnet.nearblocks.io/txns/H3XPWh2n5cvDKaqKS8pY4kSCjXDCaPgG3fp6E8beJJYj)), and nothing happened on Bitcoin: the vault's address shows only the deposit
-  and, later, the new holder's withdrawal of that same coin ([address](https://blockstream.info/testnet4/address/tb1qqtlwr0xlr8ex8qldu3nea5s2kc4ajzrsnd2g4g)). The new holder
+  ([handover](https://testnet.nearblocks.io/txns/H3XPWh2n5cvDKaqKS8pY4kSCjXDCaPgG3fp6E8beJJYj)), and nothing happened on Bitcoin: the coin deposited at
+  the vault's address stayed there until the new holder's withdrawal spent it ([address](https://blockstream.info/testnet4/address/tb1qqtlwr0xlr8ex8qldu3nea5s2kc4ajzrsnd2g4g)). The new holder
   broke the seal and withdrew 300,000 sats into sealed vault No. 0009
   ([Bitcoin](https://blockstream.info/testnet4/tx/6002c967889d8185b4457837db9c44369b06af0208998cb445a64cea2b5e1e23), confirmed in testnet4 block 160,228). They also withdrew 0.5 SOL
   ([Solana](https://explorer.solana.com/tx/5FQ1wbWQrcLEpb4aqBgpCb3KC5D1UQvPR1aWFjaeEfLBW3eNqFQp2aLMxMKd4NwSeBy86sznnyDvAgoXe4T5XSqm?cluster=devnet), finalized).
@@ -183,8 +183,8 @@ You should see 34 ✓ in under a minute, ending `34 claims in … s: 34 ✓, 0 �
 
 - each of the three contracts has no access keys, runs the wasm committed in `contracts/res/`, and
   names a commit that is in this repository;
-- vault No. 0006's Bitcoin was deposited once and spent once, and that spend is, byte for byte, the
-  withdrawal the contract signed after its new holder broke the seal;
+- the coin deposited at vault No. 0006's address stayed put until a withdrawal spent it, and that
+  spend is, byte for byte, the one the contract signed after its new holder broke the seal;
 - vault No. 0009 is sealed with 0 signatures and holds 300,000 sats and 0.5 SOL;
 - every sealed vault on `bearer.testnet` has 0 signatures;
 - each recorded attack failed with its expected error;

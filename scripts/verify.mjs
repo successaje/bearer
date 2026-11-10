@@ -229,14 +229,22 @@ claim(G6, "Handed from finishr.testnet to takaba.testnet in one NEAR transaction
   return `nft_transfer of No. 0006, ${(gasBurnt(tx) / 1e12).toFixed(2)} Tgas, ${fmtNear(fee)} burnt`;
 });
 
-claim(G6, "Nothing moved on Bitcoin while it changed hands: the coin deposited was spent once, by the new holder's withdrawal", "Blockstream Esplora (testnet4)", async () => {
-  const v = await vault("6");
-  const txs = await esplora(`/address/${v.btc_address}/txs`);
-  const spends = txs.filter((t) => t.vin.some((i) => i.prevout?.scriptpubkey_address === v.btc_address));
-  expect(spends.length === 1 && spends[0].txid === BTC_SPEND, `spends from ${v.btc_address}: ${spends.map((t) => short(t.txid)).join(", ") || "none"}`);
-  const input = spends[0].vin[0];
-  const funding = await esplora(`/tx/${input.txid}`);
-  return `${v.btc_address}: one spend, ${short(BTC_SPEND)}, of ${sats(input.prevout.value)} deposited in block ${funding.status.block_height.toLocaleString("en-US")} (${short(input.txid)}:${input.vout})`;
+claim(G6, "Nothing moved on Bitcoin while it changed hands: the coin deposited stayed put until the new holder's withdrawal spent it", "Blockstream Esplora (testnet4)", async () => {
+  const [v, spend] = await Promise.all([vault("6"), esplora(`/tx/${BTC_SPEND}`)]);
+  const input = spend.vin[0];
+  expect(input.prevout.scriptpubkey_address === v.btc_address, `the withdrawal spends ${input.prevout.scriptpubkey_address}`);
+  const [outspend, funding, txs] = await Promise.all([
+    esplora(`/tx/${input.txid}/outspend/${input.vout}`),
+    esplora(`/tx/${input.txid}`),
+    esplora(`/address/${v.btc_address}/txs`),
+  ]);
+  expect(outspend?.spent && outspend.txid === BTC_SPEND, `the deposited coin was spent by ${outspend?.txid ?? "nothing"}`);
+  // Anything that left the address before or alongside the withdrawal would be a spend the old owner made.
+  const earlier = txs.filter(
+    (t) => t.txid !== BTC_SPEND && t.status.confirmed && t.status.block_height <= spend.status.block_height && t.vin.some((i) => i.prevout?.scriptpubkey_address === v.btc_address),
+  );
+  expect(!earlier.length, `earlier spends from ${v.btc_address}: ${earlier.map((t) => short(t.txid)).join(", ")}`);
+  return `${sats(input.prevout.value)} deposited in block ${funding.status.block_height.toLocaleString("en-US")} (${short(input.txid)}:${input.vout}); first spent by ${short(BTC_SPEND)}, in block ${spend.status.block_height.toLocaleString("en-US")}`;
 });
 
 claim(G6, "That spend is byte for byte the withdrawal the contract signed after takaba.testnet opened the vault", "bearer.testnet withdrawals view, Esplora raw tx", async () => {

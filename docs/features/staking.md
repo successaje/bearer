@@ -3,7 +3,8 @@
 **Branch:** `v2` · **Contract:** `contracts/bearer/src/staking.rs`, on `bearer-v2.testnet`
 (unlocked, regular build) · **Pool:** `stakely_v2.pool.f863973.m0` · **On the site:** a "Staked"
 panel on a v2 vault's page (v2 preview only; the hosted site stays on v1) · **Status:** run on
-testnet 2026-11-09; the first unstaked batch unlocks at epoch 5434, about 28 hours later
+testnet 2026-11-09; the first unstaked batch came back into its vault on 2026-11-10 (epoch
+5434), and the next one unlocks at epoch 5438
 
 **For:** whoever decides whether v2 ships. What staking does, why it can't weaken the seal, and
 what was checked.
@@ -75,14 +76,22 @@ reading from before it. It was fixed and redeployed
 ([tx](https://testnet.nearblocks.io/txns/8crVjGixqsSMbwfDxsPByjGrv1gCij5wxHfUVHZx2FC3)). The site
 never used that field: it computes a stake's worth from the pool's own view.
 
+- **Bringing the batch back on testnet, 2026-11-10** (`pnpm spike:staking process`, epoch 5434).
+  alice, who doesn't hold the vault, called `process_unstaking`
+  ([6dJWHEnD…](https://testnet.nearblocks.io/txns/6dJWHEnD3bQCHCrjTSuiHbdMyZ9aVkhNaxmvwpRTwk5Z)):
+  events `batch_withdrawn` then `batch_unstaked`, 15.9 Tgas. Vault No. 0004's NEAR went from 0.1982
+  to 0.3982 NEAR, exactly bob's 0.2. `withdrawn_through` is now 1, and the queued 0.1 NEAR is
+  unbonding at the pool from epoch 5434, unlocking at epoch 5438. The parent test account couldn't
+  send it: the 300 Tgas is paid up front, about 0.30 NEAR, and it held 0.19. N = 1. Report:
+  [`testnet-staking-process-2026-11-10T23-01-57.756Z.json`](../../contracts/tests/spike/reports/testnet-staking-process-2026-11-10T23-01-57.756Z.json)
+- **Rewards on testnet.** From epoch 5430 to 5434, vault No. 0004's 0.3 NEAR still staked is worth
+  0.30012367 NEAR at the pool's price, so 0.00012367 NEAR of rewards so far. That's small: it
+  includes the 0.2 unstaked at epoch 5430, and it's one vault at one pool (Y8).
 - **Web:** in the simulated demo (one-minute epochs), vault No. 0042 staked 1 NEAR, unstaked 0.4
   (unlocking), then 0.2 (queued behind it).
 
 ## Not done yet
 
-- **Bringing the batch back on testnet.** Epoch 5434 starts about 28 hours after the run.
-  `pnpm spike:staking process` will then withdraw bob's 0.2 NEAR into vault No. 0004 and send the
-  queued 0.1 to the pool.
-- **Rewards on testnet.** The pool pays once per epoch (about 7 hours); `pnpm spike:staking
-  status` reads what vault No. 0004's shares are worth now.
+- **The second batch.** bob's 0.1 NEAR unlocks at epoch 5438; `pnpm spike:staking process` will
+  then withdraw it into vault No. 0004.
 - **A reproducible, locked build** of v2, and a real-wallet run.

@@ -249,7 +249,8 @@ async function status() {
 async function processUnstaking() {
   const before = await status();
   const nearBefore = Object.fromEntries(await Promise.all(before.vaults.map(async (v) => [v.token_id, (await vaultNear(v.token_id)).toString()])));
-  await tx(account(PARENT!), "process_unstaking", {}, 0n, "anyone moves unstaking along");
+  // 300 Tgas is prepaid at about 0.3 NEAR, so PROCESS_BY picks a signer that can cover it.
+  await tx(account(process.env.PROCESS_BY ?? PARENT!), "process_unstaking", {}, 0n, "anyone moves unstaking along");
   const after = await status();
   const nearAfter = Object.fromEntries(await Promise.all(before.vaults.map(async (v) => [v.token_id, (await vaultNear(v.token_id)).toString()])));
   saveReport("testnet-staking-process", { measured_at: new Date().toISOString(), before, after, vault_near_before: nearBefore, vault_near_after: nearAfter, steps });

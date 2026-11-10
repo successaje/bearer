@@ -3,6 +3,19 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-10 · A staked vault's unstaked NEAR comes back into the vault
+
+`pnpm spike:staking process` on `bearer-v2.testnet` (unlocked test contract), pool
+`stakely_v2.pool.f863973.m0`, at epoch 5434, when bob's first batch of 0.2 NEAR unlocked. alice,
+who doesn't hold vault No. 0004, called `process_unstaking`
+([6dJWHEnD…](https://testnet.nearblocks.io/txns/6dJWHEnD3bQCHCrjTSuiHbdMyZ9aVkhNaxmvwpRTwk5Z)):
+events `batch_withdrawn` then `batch_unstaked`, 15.9 Tgas. The vault's NEAR went from 0.1982 to
+0.3982 NEAR. `withdrawn_through` went to 1, and the queued 0.1 NEAR is unbonding, unlocking at
+epoch 5438. The vault's 0.3 NEAR still staked is worth 0.30012367 NEAR, so 0.00012367 NEAR of
+rewards over epochs 5430 to 5434. The parent test account couldn't send the call: 300 Tgas is paid
+up front, about 0.30 NEAR, and it held 0.19. N = 1. Report:
+`contracts/tests/spike/reports/testnet-staking-process-2026-11-10T23-01-57.756Z.json`
+
 ## 2026-11-10 · Bearer links: sealed vaults sent as links, opened with no wallet
 
 `pnpm spike:links` on `bearer.testnet`, with the parent test account, and the page at `/claim`

@@ -143,7 +143,7 @@ export function HandoverView() {
           </h1>
 
           <div className={cn("relative mx-auto mt-10 max-w-[560px] transition-transform duration-700", handedTo && "motion-safe:scale-[1.02]")}>
-            <div aria-hidden className="absolute inset-x-[8%] -bottom-8 h-16 rounded-[50%] bg-gold/25 blur-3xl" />
+            <div aria-hidden className="pointer-events-none absolute inset-x-[8%] -bottom-8 h-16 rounded-[50%] bg-gold/25 blur-3xl" />
             <VaultCard vault={vault} valueUsd={value} flipped={handedTo ? true : undefined} flippable={!handedTo} />
           </div>
 

@@ -3,6 +3,30 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-11 · Borrowing against a vault, on the locked contract
+
+`bearer-lend.testnet` (faucet-created) runs `contracts/out/lend.wasm`, built by `contracts/build.sh` from
+the contract as committed in `883873d`, code hash `9UHt8QL5…HRET`. It is not the reproducible build and it isn't locked: the
+account still has its key (L10). `pnpm spike:lend run` pledged three fresh vaults of alice's for
+0.1 NEAR, to be repaid with 0.105 NEAR:
+
+- **Repaid.** No. 0021 for a day. bob's `fund` naming another repayment was refused
+  (`ERR_TERMS_CHANGED`); then bob funded it and alice's balance rose by exactly 0.1 NEAR
+  ([tx](https://testnet.nearblocks.io/txns/8qhuGwpdrFammXLfMAkvo3oLWZYSrQXpoAwFphTGQjME)).
+  alice breaking the pledged vault's seal was refused (`ERR_NOT_OWNER`), and so was bob taking it
+  early (`ERR_NOT_DUE`). alice repaid
+  ([tx](https://testnet.nearblocks.io/txns/CuucQzSwChsvt4Q4hGGcCX6t9nx48Yvu7WjpFzQR1UFp)): the
+  vault came back sealed with 0 signatures, and bob's balance rose by exactly 0.105 NEAR.
+- **Foreclosed.** No. 0022 for 70 s. After the due date alice's repayment was refused
+  (`ERR_PAST_DUE`) and bob took the vault
+  ([tx](https://testnet.nearblocks.io/txns/8HTjZHfHiTuTwQpVsLPpUXNywbPbqoJBAHQ1HHF5PVmB)). It
+  arrived sealed with 0 signatures; custody shows alice, then the lending contract, then bob;
+  alice's balance rose by exactly her 0.01 NEAR deposit.
+- **Taken back.** No. 0023 was pledged and taken back before anyone lent.
+
+Pledging took 9.4 Tgas, funding 5.2, repaying 14.4 and foreclosing 11.7, one run each. Report:
+[`testnet-lend-2026-11-11T18-06-39.294Z.json`](../contracts/tests/spike/reports/testnet-lend-2026-11-11T18-06-39.294Z.json).
+
 ## 2026-11-10 · Bearer links: sealed vaults sent as links, opened with no wallet
 
 `pnpm spike:links` on `bearer.testnet`, with the parent test account, and the page at `/claim`

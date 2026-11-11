@@ -101,6 +101,28 @@ and `contracts/tests/schedule.test.ts` (sandbox, against the locked Bearer wasm)
 | S9 | A vault sent without a schedule is stuck | `return_unscheduled` sends it to the holder before the schedule; never a scheduled vault | `return_unscheduled` tests (sandbox) | ✅ |
 | S10 | Admin or upgrade powers over the schedule, including its key holder acting as the owner of a scheduled vault (breaking its seal) | No admin, owner or upgrade methods; every key deleted (`spike:schedule lock`, same guards as Bearer's). The site shows the schedule's lock state live | `spike:schedule lock` run on `bearer-schedule.testnet` 2026-11-09: 0 keys left, code hash `9sLo27AU…JSkE` = the reproducible build ([tx](https://testnet.nearblocks.io/txns/6wAyfjD218s7DvCwuzK7nEtAdLDQK5eZujY3caDJRekx)) | ✅ |
 
+## Lending threats
+
+The lending contract (`contracts/lend`) holds a pledged vault while a loan runs: the borrower
+gets NEAR from a lender, and the vault goes back when they repay, or to the lender if they don't
+by the due date. Like the market and the schedule it can't change Bearer's rules: a vault reaches
+it only through Bearer's sealed-only gate, and nothing in it breaks a seal. Tests: `cargo test -p
+lend` (unit) and `contracts/tests/lend.test.ts` (sandbox, against the locked Bearer wasm).
+
+| # | Attack | Defence | Test | Status |
+|---|---|---|---|---|
+| L1 | Fake a loan request by calling `nft_on_transfer` directly | Only the Bearer contract may call it | `only_bearer_can_request` (unit and sandbox) | ✅ |
+| L2 | Pledge an opened vault, or drain one while it's pledged | The vault arrives through Bearer's gate (sealed only) and stays in escrow; nothing here calls `break_seal`, so the borrower can't open it; Bearer's gate checks again in the receipt that moves it out | `opened_vault_cannot_be_pledged`, `borrower_cannot_open_a_pledged_vault` (sandbox); on testnet the borrower's `break_seal` was refused (`ERR_NOT_OWNER`) | ✅ |
+| L3 | A lender pays and the borrower gets nothing, or a borrower repays and the vault doesn't come back | Funding passes the exact principal straight to the borrower; repaying moves the vault first and pays the lender only once it has; a vault that didn't move refunds the borrower and the loan stands | `fund_pays_the_borrower`, `repaid_vault_moves_first_then_lender_is_paid`, `foreclosed_vault_goes_to_the_lender_sealed` (sandbox); `settle_every_branch`, `failed_repay_restores_the_loan` (unit) | ✅ |
+| L4 | A payout bounces (the account is gone) and the money is lost | The callback keeps it as a claimable balance; `claim` pays it to whoever holds the name | `bounced_payout_becomes_claimable` (unit) | ✅ |
+| L5 | Settlement stops halfway | `repay`, `foreclose` and `cancel_request` refuse under 70 Tgas; callbacks never panic and put the loan back as it was | `repay_needs_gas_for_the_whole_settlement`, `failed_foreclosure_keeps_the_loan_for_another_try` (unit) | ✅ |
+| L6 | Fill the contract's storage for free, or pledge on terms nobody could meet | Each loan holds a 0.01 NEAR deposit, checked against its storage as it will be once funded, and paid back to the borrower however the loan ends. Terms are checked on arrival: at least 0.001 NEAR, a repayment no smaller than the loan, a term from a minute to ten years. Otherwise the vault goes straight back | `request_holds_the_deposit_and_covers_its_storage`, `funding_fits_in_the_bytes_the_deposit_reserved`, `request_terms_are_checked` (unit); `request_without_deposit_returns_the_vault`, `bad_terms_return_the_vault` (sandbox) | ✅ |
+| L7 | The borrower swaps the terms under a lender (takes the request back and asks again for more, or for longer) | `fund` names the repayment and term the lender saw and is refused if either differs; the principal must match exactly | `fund_refuses_changed_terms` (unit and sandbox); refused on testnet (`ERR_TERMS_CHANGED`) | ✅ |
+| L8 | Someone else repays, forecloses or cancels; the lender takes the vault early; the borrower repays late; a funded loan is cancelled | Only the borrower repays, and only before the due date; only the lender forecloses, and only from it; only the borrower cancels, and only before anyone lends | `only_the_borrower_can_repay`, `no_repaying_on_or_after_the_due_date`, `only_the_lender_can_foreclose`, `foreclose_waits_for_the_due_date`, `only_the_borrower_can_cancel` (unit); the same in the sandbox; on testnet `ERR_NOT_DUE` and `ERR_PAST_DUE` | ✅ |
+| L9 | A vault sent with plain `nft_transfer` is stuck in the contract | `return_unrequested` sends it to the holder before it, read from Bearer's custody log; never a pledged vault | `return_unrequested` tests (sandbox) | ✅ |
+| L10 | Admin or upgrade powers over the lending contract, including its key holder acting as the owner of a pledged vault (breaking its seal) | No admin, owner or upgrade methods. `bearer-lend.testnet` still has its key: it runs a regular build, not yet the reproducible one, and isn't locked. The site says so on every lending page | `spike:lend lock` is written, behind the same guards as the market's; not run | open |
+| L11 | A lender reads an observed balance as a guaranteed value, or the coins fall below the loan | Requests show balances as observations, with source, time and confirmation status. There is no price feed and no early liquidation: the lend review says the borrower may let the lender keep the vault instead of repaying | UI review | policy |
+
 ## What you are trusting
 
 - **NEAR's MPC network** to sign only what the Bearer contract requests, and to keep its key shares safe.
@@ -111,4 +133,5 @@ and `contracts/tests/schedule.test.ts` (sandbox, against the locked Bearer wasm)
 ## Out of scope
 
 - Payment between people who trade a vault (T14).
+- Price risk on a loan (L11): no oracle, no liquidation before the due date.
 - Mainnet. This is a testnet prototype and has not been audited.

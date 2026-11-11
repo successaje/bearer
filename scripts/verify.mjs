@@ -425,6 +425,33 @@ claim(GM, "Vault No. 0007 was handed to bob on its date by a third account, stil
   return `release(7) by ${tx.transaction.signer_id}; custody alice → schedule → bob; sealed, 0 signatures`;
 });
 
+// 6b. Lending: one loan repaid, one foreclosed, on bearer-lend.testnet (docs/features/lend.md).
+
+const REPAY = "CuucQzSwChsvt4Q4hGGcCX6t9nx48Yvu7WjpFzQR1UFp";
+const FORECLOSE = "8HTjZHfHiTuTwQpVsLPpUXNywbPbqoJBAHQ1HHF5PVmB";
+const LEND = "bearer-lend.testnet";
+
+claim("Lending", "Vault No. 0021 came back to alice, still sealed, when she repaid her loan", `NEAR archival RPC, tx ${short(REPAY)}`, async () => {
+  const [tx, v] = await Promise.all([nearTx(REPAY, ALICE), vault("21")]);
+  expect(tx, "transaction not found");
+  const [call] = calls(tx);
+  expect(tx.status.SuccessValue !== undefined && tx.transaction.receiver_id === LEND && call?.method_name === "repay", `it isn't a successful repay on ${LEND}`);
+  expect(argsOf(call).token_id === "21" && BigInt(call.deposit) === (105n * NEAR) / 1000n, `it repaid ${argsOf(call).token_id} with ${fmtNear(call.deposit)}`);
+  expect(inOrder(v.custody, [ALICE, LEND, ALICE]), "its custody doesn't show alice → lend → alice");
+  expect(v.state.kind === "sealed" && v.signatures_requested === 0, `state ${v.state.kind}, ${v.signatures_requested} signatures`);
+  return "repay(21) with 0.105 NEAR; custody alice → lend → alice; sealed, 0 signatures";
+});
+
+claim("Lending", "Vault No. 0022 went to the lender, still sealed, after its loan wasn't repaid in time", `NEAR archival RPC, tx ${short(FORECLOSE)}`, async () => {
+  const [tx, v] = await Promise.all([nearTx(FORECLOSE, BOB), vault("22")]);
+  expect(tx, "transaction not found");
+  const [call] = calls(tx);
+  expect(tx.status.SuccessValue !== undefined && tx.transaction.receiver_id === LEND && call?.method_name === "foreclose", `it isn't a successful foreclose on ${LEND}`);
+  expect(inOrder(v.custody, [ALICE, LEND, BOB]), "its custody doesn't show alice → lend → bob");
+  expect(v.state.kind === "sealed" && v.signatures_requested === 0, `state ${v.state.kind}, ${v.signatures_requested} signatures`);
+  return "foreclose(22) by bob; custody alice → lend → bob; sealed, 0 signatures";
+});
+
 // 7. Bearer links: a vault sent as a link, then passed on (docs/features/bearer-links.md).
 
 claim("Bearer links", "Vault No. 0010 passed through three links and on to an account, still sealed", "bearer.testnet vault view", async () => {

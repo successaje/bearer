@@ -93,8 +93,9 @@ in [docs/SPIKES.md](docs/SPIKES.md).
 **1. Local sandbox (simulated chains).** The contracts run in a real NEAR sandbox with a mock MPC
 signer. These are simulations, not transactions on Bitcoin, Base or Solana.
 
-- 57 sandbox tests (28 for the vault, 13 for the market, 13 for the schedule, 3 for a receiver that
-  breaks the seal in its transfer callback and asks for the vault back) and 51 unit tests. Each signed
+- 73 sandbox tests (28 for the vault, 13 for the market, 13 for the schedule, 16 for lending, 3 for
+  a receiver that breaks the seal in its transfer callback and asks for the vault back) and 73 unit
+  tests. Each signed
   transaction is checked independently: viem for Base, bitcoinjs-lib and noble for Bitcoin,
   `@solana/web3.js` for Solana.
 - `pnpm demo:dry` runs the vault's lifecycle and the attacks against simulated ledgers that apply
@@ -277,10 +278,15 @@ What people could use them for:
   like cash, and passing it on leaves the old link empty.
 - **OTC hand-offs.** Sell a position without moving it: the market settles in one transaction
   ([docs/features/market.md](docs/features/market.md)).
+- **Loans against Bitcoin, without wrapping it.** Pledge a sealed vault and get NEAR now; repay to
+  get it back, or the lender takes it after the due date. While it's pledged nobody can withdraw,
+  the borrower included ([docs/features/lend.md](docs/features/lend.md)). It runs on
+  `bearer-lend.testnet`, which isn't locked yet: one loan repaid, one foreclosed and one taken back
+  on testnet, each balance change exact (docs/SPIKES.md).
 - **Collectibles.** A named, finished vault with a printable certificate, holding native assets,
   that can be handed on again while sealed.
 
-These show what the model can do. Like the rest, the market and the schedule are testnet
+These show what the model can do. Like the rest, the market, the schedule and lending are testnet
 prototypes.
 
 ## The web app
@@ -289,6 +295,7 @@ prototypes.
 |---|---|
 | `/v/[id]` | A vault's public page: seal, observed balances, custody, signatures, the attack lab |
 | `/market` | Sealed vaults for sale, held in escrow by the market contract; list from a vault's page, buy at exactly the listed price |
+| `/lend` | Loan requests backed by sealed vaults, and loans running; borrow from a vault's page, lend from the request's page |
 | `/account` | Your account: what you have for sale, what sold and what you were paid, payouts to claim, and everything that happened to your vaults. The bell in the header shows what others did: a sale, a vault handed or scheduled to you |
 | `/create` | Make a vault: pick what it's for (a gift, a prize, savings, a pizza fund…) and its card shows that art ([docs/features/card-art.md](docs/features/card-art.md)) |
 | `/claim` | Open a Bearer link: see the vault it holds, pass it on as a new link, send it to a NEAR account, or break the seal and withdraw, with no wallet |
@@ -358,6 +365,7 @@ apps/web            Next.js app: a simulated demo, or the testnet contract with 
 contracts/bearer    the NEAR contract (near-sdk 5.30)
 contracts/market    the market: sells sealed vaults from escrow
 contracts/schedule  the scheduled handover: holds a sealed vault until a date
+contracts/lend      lending: holds a pledged vault until the loan is repaid or the lender takes it
 contracts/mock-signer   an MPC signer stand-in for the sandbox
 contracts/mock-receiver an NFT receiver that breaks the seal in its transfer callback (T6, sandbox only)
 contracts/tests     sandbox tests (near-sandbox) and testnet scripts

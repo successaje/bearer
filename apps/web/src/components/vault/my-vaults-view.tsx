@@ -8,9 +8,11 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
 import { formatUsd } from "@/lib/vault/format";
+import { lenderOf } from "@/components/lend/lend-bits";
+import { LoanCard } from "@/components/lend/lend-view";
 import { ListingCard } from "@/components/market/market-view";
 import { ScheduleCard } from "@/components/schedule/schedule-card";
-import { useListings, useNow, useSchedules, useVaultSummaries, useVaults } from "@/lib/vault/hooks";
+import { useListings, useLoans, useNow, useSchedules, useVaultSummaries, useVaults } from "@/lib/vault/hooks";
 import { observedUsd, vaultStatus, type VaultStatus } from "@/lib/vault/report";
 import { cn } from "@/lib/utils";
 import { VaultTile } from "./vault-tile";
@@ -38,6 +40,10 @@ export function MyVaultsView() {
   const schedules = useSchedules().data ?? [];
   const scheduledByMe = schedules.filter((x) => x.giver === accountId);
   const comingToMe = schedules.filter((x) => x.recipient === accountId);
+  // Pledged vaults are held by the lending contract: the ones you borrowed against, and the ones backing your loans.
+  const loans = useLoans().data ?? [];
+  const borrowed = loans.filter((l) => l.borrower === accountId);
+  const lent = loans.filter((l) => !!accountId && lenderOf(l) === accountId);
 
   if (!ready) return <Frame><GridSkeleton /></Frame>;
 
@@ -167,6 +173,38 @@ export function MyVaultsView() {
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {scheduledByMe.map((x) => (
               <ScheduleCard key={x.token_id} schedule={x} viewer={accountId} now={now} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {borrowed.length ? (
+        <section aria-labelledby="borrowed" className="mt-14">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="borrowed" className="text-[22px] font-semibold tracking-[-0.025em]">
+              Borrowed against <span className="tabular text-fg-3">{borrowed.length}</span>
+            </h2>
+            <p className="text-[13px] text-fg-3">Held, sealed, until you repay, or take back a request nobody has funded.</p>
+          </div>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {borrowed.map((l) => (
+              <LoanCard key={l.token_id} loan={l} now={now} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {lent.length ? (
+        <section aria-labelledby="lent" className="mt-14">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="lent" className="text-[22px] font-semibold tracking-[-0.025em]">
+              Backing your loans <span className="tabular text-fg-3">{lent.length}</span>
+            </h2>
+            <p className="text-[13px] text-fg-3">If a loan isn&apos;t repaid by its due date, you can take its vault.</p>
+          </div>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {lent.map((l) => (
+              <LoanCard key={l.token_id} loan={l} now={now} />
             ))}
           </div>
         </section>

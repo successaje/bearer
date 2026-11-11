@@ -7,9 +7,12 @@ import type {
   ChainTag,
   Finish,
   HandoverSchedule,
+  LendConfig,
+  LoanTerms,
   MarketBalances,
   MarketConfig,
   MarketListing,
+  VaultLoan,
   VaultView,
   Withdrawal,
   WithdrawalProgress,
@@ -20,7 +23,9 @@ import { validateAddress } from "@/lib/validation";
 import { CHAIN_META } from "./format";
 import {
   FEES,
+  MOCK_LEND,
   MOCK_LISTING_DEPOSIT,
+  MOCK_LOAN_DEPOSIT,
   MOCK_MARKET,
   MOCK_SCHEDULE,
   MOCK_SCHEDULE_DEPOSIT,
@@ -36,7 +41,7 @@ import {
 import { ATTACK_TESTS, VaultError } from "./errors";
 import { withdrawalAmount } from "./report";
 
-const STORAGE_KEY = "bearer:mock:v9";
+const STORAGE_KEY = "bearer:mock:v10";
 const CUSTODY_CAP = 16;
 const KEYS_DELAY_MS = 1_500;
 
@@ -69,7 +74,7 @@ export class MockBearerClient implements BearerClient {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as MockState;
-        if (parsed.version === 9) return (this.state = parsed);
+        if (parsed.version === 10) return (this.state = parsed);
       }
     } catch {
       // Private mode or corrupt storage: start fresh.
@@ -412,6 +417,111 @@ export class MockBearerClient implements BearerClient {
     return this.publicView(v);
   }
 
+  /* ---------- the simulated lending contract: same rules as contracts/lend ---------- */
+
+  readonly lendId = MOCK_LEND;
+
+  async loans() {
+    await jitter(150, 300);
+    return clone(Object.values(this.load().loans));
+  }
+
+  async getLoan(tokenId: string) {
+    await jitter(100, 200);
+    return clone(this.load().loans[tokenId] ?? null);
+  }
+
+  async lendConfig(): Promise<LendConfig> {
+    return {
+      nft_contract: "bearer-v1.testnet",
+      loan_deposit: MOCK_LOAN_DEPOSIT,
+      min_principal: (10n ** 21n).toString(),
+      min_term_ns: ns(60_000),
+      max_term_ns: ns(10 * 366 * 24 * 3600 * 1000),
+    };
+  }
+
+  private loan(tokenId: string) {
+    const l = this.load().loans[tokenId];
+    if (!l) throw new VaultError("ERR_NO_LOAN", "This vault isn't pledged for a loan.");
+    return l;
+  }
+
+  async requestLoan(tokenId: string, terms: LoanTerms, signer: string) {
+    await jitter(1200, 1800);
+    const v = this.vault(tokenId);
+    this.assertOwner(v, signer);
+    if (v.view.state.kind !== "sealed") throw new VaultError("ERR_VAULT_OPENED", "Opened vaults can't change hands, so they can't be pledged.");
+    if (BigInt(terms.principalYocto) < 10n ** 21n) throw new VaultError("ERR_PRINCIPAL", "The smallest loan is 0.001 NEAR.");
+    if (BigInt(terms.repaymentYocto) < BigInt(terms.principalYocto)) throw new VaultError("ERR_REPAYMENT", "The repayment can't be less than the loan.");
+    if (terms.termMs < 60_000) throw new VaultError("ERR_TERM", "The shortest term is a minute.");
+    const l: VaultLoan = {
+      token_id: tokenId,
+      borrower: signer,
+      principal: terms.principalYocto,
+      repayment: terms.repaymentYocto,
+      term_ns: ns(terms.termMs),
+      deposit: MOCK_LOAN_DEPOSIT,
+      requested_at_ns: ns(Date.now()),
+      state: { kind: "requested" },
+    };
+    this.moveTo(v, MOCK_LEND);
+    this.load().loans[tokenId] = l;
+    this.save();
+    return clone(l);
+  }
+
+  async fundLoan(loan: VaultLoan, signer: string) {
+    await jitter(1200, 1800);
+    const l = this.loan(loan.token_id);
+    if (l.state.kind !== "requested") throw new VaultError("ERR_NOT_REQUESTED", "Someone has already lent against this vault.");
+    if (l.borrower === signer) throw new VaultError("ERR_OWN_LOAN", "You asked for this loan; you can't fund it yourself.");
+    if (l.repayment !== loan.repayment || l.term_ns !== loan.term_ns || l.principal !== loan.principal) {
+      throw new VaultError("ERR_TERMS_CHANGED", "The terms changed since you looked. Check them and try again.");
+    }
+    l.state = { kind: "active", lender: signer, due_at_ns: ns(Date.now() + Number(BigInt(l.term_ns) / 1_000_000n)) };
+    this.save();
+    return clone(l);
+  }
+
+  async repayLoan(tokenId: string, signer: string) {
+    await jitter(1500, 2200);
+    const l = this.loan(tokenId);
+    if (l.state.kind !== "active") throw new VaultError("ERR_NOT_ACTIVE", "Nobody has lent against this vault, so there's nothing to repay.");
+    if (l.borrower !== signer) throw new VaultError("ERR_NOT_BORROWER", `Only ${l.borrower} can repay it.`);
+    if (Date.now() * 1e6 >= Number(l.state.due_at_ns)) throw new VaultError("ERR_PAST_DUE", "The due date has passed, so only the lender can act now.");
+    const v = this.vault(tokenId);
+    this.moveTo(v, signer);
+    delete this.load().loans[tokenId];
+    this.save();
+    return this.publicView(v);
+  }
+
+  async forecloseLoan(tokenId: string, signer: string) {
+    await jitter(1500, 2200);
+    const l = this.loan(tokenId);
+    if (l.state.kind !== "active") throw new VaultError("ERR_NOT_ACTIVE", "Nobody has lent against this vault.");
+    if (l.state.lender !== signer) throw new VaultError("ERR_NOT_LENDER", `Only ${l.state.lender}, who lent against it, can take it.`);
+    if (Date.now() * 1e6 < Number(l.state.due_at_ns)) throw new VaultError("ERR_NOT_DUE", "The borrower can still repay until the due date.");
+    const v = this.vault(tokenId);
+    this.moveTo(v, signer);
+    delete this.load().loans[tokenId];
+    this.save();
+    return this.publicView(v);
+  }
+
+  async cancelLoanRequest(tokenId: string, signer: string) {
+    await jitter(1200, 1800);
+    const l = this.loan(tokenId);
+    if (l.state.kind !== "requested") throw new VaultError("ERR_NOT_REQUESTED", "Someone has already lent against it, so it stays until you repay.");
+    if (l.borrower !== signer) throw new VaultError("ERR_NOT_BORROWER", `Only ${l.borrower} can take it back.`);
+    const v = this.vault(tokenId);
+    this.moveTo(v, signer);
+    delete this.load().loans[tokenId];
+    this.save();
+    return this.publicView(v);
+  }
+
   /* ---------- the simulated market: same rules as contracts/market ---------- */
 
   readonly marketId = MOCK_MARKET;
@@ -505,7 +615,7 @@ export class MockBearerClient implements BearerClient {
     await jitter(200, 400);
     this.advance();
     const state = this.load();
-    const events = Object.values(state.vaults).flatMap((v) => custodyEvents(this.publicView(v), accountId, MOCK_MARKET, MOCK_SCHEDULE));
+    const events = Object.values(state.vaults).flatMap((v) => custodyEvents(this.publicView(v), accountId, MOCK_MARKET, MOCK_SCHEDULE, MOCK_LEND));
     for (const e of events) {
       if (e.kind !== "sold") continue;
       const sale = state.sales.find((x) => x.tokenId === e.tokenId && Math.abs(x.atMs - e.atMs) < 60_000);

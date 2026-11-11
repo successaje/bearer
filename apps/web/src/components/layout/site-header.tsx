@@ -16,6 +16,7 @@ export const NAV_LINKS = [
   { href: "/try", label: "Try it" },
   { href: "/vaults", label: "My vaults" },
   { href: "/market", label: "Market" },
+  { href: "/lend", label: "Lend" },
   { href: "/verify", label: "Verify" },
   { href: "/how", label: "How it works" },
   { href: "/proof", label: "Proof" },
@@ -32,7 +33,7 @@ function NetworkPill({ className }: { className?: string }) {
     >
       <span aria-hidden className="size-1.5 rounded-full bg-warn" />
       Testnet
-      {IS_SIMULATED ? <span className="hidden font-normal opacity-80 lg:inline">· simulated</span> : null}
+      {IS_SIMULATED ? <span className="hidden font-normal opacity-80 xl:inline">· simulated</span> : null}
     </span>
   );
 }
@@ -47,7 +48,7 @@ function NavLinkItems({ active, onNavigate }: { active: string | null; onNavigat
         onClick={onNavigate}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "rounded-[8px] px-3 py-2 text-[14px] text-fg-2 transition-colors hover:text-fg",
+          "whitespace-nowrap rounded-[8px] px-2.5 py-2 text-[14px] text-fg-2 transition-colors hover:text-fg xl:px-3",
           isActive && "bg-raised text-fg",
         )}
       >
@@ -77,7 +78,7 @@ function MobileMenu() {
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger
         aria-label="Open menu"
-        className="inline-flex size-10 items-center justify-center rounded-control text-fg-2 hover:bg-raised hover:text-fg md:hidden"
+        className="inline-flex size-10 items-center justify-center rounded-control text-fg-2 hover:bg-raised hover:text-fg lg:hidden"
       >
         <Menu className="size-5" />
       </Dialog.Trigger>
@@ -113,14 +114,14 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-line bg-bg/80 backdrop-blur-xl print:hidden">
       <div className="mx-auto flex h-16 max-w-[1200px] items-center gap-6 px-5 md:px-8">
         <Logo />
-        <nav aria-label="Main" className="hidden items-center gap-0.5 md:flex">
+        <nav aria-label="Main" className="hidden items-center gap-0.5 lg:flex">
           <NavLinks />
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <NetworkPill className="hidden sm:inline-flex" />
           <ThemeMenu />
           <NotificationBell />
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <WalletButton />
           </div>
           <MobileMenu />

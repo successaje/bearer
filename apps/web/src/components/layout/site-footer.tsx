@@ -13,6 +13,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
       { label: "Create a vault", href: "/create" },
       { label: "My vaults", href: "/vaults" },
       { label: "Market", href: "/market" },
+      { label: "Lend", href: "/lend" },
       { label: "Verify a vault", href: "/verify" },
       { label: "How it works", href: "/how" },
       { label: "Proof", href: "/proof" },

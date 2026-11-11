@@ -1,4 +1,4 @@
-import type { ChainTag, Finish, HandoverSchedule, MarketListing, ObservedDeposit, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
+import type { ChainTag, Finish, HandoverSchedule, MarketListing, ObservedDeposit, VaultLoan, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
 import { vaultPath } from "@bearer/sdk";
 
 /** Simulated chain state for one vault: what an explorer would show at its addresses. */
@@ -27,7 +27,7 @@ export interface MockVault {
 }
 
 export interface MockState {
-  version: 9;
+  version: 10;
   nextId: number;
   vaults: Record<string, MockVault>;
   accounts: string[];
@@ -35,6 +35,8 @@ export interface MockState {
   listings: Record<string, MarketListing>;
   /** Scheduled handovers, by token. Their vaults are held by MOCK_SCHEDULE. */
   schedules: Record<string, HandoverSchedule>;
+  /** Loans against vaults, by token. Their vaults are held by MOCK_LEND. */
+  loans: Record<string, VaultLoan>;
   /** Market sales, for prices and payouts: on testnet these come from the index. */
   sales: MockSale[];
 }
@@ -53,6 +55,11 @@ export interface MockSale {
 export const MOCK_SCHEDULE = "schedule.testnet";
 /** 0.01 NEAR, as on the testnet schedule. */
 export const MOCK_SCHEDULE_DEPOSIT = (10n ** 22n).toString();
+
+/** The simulated lending contract (LEND_CONTRACT in mock mode). */
+export const MOCK_LEND = "lend.testnet";
+/** 0.01 NEAR, as on the testnet lending contract. */
+export const MOCK_LOAN_DEPOSIT = (10n ** 22n).toString();
 
 /** The simulated market contract (MARKET_CONTRACT in mock mode). */
 export const MOCK_MARKET = "market.testnet";
@@ -440,13 +447,71 @@ export function seedState(now: number): MockState {
     };
   }
 
+  // Loans. 12: mira asks 40 NEAR against her vault, nobody has lent yet. 55: ada borrowed 25 NEAR
+  // from tunde and has 12 days left to repay. 47: tunde borrowed 10 NEAR from ada, a day overdue.
+  const loans: Record<string, VaultLoan> = {};
+  const NEAR = 10n ** 24n;
+  const pledged: {
+    id: string;
+    name: string;
+    finish: Finish;
+    borrower: string;
+    lender: string | null;
+    principal: bigint;
+    repayment: bigint;
+    termDays: number;
+    requestedAgo: number;
+    fundedAgo: number | null;
+    btc: number;
+    sol: number;
+  }[] = [
+    { id: "12", name: "Mining payout", finish: "graphite", borrower: "mira.testnet", lender: null, principal: 40n * NEAR, repayment: 42n * NEAR, termDays: 30, requestedAgo: 3 * HOUR, fundedAgo: null, btc: 0.004, sol: 0 },
+    { id: "55", name: "Rent float", finish: "midnight", borrower: "ada.testnet", lender: "tunde.testnet", principal: 25n * NEAR, repayment: 26n * NEAR, termDays: 30, requestedAgo: 19 * DAY, fundedAgo: 18 * DAY, btc: 0.0035, sol: 1 },
+    { id: "47", name: "Desk collateral", finish: "champagne", borrower: "tunde.testnet", lender: "ada.testnet", principal: 10n * NEAR, repayment: (105n * NEAR) / 10n, termDays: 7, requestedAgo: 9 * DAY, fundedAgo: 8 * DAY, btc: 0.0011, sol: 0 },
+  ];
+  for (const p of pledged) {
+    const created = now - p.requestedAgo - DAY;
+    const addresses = mockAddresses(p.id);
+    const view = mockView(p.id, MOCK_LEND, created, addresses, { name: p.name, finish: p.finish });
+    view.custody = [
+      { account_id: p.borrower, since_ns: ns(created) },
+      { account_id: MOCK_LEND, since_ns: ns(now - p.requestedAgo) },
+    ];
+    vaults[p.id] = {
+      view,
+      addresses,
+      ledger: {
+        btc: ledger([sats(p.btc), [deposit(`${p.id}b`, sats(p.btc), created + HOUR)]]),
+        evm: ledger([0n, []]),
+        sol: p.sol ? ledger([lamports(p.sol), [deposit(`${p.id}s`, lamports(p.sol), created + 2 * HOUR)]]) : ledger([0n, []]),
+      },
+      withdrawals: [],
+      progress: {},
+      keysAt: created,
+    };
+    loans[p.id] = {
+      token_id: p.id,
+      borrower: p.borrower,
+      principal: p.principal.toString(),
+      repayment: p.repayment.toString(),
+      term_ns: ns(p.termDays * DAY),
+      deposit: MOCK_LOAN_DEPOSIT,
+      requested_at_ns: ns(now - p.requestedAgo),
+      state:
+        p.lender && p.fundedAgo !== null
+          ? { kind: "active", lender: p.lender, due_at_ns: ns(now - p.fundedAgo + p.termDays * DAY) }
+          : { kind: "requested" },
+    };
+  }
+
   return {
-    version: 9,
+    version: 10,
     nextId: 64,
     vaults,
-    accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", ATTACKER, "near.testnet", MOCK_MARKET, MOCK_SCHEDULE],
+    accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", ATTACKER, "near.testnet", MOCK_MARKET, MOCK_SCHEDULE, MOCK_LEND],
     listings,
     schedules,
+    loans,
     sales,
   };
 }

@@ -1,9 +1,9 @@
 "use client";
 
-import type { AttackKind, ChainTag, Finish, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
+import type { AttackKind, ChainTag, Finish, LoanTerms, VaultLoan, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { IS_SIMULATED, MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
+import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
 import { getVaultClient } from "./client";
 import { fetchContractFacts } from "./contract-facts";
 
@@ -18,6 +18,8 @@ export const keys = {
   schedules: ["schedules"] as const,
   schedule: (id: string) => ["schedule", id] as const,
   listing: (id: string) => ["listing", id] as const,
+  loans: ["loans"] as const,
+  loan: (id: string) => ["loan", id] as const,
 };
 
 /** Brief 3.4: deposits appear automatically, polled every 10 s. */
@@ -129,6 +131,8 @@ function useRefresh() {
     void qc.invalidateQueries({ queryKey: keys.schedules });
     void qc.invalidateQueries({ queryKey: keys.schedule(id) });
     void qc.invalidateQueries({ queryKey: keys.listing(id) });
+    void qc.invalidateQueries({ queryKey: keys.loans });
+    void qc.invalidateQueries({ queryKey: keys.loan(id) });
   };
 }
 
@@ -250,6 +254,75 @@ export function useMarketPayout() {
 }
 
 /* ---------- the market ---------- */
+
+/* ---------- borrowing against a vault ---------- */
+
+export function useLoans() {
+  return useQuery({ queryKey: keys.loans, queryFn: async () => (await getVaultClient()).loans(), refetchInterval: POLL_MS });
+}
+
+export function useLoan(id: string) {
+  return useQuery({ queryKey: keys.loan(id), queryFn: async () => (await getVaultClient()).getLoan(id), refetchInterval: POLL_MS });
+}
+
+/** The lending account's lock state: until it has no full-access keys, its key holder could act as the owner of every pledged vault. */
+export function useLendFacts() {
+  return useQuery({
+    queryKey: ["lend-facts", LEND_CONTRACT],
+    queryFn: () => fetchContractFacts(LEND_CONTRACT as string),
+    enabled: Boolean(LEND_CONTRACT),
+    staleTime: 60_000,
+  });
+}
+
+export function useLendConfig() {
+  return useQuery({
+    queryKey: ["lend-config"],
+    queryFn: async () => (await getVaultClient()).lendConfig(),
+    enabled: Boolean(LEND_CONTRACT),
+    staleTime: Infinity,
+  });
+}
+
+export function useRequestLoan() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; terms: LoanTerms; signer: string }) => (await getVaultClient()).requestLoan(v.id, v.terms, v.signer),
+    onSuccess: (_l, v) => refresh(v.id),
+  });
+}
+
+export function useFundLoan() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { loan: VaultLoan; signer: string }) => (await getVaultClient()).fundLoan(v.loan, v.signer),
+    onSettled: (_l, _e, v) => refresh(v.loan.token_id),
+  });
+}
+
+export function useRepayLoan() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).repayLoan(v.id, v.signer),
+    onSettled: (_r, _e, v) => refresh(v.id),
+  });
+}
+
+export function useForecloseLoan() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).forecloseLoan(v.id, v.signer),
+    onSettled: (_r, _e, v) => refresh(v.id),
+  });
+}
+
+export function useCancelLoanRequest() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).cancelLoanRequest(v.id, v.signer),
+    onSuccess: (_r, v) => refresh(v.id),
+  });
+}
 
 export function useListings() {
   return useQuery({ queryKey: keys.listings, queryFn: async () => (await getVaultClient()).listings(), refetchInterval: POLL_MS });

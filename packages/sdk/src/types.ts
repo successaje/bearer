@@ -246,15 +246,70 @@ export interface HandoverSchedule {
   state: ScheduleState;
 }
 
+/* ---------- borrowing against a vault (contracts/lend) ---------- */
+
+export type LoanState =
+  | { kind: "requested" }
+  | { kind: "cancelling" }
+  | { kind: "active" | "repaying" | "foreclosing"; lender: string; due_at_ns: string };
+
+/**
+ * A sealed vault pledged to the lending contract. Until a lender funds it, the borrower can take
+ * it back. Once funded, the borrower repays before `due_at_ns` to get it back, or from then on the
+ * lender can take it. Amounts in yoctoNEAR.
+ */
+export interface VaultLoan {
+  token_id: string;
+  borrower: string;
+  /** Exactly what the lender pays; it goes straight to the borrower. */
+  principal: string;
+  /** Exactly what the borrower pays back; it goes to the lender. */
+  repayment: string;
+  /** How long the borrower has to repay, counted from funding. */
+  term_ns: string;
+  /** Held from the borrower's loan balance; paid back to them when the loan ends, either way. */
+  deposit: string;
+  requested_at_ns: string;
+  state: LoanState;
+}
+
+export interface LendConfig {
+  nft_contract: string;
+  loan_deposit: string;
+  min_principal: string;
+  min_term_ns: string;
+  max_term_ns: string;
+}
+
+export interface LoanTerms {
+  principalYocto: string;
+  repaymentYocto: string;
+  termMs: number;
+}
+
 /* ---------- an account's activity: what happened to the vaults it held, sold or was sent ---------- */
 
 /**
  * - `sold`: a vault you listed was bought; `received`: someone handed you one; `delivered`: handed
  *   to you on its date; `scheduled_for_you`: someone scheduled one for you. These are other
  *   people's doing (`byOthers`), which is what notifications count.
- * - `bought`, `returned` (delisted, or a schedule cancelled), `listed`, `scheduled`, `sent`: your own.
+ * - `foreclosed`: a vault you borrowed against went to the lender. Also other people's doing.
+ * - `bought`, `returned` (delisted, a schedule cancelled, a loan repaid or its request cancelled),
+ *   `listed`, `scheduled`, `pledged`, `collected` (you took a vault you lent against), `sent`: your own.
  */
-export type AccountEventKind = "sold" | "received" | "delivered" | "scheduled_for_you" | "bought" | "returned" | "listed" | "scheduled" | "sent";
+export type AccountEventKind =
+  | "sold"
+  | "received"
+  | "delivered"
+  | "scheduled_for_you"
+  | "foreclosed"
+  | "bought"
+  | "returned"
+  | "listed"
+  | "scheduled"
+  | "pledged"
+  | "collected"
+  | "sent";
 
 export interface AccountEvent {
   /** Stable across reads: kind, vault and time. */
@@ -347,6 +402,22 @@ export interface BearerClient {
   /** The giver takes it back before the date, if they made it cancellable. */
   cancelHandover(tokenId: string, signer: string): Promise<VaultView>;
 
+  /** The lending contract's account, or null where this deployment has none. */
+  readonly lendId: string | null;
+  loans(): Promise<VaultLoan[]>;
+  getLoan(tokenId: string): Promise<VaultLoan | null>;
+  lendConfig(): Promise<LendConfig>;
+  /** Pledges a sealed vault for a loan on these terms, paying the loan deposit first if needed. */
+  requestLoan(tokenId: string, terms: LoanTerms, signer: string): Promise<VaultLoan>;
+  /** Pays exactly the principal, against the terms shown; it goes straight to the borrower. */
+  fundLoan(loan: VaultLoan, signer: string): Promise<VaultLoan>;
+  /** The borrower pays exactly the repayment, before the due date; resolves once the vault is back. */
+  repayLoan(tokenId: string, signer: string): Promise<VaultView>;
+  /** From the due date, the lender takes the vault; resolves once it's theirs. */
+  forecloseLoan(tokenId: string, signer: string): Promise<VaultView>;
+  /** The borrower takes back a request nobody has funded, with its deposit. */
+  cancelLoanRequest(tokenId: string, signer: string): Promise<VaultView>;
+
   /** The market contract's account, or null where this deployment has none. */
   readonly marketId: string | null;
   listings(): Promise<MarketListing[]>;
@@ -364,7 +435,7 @@ export interface BearerClient {
   /** Takes back listing deposit that no listing is using. */
   withdrawListingDeposit(signer: string): Promise<MarketBalances>;
 
-  /** What happened to the vaults this account has held: sales, handovers, schedules. */
+  /** What happened to the vaults this account has held: sales, handovers, schedules, loans. */
   accountActivity(accountId: string): Promise<AccountActivity>;
 
   /** Simulated adapter only: pretend a deposit arrived. */

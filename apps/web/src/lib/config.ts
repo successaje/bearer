@@ -23,6 +23,14 @@ export const SCHEDULE_CONTRACT: string | null =
   process.env.NEXT_PUBLIC_SCHEDULE_CONTRACT ||
   (NETWORK === "mock" ? "schedule.testnet" : BEARER_CONTRACT === "bearer.testnet" ? "bearer-schedule.testnet" : null);
 
+/**
+ * The lending contract (contracts/lend): lends NEAR against this contract's vaults and holds each
+ * one until it's repaid or the lender takes it. On testnet it exists only for bearer.testnet.
+ */
+export const LEND_CONTRACT: string | null =
+  process.env.NEXT_PUBLIC_LEND_CONTRACT ||
+  (NETWORK === "mock" ? "lend.testnet" : BEARER_CONTRACT === "bearer.testnet" ? "bearer-lend.testnet" : null);
+
 /** Code hash of the market's reproducible build (contracts/res/market.wasm), deployed and locked on bearer-market.testnet. */
 export const MARKET_CODE_HASH = process.env.NEXT_PUBLIC_MARKET_CODE_HASH || "7joKh4WSVFGb6EEsUpS6BeC1wtp3pepG2FQwBuAJqt7P";
 

@@ -1,6 +1,6 @@
 import type { ChainObservation, VaultView, Withdrawal } from "@bearer/sdk";
 import { ArrowDownLeft, PackageOpen, PenLine, Plus, Send, type LucideIcon } from "lucide-react";
-import { MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
+import { LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
 import { withdrawalAmount } from "@/lib/vault/report";
 import { CHAIN_META, formatAmount, nsToMs, relativeTime, shortAccount } from "@/lib/vault/format";
 import { cn } from "@/lib/utils";
@@ -38,8 +38,15 @@ export function Activity({
       const to = shortAccount(c.account_id);
       const market = MARKET_CONTRACT;
       const scheduler = SCHEDULE_CONTRACT;
+      const lend = LEND_CONTRACT;
       const { title, detail } =
-        scheduler && c.account_id === scheduler
+        lend && c.account_id === lend
+          ? { title: "Pledged for a loan", detail: `By ${from ?? "its holder"}. Held, sealed, until it's repaid or the lender takes it.` }
+          : lend && from === lend
+            ? c.account_id === vault.custody[i - 2]?.account_id
+              ? { title: `Back with ${to}`, detail: "The loan was repaid, or its request taken back. Still sealed." }
+              : { title: `Taken by ${to}`, detail: `The lender, after ${vault.custody[i - 2]?.account_id ?? "the borrower"} didn't repay by the due date. Still sealed.` }
+            : scheduler && c.account_id === scheduler
           ? { title: "Scheduled for a handover", detail: `By ${from ?? "its holder"}. Held, sealed, until its date.` }
           : scheduler && from === scheduler
             ? c.account_id === vault.custody[i - 2]?.account_id

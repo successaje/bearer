@@ -27,14 +27,20 @@ export function eventCopy(e: AccountEvent): { title: string; body: string } {
         title: "A vault is coming to you",
         body: `${e.counterparty} scheduled ${own} for you, on or after ${e.releaseAtMs ? formatWhen(e.releaseAtMs) : "its date"}.`,
       };
+    case "foreclosed":
+      return { title: `${no} went to ${e.counterparty}`, body: "It wasn't repaid by its due date, so the lender took it, still sealed." };
     case "bought":
       return { title: `You bought ${own}`, body: `From ${e.counterparty ?? "its seller"}, on the market.` };
     case "returned":
-      return { title: `${no} is back with you`, body: "Delisted, or its schedule was cancelled. Still sealed." };
+      return { title: `${no} is back with you`, body: "Delisted, its schedule cancelled, or its loan repaid or taken back. Still sealed." };
     case "listed":
       return { title: `You listed ${own}`, body: "The market holds it, sealed, until it sells or you delist it." };
     case "scheduled":
       return { title: `You scheduled ${own}`, body: "The schedule holds it, sealed, until its date." };
+    case "pledged":
+      return { title: `You pledged ${own} for a loan`, body: "The lending contract holds it, sealed, until the loan ends." };
+    case "collected":
+      return { title: `You took ${own}`, body: `${e.counterparty ?? "The borrower"} didn't repay by the due date. It's yours now, still sealed.` };
     case "sent":
       return { title: `You handed ${own} to ${e.counterparty}`, body: "Nothing moved on Bitcoin, Base or Solana." };
   }

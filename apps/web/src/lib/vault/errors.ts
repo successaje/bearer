@@ -40,6 +40,21 @@ export function errorCopy(error: unknown): string {
   if (text.includes("ERR_NOT_CANCELLABLE")) return "This handover was scheduled so that nobody can cancel it.";
   if (text.includes("ERR_NOT_GIVER")) return "Only the person who scheduled it can cancel it.";
   if (text.includes("ERR_DATE_TOO_SOON")) return "Pick a time at least a minute from now.";
+  if (text.includes("ERR_NO_LOAN_DEPOSIT")) return "The loan deposit didn't arrive, so the vault came back. Try again.";
+  if (text.includes("ERR_NO_LOAN")) return "This vault isn't pledged for a loan any more.";
+  if (text.includes("ERR_NOT_REQUESTED")) return "Someone has already lent against this vault, or its request was taken back.";
+  if (text.includes("ERR_OWN_LOAN")) return "You asked for this loan, so you can't fund it yourself.";
+  if (text.includes("ERR_WRONG_PRINCIPAL")) return "The loan amount changed. Check it and try again.";
+  if (text.includes("ERR_TERMS_CHANGED")) return "The terms changed since you looked. Check them and try again.";
+  if (text.includes("ERR_NOT_ACTIVE")) return "This loan isn't running: nobody has lent yet, or it's already settling.";
+  if (text.includes("ERR_NOT_BORROWER")) return "Only the borrower can do that.";
+  if (text.includes("ERR_NOT_LENDER")) return "Only the lender can take the vault.";
+  if (text.includes("ERR_PAST_DUE")) return "The due date has passed, so only the lender can act now.";
+  if (text.includes("ERR_NOT_DUE")) return "The borrower can still repay until the due date.";
+  if (text.includes("ERR_WRONG_REPAYMENT")) return "The repayment must be exactly the amount agreed.";
+  if (text.includes("ERR_PRINCIPAL")) return "The smallest loan is 0.001 NEAR.";
+  if (text.includes("ERR_REPAYMENT")) return "The repayment can't be less than the loan.";
+  if (text.includes("ERR_TERM")) return "The term must be between a minute and ten years.";
   if (text.includes("ERR_IN_PROGRESS")) return "A handover or cancellation is already settling. Try again in a moment.";
   return text;
 }

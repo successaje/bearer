@@ -8,10 +8,13 @@ import type {
   ContractConfig,
   Finish,
   HandoverSchedule,
+  LendConfig,
+  LoanTerms,
   MarketBalances,
   MarketConfig,
   MarketListing,
   RecordedAttack,
+  VaultLoan,
   VaultView,
   WithdrawRequest,
   Withdrawal,
@@ -50,6 +53,8 @@ export interface TestnetClientOptions {
   marketId?: string | null;
   /** The schedule contract (contracts/schedule) that hands this contract's vaults over on a date, if any. */
   scheduleId?: string | null;
+  /** The lending contract (contracts/lend) that lends NEAR against this contract's vaults, if any. */
+  lendId?: string | null;
   /** Attacks sent to this contract as real transactions; `runAttack` re-reads their outcome. */
   recordedAttacks?: RecordedAttack[];
   wallet: WalletAdapter;
@@ -76,6 +81,7 @@ export class TestnetBearerClient implements BearerClient {
   private config: Promise<ContractConfig> | null = null;
   private marketCfg: Promise<MarketConfig> | null = null;
   private scheduleDeposit: Promise<string> | null = null;
+  private lendCfg: Promise<LendConfig> | null = null;
 
   constructor(private readonly opts: TestnetClientOptions) {
     this.ep = { ...TESTNET_ENDPOINTS, ...opts.endpoints };
@@ -314,6 +320,104 @@ export class TestnetBearerClient implements BearerClient {
     throw new Error("The vault hasn't come back yet. Check the vault page in a moment.");
   }
 
+  /* ---------- borrowing against a vault: escrow until repaid or foreclosed (contracts/lend) ---------- */
+
+  get lendId() {
+    return this.opts.lendId ?? null;
+  }
+
+  private lender() {
+    if (!this.opts.lendId) throw new Error("This deployment has no lending contract.");
+    return this.opts.lendId;
+  }
+
+  async loans() {
+    if (!this.opts.lendId) return [];
+    return this.near.view<VaultLoan[]>(this.opts.lendId, "loans", { from_index: 0, limit: 100 });
+  }
+
+  async getLoan(tokenId: string) {
+    if (!this.opts.lendId) return null;
+    return this.near.view<VaultLoan | null>(this.opts.lendId, "loan", { token_id: tokenId });
+  }
+
+  lendConfig() {
+    this.lendCfg ??= this.near.view<LendConfig>(this.lender(), "get_config");
+    return this.lendCfg;
+  }
+
+  async requestLoan(tokenId: string, terms: LoanTerms, signer: string) {
+    this.signerFor(signer);
+    const lend = this.lender();
+    const [{ loan_deposit }, balance] = await Promise.all([this.lendConfig(), this.near.view<string>(lend, "deposit_of", { account_id: signer })]);
+    const msg = {
+      principal: terms.principalYocto,
+      repayment: terms.repaymentYocto,
+      term_ns: (BigInt(Math.floor(terms.termMs)) * 1_000_000n).toString(),
+    };
+    // nft_transfer_call forwards only 1 yoctoNEAR, so the loan deposit is paid first.
+    const send = {
+      receiverId: this.opts.contractId,
+      calls: [{ methodName: "nft_transfer_call", args: { receiver_id: lend, token_id: tokenId, msg: JSON.stringify(msg) }, gas: 100n * TGAS, deposit: ONE_YOCTO }],
+    };
+    const pay = { receiverId: lend, calls: [{ methodName: "deposit_for_loan", args: {}, gas: 30n * TGAS, deposit: BigInt(loan_deposit) }] };
+    const results = await this.sendAll(BigInt(balance) >= BigInt(loan_deposit) ? [send] : [pay, send]);
+    if (results.at(-1)?.returnValue === false) {
+      throw new Error("The lending contract sent the vault back: check the amounts and the term, and that the vault is still sealed.");
+    }
+    for (let i = 0; i < 20; i++) {
+      const l = await this.getLoan(tokenId);
+      if (l) return l;
+      await sleep(1000);
+    }
+    throw new Error("The vault was sent, but its loan request hasn't appeared yet. Check the vault page in a moment.");
+  }
+
+  async fundLoan(loan: VaultLoan, signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.lender(), [
+      {
+        methodName: "fund",
+        args: { token_id: loan.token_id, repayment: loan.repayment, term_ns: loan.term_ns },
+        gas: 50n * TGAS,
+        deposit: BigInt(loan.principal),
+      },
+    ]);
+    const l = await this.getLoan(loan.token_id);
+    if (!l || l.state.kind === "requested") throw new Error("The loan hasn't shown as funded yet. Check the vault page in a moment.");
+    return l;
+  }
+
+  /** Repay, foreclose and cancel all end with the vault moving; this waits for it to arrive. */
+  private async vaultReaches(tokenId: string, owner: string, slow: string) {
+    for (let i = 0; i < 20; i++) {
+      const vault = await this.getVault(tokenId);
+      if (vault?.owner_id === owner) return vault;
+      await sleep(1000);
+    }
+    throw new Error(slow);
+  }
+
+  async repayLoan(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    const l = await this.getLoan(tokenId);
+    if (!l) throw new Error("This vault isn't pledged.");
+    await this.opts.wallet.send(this.lender(), [{ methodName: "repay", args: { token_id: tokenId }, gas: 100n * TGAS, deposit: BigInt(l.repayment) }]);
+    return this.vaultReaches(tokenId, signer, "The repayment went through, but the vault hasn't come back yet. Check the vault page in a moment.");
+  }
+
+  async forecloseLoan(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.lender(), [{ methodName: "foreclose", args: { token_id: tokenId }, gas: 100n * TGAS, deposit: ONE_YOCTO }]);
+    return this.vaultReaches(tokenId, signer, "The vault hasn't arrived yet. Check the vault page in a moment.");
+  }
+
+  async cancelLoanRequest(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.lender(), [{ methodName: "cancel_request", args: { token_id: tokenId }, gas: 100n * TGAS, deposit: ONE_YOCTO }]);
+    return this.vaultReaches(tokenId, signer, "The vault hasn't come back yet. Check the vault page in a moment.");
+  }
+
   /* ---------- the market: escrow by transfer (docs/features/market.md) ---------- */
 
   get marketId() {
@@ -463,7 +567,7 @@ export class TestnetBearerClient implements BearerClient {
     for (const m of moves?.data ?? []) if (m.contract_account_id === this.opts.contractId) ids.add(m.token_id);
     const vaults = await Promise.all([...ids].map((id) => this.getVault(id)));
     const market = this.opts.marketId ?? null;
-    const events = vaults.flatMap((v) => (v ? custodyEvents(v, accountId, market, this.opts.scheduleId ?? null) : []));
+    const events = vaults.flatMap((v) => (v ? custodyEvents(v, accountId, market, this.opts.scheduleId ?? null, this.opts.lendId ?? null) : []));
 
     // Match each sale to the market's payment to the seller, made in the same transaction a moment after the vault moved.
     const payouts = (receipts?.data ?? [])

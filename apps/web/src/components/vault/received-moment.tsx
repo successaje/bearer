@@ -5,7 +5,7 @@ import { Dialog } from "radix-ui";
 import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
+import { LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
 import { formatDate, formatUsd, nsToMs, vaultNumber } from "@/lib/vault/format";
 import { isSealed, observedUsd } from "@/lib/vault/report";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,9 @@ const seenKey = (v: VaultView) => `bearer:received:${v.token_id}:${v.custody[v.c
 export function useJustReceived(vault: VaultView | null | undefined, viewer: string | null) {
   const [show, setShow] = useState(false);
   const latest = vault?.custody[vault.custody.length - 1];
-  const fresh = !!vault && !!viewer && vault.owner_id === viewer && vault.custody.length > 1 && latest?.account_id === viewer;
+  // A vault coming back from the lending contract to its borrower (repaid, or a request taken back) isn't a hand-over.
+  const home = !!LEND_CONTRACT && vault?.custody.at(-2)?.account_id === LEND_CONTRACT && vault?.custody.at(-3)?.account_id === viewer;
+  const fresh = !!vault && !!viewer && vault.owner_id === viewer && vault.custody.length > 1 && latest?.account_id === viewer && !home;
   const key = vault && fresh ? seenKey(vault) : null;
   useEffect(() => {
     if (!key) return;
@@ -58,6 +60,8 @@ export function ReceivedMoment({
   const seller = MARKET_CONTRACT && from?.account_id === MARKET_CONTRACT ? vault.custody[vault.custody.length - 3] : undefined;
   // Handed over on schedule: name the giver, not the escrow account in between.
   const giver = SCHEDULE_CONTRACT && from?.account_id === SCHEDULE_CONTRACT ? vault.custody[vault.custody.length - 3] : undefined;
+  // Taken as collateral: name the borrower, not the escrow account in between.
+  const borrower = LEND_CONTRACT && from?.account_id === LEND_CONTRACT ? vault.custody[vault.custody.length - 3] : undefined;
   const since = vault.custody[vault.custody.length - 1];
   const sealed = isSealed(vault);
   const value = observations ? observedUsd(observations) : null;
@@ -109,8 +113,8 @@ export function ReceivedMoment({
               {from ? (
                 <>
                   {seller ? "Bought from " : "From "}
-                  <span className="font-mono text-white/90">{(seller ?? giver ?? from).account_id}</span>
-                  {seller ? " through the market" : giver ? ", as scheduled," : null} on {formatDate(nsToMs(since.since_ns))}.{" "}
+                  <span className="font-mono text-white/90">{(seller ?? giver ?? borrower ?? from).account_id}</span>
+                  {seller ? " through the market" : giver ? ", as scheduled," : borrower ? ", for a loan they didn't repay," : null} on {formatDate(nsToMs(since.since_ns))}.{" "}
                 </>
               ) : null}
               {sealed

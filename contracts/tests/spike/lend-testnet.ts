@@ -177,9 +177,12 @@ async function run() {
   const fund = (id: string, term: bigint, label: string, repayment = REPAYMENT, expect: string | null = null) =>
     tx(bob, LEND, "fund", { token_id: id, repayment: repayment.toString(), term_ns: term.toString() }, PRINCIPAL, label, expect);
 
-  const repaid = await create("Lend run: repaid");
-  const foreclosed = await create("Lend run: foreclosed");
-  const cancelled = await create("Lend run: cancelled");
+  // LEND_VAULTS=24,25,26 reuses three sealed vaults of alice's (say, from a run that stopped early).
+  const reuse = process.env.LEND_VAULTS?.split(",").map((s) => s.trim());
+  if (reuse && reuse.length !== 3) throw new Error("LEND_VAULTS takes three token ids: repaid,foreclosed,cancelled");
+  const repaid = reuse?.[0] ?? (await create("Lend run: repaid"));
+  const foreclosed = reuse?.[1] ?? (await create("Lend run: foreclosed"));
+  const cancelled = reuse?.[2] ?? (await create("Lend run: cancelled"));
   await tx(alice, LEND, "deposit_for_loan", {}, 3n * LOAN_DEPOSIT, "alice pays three loan deposits");
 
   // 1. Request, fund, repay. alice signs nothing while bob funds, so her balance moves by exactly the principal.

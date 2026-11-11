@@ -1,9 +1,9 @@
 # Feature: borrowing against a vault
 
-**Contract:** `contracts/lend`, deployed as `bearer-lend.testnet` (regular build, not locked yet)
+**Contract:** `contracts/lend`, deployed as `bearer-lend.testnet` (reproducible build of `883873d`, locked)
 · **On the site:** "Borrow against it" on a sealed vault the owner holds; a loan panel on a
 pledged vault's page; `/lend` for open requests and running loans; "Borrowed against" and
-"Backing your loans" on My vaults · **Status:** on branch `lend`, run on testnet on 2026-11-11
+"Backing your loans" on My vaults · **Status:** live on the hosted site; run on testnet and locked on 2026-11-11
 
 **For:** whoever decides whether this ships. What it does, the rules, and what was checked.
 
@@ -61,17 +61,18 @@ methods. If a callback fails, the loan goes back to how it was (L5). A vault sen
 - `cargo test -p lend`: 22 unit tests.
 - `contracts/tests/lend.test.ts`: 16 sandbox tests against the locked Bearer wasm, covering
   L1–L9.
-- On testnet against `bearer.testnet` (`pnpm spike:lend run`, docs/SPIKES.md): one loan repaid,
-  one foreclosed after a 70-second term, one taken back. Each balance change was exact, and each
-  vault stayed sealed with 0 signatures. Changed terms, an early foreclosure, a late repayment
+- On testnet against `bearer.testnet` (`pnpm spike:lend run`, docs/SPIKES.md), twice, the second
+  time on the reproducible build that is now locked: one loan repaid, one foreclosed after a
+  70-second term, one taken back. Each balance change was exact, and each vault stayed sealed with
+  0 signatures. Changed terms, an early foreclosure, a late repayment
   and the borrower breaking the pledged seal were each refused.
 - The simulated demo seeds an open request (No. 0012), a running loan of ada's (No. 0055) and an
   overdue one where ada is the lender (No. 0047), so every action can be tried without a wallet.
 
-## Before it's locked
+## Locked
 
-`bearer-lend.testnet` runs a regular build and still has its key (L10), so whoever holds that key
-could act as the owner of a pledged vault. The site says so on every lending page. To lock it
-like the market and the schedule: build `contracts/res/lend.wasm` reproducibly (Docker and
-cargo-near 0.22.0), deploy it, then `CONFIRM_LOCK=bearer-lend.testnet pnpm spike:lend lock`. Locking
-can't be undone.
+`bearer-lend.testnet` runs `contracts/res/lend.wasm`, the reproducible build of `883873d` (two
+builds, identical bytes; code hash `9CP3cAHg…GmyU`), and has no keys: its only one was deleted on
+2026-11-11 ([tx](https://testnet.nearblocks.io/txns/Cia5mDdMobJJCPWUx6kgcAhuNDiYhBxBPukb1XW4ZFuX)), so nobody can change it or act as the owner of a pledged vault
+(L10). The Locked contracts workflow rebuilds it from `883873d` and compares the result with the
+code on chain, and `pnpm verify` checks the keys, the code hash and the commit.

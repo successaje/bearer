@@ -1,0 +1,195 @@
+{
+  "measured_at": "2026-11-11T22:23:49.295Z",
+  "bearer": "bearer.testnet",
+  "lend": "bearer-lend.testnet",
+  "lend_code_hash": "9CP3cAHgpWBusdZeJCmhMVHuCGJm2sppZVP6sdprGmyU",
+  "principal_yocto": "100000000000000000000000",
+  "repayment_yocto": "105000000000000000000000",
+  "steps": [
+    {
+      "step": "alice pays three loan deposits",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.deposit_for_loan",
+      "tx": "https://testnet.nearblocks.io/txns/6v9ykyULgQaS8Q9cYjAR8v3WYHAMmUHptXk3i2F8ErrH",
+      "tgas": 2.032,
+      "refused": null,
+      "events": []
+    },
+    {
+      "step": "alice pledges vault 24: 0.1 NEAR now, 0.105 back within a day",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.nft_transfer_call",
+      "tx": "https://testnet.nearblocks.io/txns/J4R5vKbtwZCGvsARC1nhfzhaXNXp797YRBoMWrpyC4JQ",
+      "tgas": 9.31,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "requested"
+      ]
+    },
+    {
+      "step": "bob funds it, naming a different repayment",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.fund",
+      "tx": "https://testnet.nearblocks.io/txns/7piaUHiy2h7fHsFu4Njg3VRP44BesMWKQyGLhuFQrtG5",
+      "tgas": 2.13,
+      "refused": "ERR_TERMS_CHANGED",
+      "events": []
+    },
+    {
+      "step": "bob funds vault 24",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.fund",
+      "tx": "https://testnet.nearblocks.io/txns/AWvRDE73S6Yu1c8JSnU14arDDbE5xhVmAz7jKQb9KZXg",
+      "tgas": 5.132,
+      "refused": null,
+      "events": [
+        "funded"
+      ]
+    },
+    {
+      "step": "alice breaks the seal on her pledged vault",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.break_seal",
+      "tx": "https://testnet.nearblocks.io/txns/wRsNhoz6D7Y4k81BGFEW8mqTByx3mv1enmKkDMcmdya",
+      "tgas": 2.304,
+      "refused": "ERR_NOT_OWNER",
+      "events": []
+    },
+    {
+      "step": "bob takes the vault before the due date",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.foreclose",
+      "tx": "https://testnet.nearblocks.io/txns/BTkkNHcZjgyLnQM1aZKuKmbwMmKdUCajuifV3UqJ7DKN",
+      "tgas": 2.122,
+      "refused": "ERR_NOT_DUE",
+      "events": []
+    },
+    {
+      "step": "alice repays vault 24",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.repay",
+      "tx": "https://testnet.nearblocks.io/txns/Gp9hNSiPPakGMsgdZNetdjp4v2kECLsKsEa66Jfhj9v5",
+      "tgas": 14.209,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "repaid"
+      ]
+    },
+    {
+      "step": "alice pledges vault 25: 0.1 NEAR now, 0.105 back within 70 s",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.nft_transfer_call",
+      "tx": "https://testnet.nearblocks.io/txns/6QYU5NR4wys5ZyvfADqdLdnmfdJj1jh18Afkg8YZndBL",
+      "tgas": 9.309,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "requested"
+      ]
+    },
+    {
+      "step": "bob funds vault 25",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.fund",
+      "tx": "https://testnet.nearblocks.io/txns/8uPN9uXkGsmETQrfd1twizcn2tP2QUWHDVyuUuo78yrN",
+      "tgas": 5.132,
+      "refused": null,
+      "events": [
+        "funded"
+      ]
+    },
+    {
+      "step": "alice repays after the due date",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.repay",
+      "tx": "https://testnet.nearblocks.io/txns/4NJLzPrBUs27gjpq71bCJugRKSB3q9kVJyr5DH2xEH5f",
+      "tgas": 2.119,
+      "refused": "ERR_PAST_DUE",
+      "events": []
+    },
+    {
+      "step": "bob takes vault 25",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.foreclose",
+      "tx": "https://testnet.nearblocks.io/txns/5bG4HKRSUbgb24oEbdR4ee1HUPKZyq5T25wpJRw5FffK",
+      "tgas": 11.546,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "foreclosed"
+      ]
+    },
+    {
+      "step": "alice pledges vault 26",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.nft_transfer_call",
+      "tx": "https://testnet.nearblocks.io/txns/BuUpyGT6UKMtmNAvoyr5nngNUXi4q6syFTEbkJqMx5Ei",
+      "tgas": 9.294,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "requested"
+      ]
+    },
+    {
+      "step": "alice takes it back",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.cancel_request",
+      "tx": "https://testnet.nearblocks.io/txns/5h5fFpBGBvvtTgs8VzBs27aszf9LKHtesmCW2ZWafZdi",
+      "tgas": 11.51,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "cancelled"
+      ]
+    }
+  ],
+  "repaid": {
+    "token_id": "24",
+    "owner": "alice.bearer-1108-ffb3.testnet",
+    "state": {
+      "kind": "sealed"
+    },
+    "signatures_requested": 0,
+    "custody": [
+      "alice.bearer-1108-ffb3.testnet",
+      "bearer-lend.testnet",
+      "alice.bearer-1108-ffb3.testnet"
+    ],
+    "borrower_received_yocto": "100000000000000000000000",
+    "borrower_received_exact": true,
+    "lender_received_yocto": "105000000000000000000000",
+    "lender_received_exact": true
+  },
+  "foreclosed": {
+    "token_id": "25",
+    "due_at_ns": "1794435787481981173",
+    "owner": "bob.bearer-1108-ffb3.testnet",
+    "state": {
+      "kind": "sealed"
+    },
+    "signatures_requested": 0,
+    "custody": [
+      "alice.bearer-1108-ffb3.testnet",
+      "bearer-lend.testnet",
+      "bob.bearer-1108-ffb3.testnet"
+    ],
+    "borrower_deposit_back_yocto": "10000000000000000000000",
+    "deposit_back_exact": true
+  },
+  "cancelled": {
+    "token_id": "26",
+    "owner": "alice.bearer-1108-ffb3.testnet",
+    "state": {
+      "kind": "sealed"
+    },
+    "signatures_requested": 0,
+    "custody": [
+      "alice.bearer-1108-ffb3.testnet",
+      "bearer-lend.testnet",
+      "alice.bearer-1108-ffb3.testnet"
+    ]
+  }
+}

@@ -5,27 +5,54 @@ measured numbers (N stated) and links you can check. Newest first.
 
 ## 2026-11-11 · Borrowing against a vault, on the locked contract
 
-`bearer-lend.testnet` (faucet-created) runs `contracts/out/lend.wasm`, built by `contracts/build.sh` from
-the contract as committed in `883873d`, code hash `9UHt8QL5…HRET`. It is not the reproducible build and it isn't locked: the
-account still has its key (L10). `pnpm spike:lend run` pledged three fresh vaults of alice's for
-0.1 NEAR, to be repaid with 0.105 NEAR:
+`bearer-lend.testnet` (faucet-created) runs `contracts/res/lend.wasm`, the reproducible build of
+`883873d`: two builds from a clean checkout gave identical bytes (194,457 bytes, sha256
+`79c7cf83…7ec3`); on-chain code hash `9CP3cAHg…GmyU`, which matches, and `contract_source_metadata`
+names the image, the command and the commit. It was initialised with `nft_contract =
+bearer.testnet` and a 0.01 NEAR loan deposit. The first run (below) was on a regular
+`contracts/build.sh` build of the same commit (code hash `9UHt8QL5…HRET`); the account was then
+redeployed in place with the reproducible build, run again, and locked.
 
-- **Repaid.** No. 0021 for a day. bob's `fund` naming another repayment was refused
+**Locked**, with the owner's go-ahead: `CONFIRM_LOCK=bearer-lend.testnet pnpm spike:lend lock`
+checked the deployed code hash against `contracts/res/lend.wasm`, then deleted the only key, a
+full-access key ([tx](https://testnet.nearblocks.io/txns/Cia5mDdMobJJCPWUx6kgcAhuNDiYhBxBPukb1XW4ZFuX)). Afterwards three RPCs (rpc.testnet.near.org,
+test.rpc.fastnear.com, archival-rpc.testnet.fastnear.com) reported 0 keys and the same code hash.
+Report: [`testnet-lend-lock-2026-11-11T22-24-16.569Z.json`](../contracts/tests/spike/reports/testnet-lend-lock-2026-11-11T22-24-16.569Z.json).
+
+`pnpm spike:lend run` on the reproducible build, just before locking, pledged three fresh vaults
+of alice's for 0.1 NEAR, to be repaid with 0.105 NEAR. (A first attempt created the vaults, then
+stopped: alice couldn't cover the gas reserved for the deposit call. bob sent her 0.5 NEAR and
+`LEND_VAULTS=24,25,26` reused them.)
+
+- **Repaid.** No. 0024 for a day. bob's `fund` naming another repayment was refused
   (`ERR_TERMS_CHANGED`); then bob funded it and alice's balance rose by exactly 0.1 NEAR
-  ([tx](https://testnet.nearblocks.io/txns/8qhuGwpdrFammXLfMAkvo3oLWZYSrQXpoAwFphTGQjME)).
-  alice breaking the pledged vault's seal was refused (`ERR_NOT_OWNER`), and so was bob taking it
-  early (`ERR_NOT_DUE`). alice repaid
-  ([tx](https://testnet.nearblocks.io/txns/CuucQzSwChsvt4Q4hGGcCX6t9nx48Yvu7WjpFzQR1UFp)): the
-  vault came back sealed with 0 signatures, and bob's balance rose by exactly 0.105 NEAR.
-- **Foreclosed.** No. 0022 for 70 s. After the due date alice's repayment was refused
+  ([tx](https://testnet.nearblocks.io/txns/AWvRDE73S6Yu1c8JSnU14arDDbE5xhVmAz7jKQb9KZXg)). alice breaking the pledged vault's
+  seal was refused (`ERR_NOT_OWNER`), and so was bob taking it early (`ERR_NOT_DUE`). alice
+  repaid ([tx](https://testnet.nearblocks.io/txns/Gp9hNSiPPakGMsgdZNetdjp4v2kECLsKsEa66Jfhj9v5)): the vault came back sealed
+  with 0 signatures, and bob's balance rose by exactly 0.105 NEAR.
+- **Foreclosed.** No. 0025 for 70 s. After the due date alice's repayment was refused
   (`ERR_PAST_DUE`) and bob took the vault
-  ([tx](https://testnet.nearblocks.io/txns/8HTjZHfHiTuTwQpVsLPpUXNywbPbqoJBAHQ1HHF5PVmB)). It
-  arrived sealed with 0 signatures; custody shows alice, then the lending contract, then bob;
-  alice's balance rose by exactly her 0.01 NEAR deposit.
-- **Taken back.** No. 0023 was pledged and taken back before anyone lent.
+  ([tx](https://testnet.nearblocks.io/txns/5bG4HKRSUbgb24oEbdR4ee1HUPKZyq5T25wpJRw5FffK)). It arrived sealed with 0
+  signatures; custody shows alice, then the lending contract, then bob; alice's balance rose by
+  exactly her 0.01 NEAR deposit.
+- **Taken back.** No. 0026 was pledged and taken back before anyone lent
+  ([tx](https://testnet.nearblocks.io/txns/5h5fFpBGBvvtTgs8VzBs27aszf9LKHtesmCW2ZWafZdi)).
 
-Pledging took 9.4 Tgas, funding 5.2, repaying 14.4 and foreclosing 11.7, one run each. Report:
+Pledging took 9.3 Tgas, funding 5.1, repaying 14.2, foreclosing 11.5 and taking back 11.5, one run
+each. Report:
+[`testnet-lend-2026-11-11T22-23-49.567Z.json`](../contracts/tests/spike/reports/testnet-lend-2026-11-11T22-23-49.567Z.json).
+
+The first run, on the regular build, did the same with vaults No. 0021 (repaid,
+[tx](https://testnet.nearblocks.io/txns/CuucQzSwChsvt4Q4hGGcCX6t9nx48Yvu7WjpFzQR1UFp)), No. 0022 (foreclosed,
+[tx](https://testnet.nearblocks.io/txns/8HTjZHfHiTuTwQpVsLPpUXNywbPbqoJBAHQ1HHF5PVmB)) and No. 0023 (taken back), with the same
+exact balance changes, the same refusals and 9.4, 5.2, 14.4 and 11.7 Tgas. Report:
 [`testnet-lend-2026-11-11T18-06-39.294Z.json`](../contracts/tests/spike/reports/testnet-lend-2026-11-11T18-06-39.294Z.json).
+
+```bash
+cd contracts/tests
+pnpm spike:lend setup
+pnpm spike:lend run
+```
 
 ## 2026-11-10 · Bearer links: sealed vaults sent as links, opened with no wallet
 

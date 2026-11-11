@@ -181,9 +181,9 @@ keys and sends nothing:
 pnpm verify        # or: node scripts/verify.mjs  (Node 22+, nothing to install)
 ```
 
-You should see 35 ✓ in under a minute, ending `35 claims in … s: 35 ✓, 0 ✗`. Among them:
+You should see 41 ✓ in under a minute, ending `41 claims in … s: 41 ✓, 0 ✗`. Among them:
 
-- each of the three contracts has no access keys, runs the wasm committed in `contracts/res/`, and
+- each of the four contracts has no access keys, runs the wasm committed in `contracts/res/`, and
   names a commit that is in this repository;
 - the coin deposited at vault No. 0006's address stayed put until a withdrawal spent it, and that
   spend is, byte for byte, the one the contract signed after its new holder broke the seal;
@@ -192,8 +192,8 @@ You should see 35 ✓ in under a minute, ending `35 claims in … s: 35 ✓, 0 �
 - each recorded attack failed with its expected error;
 - vault No. 0010 went through three Bearer links and on to an account, still sealed, and a link's own
   key, with no wallet, broke vault No. 0012's seal and withdrew its Bitcoin;
-- the sale, the scheduled handover, the wallet withdrawal and both T10 transactions are on chain as
-  described, and the second T10 transaction never confirmed.
+- the sale, the scheduled handover, the repaid and the foreclosed loans, the wallet withdrawal and
+  both T10 transactions are on chain as described, and the second T10 transaction never confirmed.
 
 `✗` means the chain disagrees, and the command exits 1. `?` means a public endpoint didn't answer;
 run it again, and `--strict` makes that fail too (exit 2). `--json report.json` writes every result
@@ -244,7 +244,7 @@ shasum -a 256 contracts/target/near/bearer/bearer.wasm   # 05b27506…8619, as i
 ```
 
 The [Locked contracts](https://github.com/successaje/bearer/actions/workflows/locked-contracts.yml)
-workflow does this on GitHub for all three locked contracts, each from the commit it names, and
+workflow does this on GitHub for all four locked contracts, each from the commit it names, and
 also compares the result with the code hash on NEAR testnet.
 
 **Repeat the testnet runs** from `contracts/tests`. This needs `BEARER_TESTNET_PARENT` in `.env`,
@@ -281,8 +281,8 @@ What people could use them for:
 - **Loans against Bitcoin, without wrapping it.** Pledge a sealed vault and get NEAR now; repay to
   get it back, or the lender takes it after the due date. While it's pledged nobody can withdraw,
   the borrower included ([docs/features/lend.md](docs/features/lend.md)). It runs on
-  `bearer-lend.testnet`, which isn't locked yet: one loan repaid, one foreclosed and one taken back
-  on testnet, each balance change exact (docs/SPIKES.md).
+  `bearer-lend.testnet`, reproducibly built and locked like the market: one loan repaid, one
+  foreclosed and one taken back on testnet, each balance change exact (docs/SPIKES.md).
 - **Collectibles.** A named, finished vault with a printable certificate, holding native assets,
   that can be handed on again while sealed.
 
@@ -328,8 +328,8 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 - **Testnet prototype, not audited.**
 - **Trust.** It relies on NEAR, its MPC signing network, the deployed contracts and each external
-  chain's normal operation. Bearer's, the market's and the schedule's contracts are open source,
-  reproducibly built and locked: none has a key, so nobody can change them.
+  chain's normal operation. Bearer's, the market's, the schedule's and the lending contracts are
+  open source, reproducibly built and locked: none has a key, so nobody can change them.
 - **Opened is final.** Once opened, a vault can't be transferred or sealed again.
 - **Balances.** The ones shown come from public data sources (Blockstream Esplora, Base Sepolia RPC,
   Solana devnet RPC), with their source, time and confirmation status. They can lag or be

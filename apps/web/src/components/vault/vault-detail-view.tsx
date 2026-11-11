@@ -5,7 +5,7 @@ import { ArrowDownLeft, ArrowUpRight, CalendarClock, Code, Coins, Eye, HandCoins
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Tabs } from "radix-ui";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { EmptyState, ErrorState } from "@/components/layout/page-states";
 import { VerifyForm } from "@/components/landing/verify-form";
@@ -35,6 +35,7 @@ import { ReceivedMoment, useJustReceived } from "./received-moment";
 import { RecipientChecklist } from "./recipient-checklist";
 import { SealPanel } from "./seal-panel";
 import { SlotCard, SlotCardSkeleton } from "./slot-card";
+import { CustodyRail, HoldingsRail, RulesRail, VerifyRail } from "./tab-rail";
 import { TechnicalDetails } from "./technical-details";
 import { TransferSheet } from "./transfer-sheet";
 import { VaultCard } from "./vault-card";
@@ -53,6 +54,13 @@ const TABS = [
   { id: "technical", label: "Technical", icon: Code },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
+
+/** A tab's content, and beside it on wide screens a column that sums it up. */
+const TAB_GRID = "mt-7 grid grid-cols-[minmax(0,1fr)] items-start gap-7 focus-visible:outline-none lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]";
+
+function Rail({ children }: { children: ReactNode }) {
+  return <aside className="flex flex-col gap-5 lg:sticky lg:top-24">{children}</aside>;
+}
 
 function tabFromHash(): TabId | null {
   const h = window.location.hash.slice(1);
@@ -406,35 +414,55 @@ export function VaultDetailView() {
           </div>
         </Tabs.Content>
 
-        <Tabs.Content value="inside" className="mt-7 max-w-[820px] focus-visible:outline-none">
-          <h2 className="text-[20px] font-semibold tracking-[-0.02em]">Inside this vault</h2>
-          <div className="mt-4 flex flex-col gap-3">
-            {observations
-              ? observations.map((o) => <SlotCard key={o.chain} obs={o} now={now} opened={!sealed} />)
-              : [0, 1, 2].map((i) => <SlotCardSkeleton key={i} />)}
+        <Tabs.Content value="inside" className={TAB_GRID}>
+          <div className="min-w-0">
+            <h2 className="text-[20px] font-semibold tracking-[-0.02em]">Inside this vault</h2>
+            <div className="mt-4 flex flex-col gap-3">
+              {observations
+                ? observations.map((o) => <SlotCard key={o.chain} obs={o} now={now} opened={!sealed} />)
+                : [0, 1, 2].map((i) => <SlotCardSkeleton key={i} />)}
+            </div>
+
+            {!sealed || (withdrawals.data?.length ?? 0) > 0 ? (
+              <>
+                <h2 className="mt-11 text-[20px] font-semibold tracking-[-0.02em]">Withdrawals</h2>
+                <div className="mt-4">
+                  <WithdrawalsList tokenId={vault.token_id} withdrawals={withdrawals.data ?? []} now={now} />
+                </div>
+              </>
+            ) : null}
           </div>
-
-          {!sealed || (withdrawals.data?.length ?? 0) > 0 ? (
-            <>
-              <h2 className="mt-11 text-[20px] font-semibold tracking-[-0.02em]">Withdrawals</h2>
-              <div className="mt-4">
-                <WithdrawalsList tokenId={vault.token_id} withdrawals={withdrawals.data ?? []} now={now} />
-              </div>
-            </>
-          ) : null}
+          <Rail>
+            <HoldingsRail observations={observations} />
+          </Rail>
         </Tabs.Content>
 
-        <Tabs.Content value="history" className="mt-7 max-w-[820px] focus-visible:outline-none">
-          <h2 className="sr-only">History</h2>
-          <Activity vault={vault} withdrawals={withdrawals.data ?? []} observations={observations} now={now} />
+        <Tabs.Content value="history" className={TAB_GRID}>
+          <div className="min-w-0">
+            <h2 className="sr-only">History</h2>
+            <Activity vault={vault} withdrawals={withdrawals.data ?? []} observations={observations} now={now} />
+          </div>
+          <Rail>
+            <CustodyRail vault={vault} />
+          </Rail>
         </Tabs.Content>
 
-        <Tabs.Content value="attack-lab" className="mt-7 max-w-[720px] focus-visible:outline-none">
-          <AttackLab vault={vault} />
+        <Tabs.Content value="attack-lab" className={TAB_GRID}>
+          <div className="min-w-0">
+            <AttackLab vault={vault} />
+          </div>
+          <Rail>
+            <RulesRail vault={vault} facts={facts.data} />
+          </Rail>
         </Tabs.Content>
 
-        <Tabs.Content value="technical" className="mt-7 max-w-[820px] focus-visible:outline-none">
-          <TechnicalDetails vault={vault} facts={facts.data} />
+        <Tabs.Content value="technical" className={TAB_GRID}>
+          <div className="min-w-0">
+            <TechnicalDetails vault={vault} facts={facts.data} />
+          </div>
+          <Rail>
+            <VerifyRail vault={vault} />
+          </Rail>
         </Tabs.Content>
       </Tabs.Root>
 

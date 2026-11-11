@@ -1,6 +1,6 @@
 import type { VaultView } from "@bearer/sdk";
 import { CHAIN_TAGS } from "@bearer/sdk";
-import { Check, ChevronDown } from "lucide-react";
+import { Check } from "lucide-react";
 import Link from "next/link";
 import { CopyButton } from "@/components/ui/copy-button";
 import { BEARER_CONTRACT, CODE_HASH, IS_SIMULATED, REPO_URL, SIGNER_CONTRACT } from "@/lib/config";
@@ -26,12 +26,9 @@ for (const [chain, path] of Object.entries(${JSON.stringify(vault.paths)})) {
   console.log(chain, key); // compare with this vault's addresses
 }`;
   return (
-    <details className="group overflow-hidden rounded-panel border border-line bg-surface">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-[18px]">
-        <span className="text-[16px] font-semibold tracking-[-0.01em]">Technical details</span>
-        <ChevronDown aria-hidden className="size-[18px] text-fg-3 transition-transform group-open:rotate-180" />
-      </summary>
-      <div className="border-t border-line px-5 pb-6 pt-5">
+    <section className="overflow-hidden rounded-panel border border-line bg-surface">
+      <h2 className="border-b border-line px-5 py-[18px] text-[16px] font-semibold tracking-[-0.01em]">Technical details</h2>
+      <div className="px-5 pb-6 pt-5">
         <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-[13.5px] leading-relaxed sm:grid-cols-[minmax(140px,200px)_minmax(0,1fr)] sm:gap-y-3.5 [&_dd]:mb-3 sm:[&_dd]:mb-0">
           <Row term="Token">NEP-171 NFT, token {vault.token_id}</Row>
           <Row term="Contract">
@@ -121,6 +118,6 @@ for (const [chain, path] of Object.entries(${JSON.stringify(vault.paths)})) {
           </pre>
         </div>
       </div>
-    </details>
+    </section>
   );
 }

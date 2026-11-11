@@ -49,6 +49,9 @@ export const REPO_URL = process.env.NEXT_PUBLIC_REPO_URL || null;
  */
 export const CODE_HASH = process.env.NEXT_PUBLIC_CODE_HASH || "PEsHBVDKpZ3fdpmfsJekrt52amLARnwRLWNXLQDVq1S";
 
+/** The commit CODE_HASH was built from (its contract_source_metadata names it), for "rebuild it yourself". */
+export const BUILD_COMMIT = process.env.NEXT_PUBLIC_BUILD_COMMIT || "71f194e";
+
 /** Solana blockhashes expire after ~150 blocks; the contract waits 300 s after the last signature. */
 export const SOLANA_WINDOW_MS = 300_000;
 

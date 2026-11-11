@@ -10,7 +10,7 @@ export function HeroArt() {
 
       <div className="absolute left-1/2 top-[14%] w-[min(372px,74%)] -translate-x-[58%] -rotate-[10deg] sm:-translate-x-[70%]">
         <div className="animate-float-slow motion-reduce:animate-none">
-          <BearerCard name="OTC · Desk 7" id="17" finish="champagne" valueUsd={412} />
+          <BearerCard name="🐷 Zara's college fund" id="17" finish="champagne" valueUsd={412} />
         </div>
       </div>
 

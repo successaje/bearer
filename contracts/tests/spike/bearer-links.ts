@@ -5,6 +5,7 @@
  *   node spike/bearer-links.ts mint <count> <sats>   # each link: a sealed vault handed to a fresh key's account, paid from the treasury;
  *                                                    # finishes any link a stopped run left halfway first
  *   node spike/bearer-links.ts status                # which links still hold their vault
+ *   node spike/bearer-links.ts pay <token_id> <sats> # pays a vault's Bitcoin address from the treasury
  *
  * A link is https://bearer-near.vercel.app/claim#<seed>: the seed's NEAR implicit account holds
  * the vault and LINK_NEAR for fees. The seeds are written to ~/.near-credentials/bearer-links/
@@ -209,6 +210,16 @@ async function treasury() {
   console.log(`holds ${coins.reduce((s, c) => s + c.value, 0)} sats in ${coins.length} coin(s), ${coins.filter((c) => !c.status.confirmed).length} unconfirmed`);
 }
 
+/** Pays `sats` from the treasury to vault `id`'s Bitcoin address, e.g. to give a demo vault real coins. */
+async function pay(id: string, sats: number) {
+  const state = load();
+  if (!state.treasury) throw new Error("run `treasury` first and fund it");
+  if (!(sats > 0)) throw new Error("usage: pay <token_id> <sats>");
+  const to = await view<Vault>("vault", { token_id: id });
+  const { txid, fee } = await payFromTreasury(account(PARENT as string), await view<Vault>("vault", { token_id: state.treasury }), to.btc_address as string, sats);
+  console.log(`paid ${sats} sats to vault No. ${id.padStart(4, "0")} (${to.btc_address}), fee ${fee} sats: https://blockstream.info/testnet4/tx/${txid}`);
+}
+
 /** Stops the run after a step, to test that `mint` finishes the link next time (LINKS_CRASH_AFTER=key|vault|funded|handed). */
 function crashAfter(step: string) {
   if (process.env.LINKS_CRASH_AFTER === step) throw new Error(`stopped after "${step}" (LINKS_CRASH_AFTER)`);
@@ -318,4 +329,5 @@ const cmd = process.argv[2];
 if (cmd === "treasury") await treasury();
 else if (cmd === "mint") await mint(Number(process.argv[3] ?? 1), Number(process.argv[4] ?? 0));
 else if (cmd === "status") await status();
-else console.log("usage: node spike/bearer-links.ts treasury | mint <count> <sats> | status");
+else if (cmd === "pay") await pay(String(process.argv[3] ?? ""), Number(process.argv[4] ?? 0));
+else console.log("usage: node spike/bearer-links.ts treasury | mint <count> <sats> | status | pay <token_id> <sats>");

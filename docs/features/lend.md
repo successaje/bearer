@@ -66,6 +66,12 @@ methods. If a callback fails, the loan goes back to how it was (L5). A vault sen
   70-second term, one taken back. Each balance change was exact, and each vault stayed sealed with
   0 signatures. Changed terms, an early foreclosure, a late repayment
   and the borrower breaking the pledged seal were each refused.
+- An open request stays on testnet for visitors: alice's vault No. 0027 "Rainy-day savings",
+  given 6,000 sats from the Bearer links treasury (`pnpm spike:links pay 27 6000`,
+  [tx](https://blockstream.info/testnet4/tx/da0972fbc9943413f8406ead76ec77f9e554b9625eb13b8f940e39e5993391dc)),
+  asks for 1 NEAR and 1.05 back within a day of being funded
+  ([tx](https://testnet.nearblocks.io/txns/J3CSMCCTpBwCvWRqLkyREiRCa8WcUB1iyx8XchzSufWh)).
+  Anyone with testnet NEAR can fund it from `/lend`.
 - The simulated demo seeds an open request (No. 0012), a running loan of ada's (No. 0055) and an
   overdue one where ada is the lender (No. 0047), so every action can be tried without a wallet.
 

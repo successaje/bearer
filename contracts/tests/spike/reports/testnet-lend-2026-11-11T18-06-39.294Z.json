@@ -1,0 +1,234 @@
+{
+  "measured_at": "2026-11-11T18:06:39.065Z",
+  "bearer": "bearer.testnet",
+  "lend": "bearer-lend.testnet",
+  "lend_code_hash": "9UHt8QL52iTJayFhhcRhUrjU1UAQDZPzXV95nznPHRET",
+  "principal_yocto": "100000000000000000000000",
+  "repayment_yocto": "105000000000000000000000",
+  "steps": [
+    {
+      "step": "alice creates \"Lend run: repaid\"",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.create_vault",
+      "tx": "https://testnet.nearblocks.io/txns/6Vbqwsay5fwknBNTPKxL82XqYVpZrtXrdegsFWg8Boo3",
+      "tgas": 27.676,
+      "refused": null,
+      "events": [
+        "nft_mint",
+        "vault_created",
+        "keys_set"
+      ]
+    },
+    {
+      "step": "alice creates \"Lend run: foreclosed\"",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.create_vault",
+      "tx": "https://testnet.nearblocks.io/txns/Gh9d8dgCAZtEkKzVcfMnaj1nUpty9ZN7tPbRGTLFxGye",
+      "tgas": 26.978,
+      "refused": null,
+      "events": [
+        "nft_mint",
+        "vault_created",
+        "keys_set"
+      ]
+    },
+    {
+      "step": "alice creates \"Lend run: cancelled\"",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.create_vault",
+      "tx": "https://testnet.nearblocks.io/txns/DA1oY4hYu6v5SJSfHKi1XWTf2reS2WdkZohmob6VvjNU",
+      "tgas": 28.198,
+      "refused": null,
+      "events": [
+        "nft_mint",
+        "vault_created",
+        "keys_set"
+      ]
+    },
+    {
+      "step": "alice pays three loan deposits",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.deposit_for_loan",
+      "tx": "https://testnet.nearblocks.io/txns/G3uw3XULKvoCeAEaV1EVYbo471Vs7TzEw461XNNSqKkd",
+      "tgas": 2.081,
+      "refused": null,
+      "events": []
+    },
+    {
+      "step": "alice pledges vault 21: 0.1 NEAR now, 0.105 back within a day",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.nft_transfer_call",
+      "tx": "https://testnet.nearblocks.io/txns/CTY9buXCgNttbfvBR8PaRgYNywKbv87cM2wRdXrt1TS5",
+      "tgas": 9.371,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "requested"
+      ]
+    },
+    {
+      "step": "bob funds it, naming a different repayment",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.fund",
+      "tx": "https://testnet.nearblocks.io/txns/9guNtjRY2m7xGM9tafNL4W5t8swwa9vDBP97yEiq853v",
+      "tgas": 2.179,
+      "refused": "ERR_TERMS_CHANGED",
+      "events": []
+    },
+    {
+      "step": "bob funds vault 21",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.fund",
+      "tx": "https://testnet.nearblocks.io/txns/8qhuGwpdrFammXLfMAkvo3oLWZYSrQXpoAwFphTGQjME",
+      "tgas": 5.242,
+      "refused": null,
+      "events": [
+        "funded"
+      ]
+    },
+    {
+      "step": "alice breaks the seal on her pledged vault",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.break_seal",
+      "tx": "https://testnet.nearblocks.io/txns/3ok3X79BkfzypfbNinxLdvASjuJC3PJA1KeFzewQWJtf",
+      "tgas": 2.304,
+      "refused": "ERR_NOT_OWNER",
+      "events": []
+    },
+    {
+      "step": "bob takes the vault before the due date",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.foreclose",
+      "tx": "https://testnet.nearblocks.io/txns/3vKPF8cAukahzKDqQnKBf88BCcAVtuzfXKNa88fnbbrN",
+      "tgas": 2.17,
+      "refused": "ERR_NOT_DUE",
+      "events": []
+    },
+    {
+      "step": "alice repays vault 21",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.repay",
+      "tx": "https://testnet.nearblocks.io/txns/CuucQzSwChsvt4Q4hGGcCX6t9nx48Yvu7WjpFzQR1UFp",
+      "tgas": 14.419,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "repaid"
+      ]
+    },
+    {
+      "step": "alice pledges vault 22: 0.1 NEAR now, 0.105 back within 70 s",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.nft_transfer_call",
+      "tx": "https://testnet.nearblocks.io/txns/BdgcANE6Aqmd2sfZWHaDuGM3hiqLdBHdbhQKpAUBDXPP",
+      "tgas": 9.37,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "requested"
+      ]
+    },
+    {
+      "step": "bob funds vault 22",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.fund",
+      "tx": "https://testnet.nearblocks.io/txns/GpNBx1Ab8EmSRorhPhVcjhLvYkZuc1DvAFEXAAsEvsU3",
+      "tgas": 5.242,
+      "refused": null,
+      "events": [
+        "funded"
+      ]
+    },
+    {
+      "step": "alice repays after the due date",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.repay",
+      "tx": "https://testnet.nearblocks.io/txns/5d6tqeQLX8QPGwi6EXh6QQUopLQP81adRXXvwqYPFgRE",
+      "tgas": 2.167,
+      "refused": "ERR_PAST_DUE",
+      "events": []
+    },
+    {
+      "step": "bob takes vault 22",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.foreclose",
+      "tx": "https://testnet.nearblocks.io/txns/8HTjZHfHiTuTwQpVsLPpUXNywbPbqoJBAHQ1HHF5PVmB",
+      "tgas": 11.701,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "foreclosed"
+      ]
+    },
+    {
+      "step": "alice pledges vault 23",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.nft_transfer_call",
+      "tx": "https://testnet.nearblocks.io/txns/BRNzCpetizWCic2adCfsbCiXXE4XVZfXzSUctkZCnHdM",
+      "tgas": 9.355,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "requested"
+      ]
+    },
+    {
+      "step": "alice takes it back",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-lend.testnet.cancel_request",
+      "tx": "https://testnet.nearblocks.io/txns/3X5amUQeX9qB7DmjYiZfrQYbBk6z75WJyHZrVgwe2cGF",
+      "tgas": 11.665,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "cancelled"
+      ]
+    }
+  ],
+  "repaid": {
+    "token_id": "21",
+    "owner": "alice.bearer-1108-ffb3.testnet",
+    "state": {
+      "kind": "sealed"
+    },
+    "signatures_requested": 0,
+    "custody": [
+      "alice.bearer-1108-ffb3.testnet",
+      "bearer-lend.testnet",
+      "alice.bearer-1108-ffb3.testnet"
+    ],
+    "borrower_received_yocto": "100000000000000000000000",
+    "borrower_received_exact": true,
+    "lender_received_yocto": "105000000000000000000000",
+    "lender_received_exact": true
+  },
+  "foreclosed": {
+    "token_id": "22",
+    "due_at_ns": "1794420358785865466",
+    "owner": "bob.bearer-1108-ffb3.testnet",
+    "state": {
+      "kind": "sealed"
+    },
+    "signatures_requested": 0,
+    "custody": [
+      "alice.bearer-1108-ffb3.testnet",
+      "bearer-lend.testnet",
+      "bob.bearer-1108-ffb3.testnet"
+    ],
+    "borrower_deposit_back_yocto": "10000000000000000000000",
+    "deposit_back_exact": true
+  },
+  "cancelled": {
+    "token_id": "23",
+    "owner": "alice.bearer-1108-ffb3.testnet",
+    "state": {
+      "kind": "sealed"
+    },
+    "signatures_requested": 0,
+    "custody": [
+      "alice.bearer-1108-ffb3.testnet",
+      "bearer-lend.testnet",
+      "alice.bearer-1108-ffb3.testnet"
+    ]
+  }
+}

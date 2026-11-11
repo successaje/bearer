@@ -36,6 +36,10 @@ jobs:
             account: bearer-schedule.testnet
             commit: 47b5d255a9187619e627f06576a39c344d3dfa32
             short: 47b5d25
+          - contract: lend
+            account: bearer-lend.testnet
+            commit: 883873deaa4da9208461327ec1cbc0bca22faa9b
+            short: 883873d
     steps:
       - name: Check out this commit, for SHA256SUMS
         uses: actions/checkout@v4

@@ -123,6 +123,28 @@ lend` (unit) and `contracts/tests/lend.test.ts` (sandbox, against the locked Bea
 | L10 | Admin or upgrade powers over the lending contract, including its key holder acting as the owner of a pledged vault (breaking its seal) | No admin, owner or upgrade methods; every key deleted (`spike:lend lock`, same guards as the market's). The site shows the lending contract's lock state live | `spike:lend lock` run on `bearer-lend.testnet` 2026-11-11: 0 keys left, code hash `9CP3cAHg…GmyU` = the reproducible build ([tx](https://testnet.nearblocks.io/txns/Cia5mDdMobJJCPWUx6kgcAhuNDiYhBxBPukb1XW4ZFuX)) | ✅ |
 | L11 | A lender reads an observed balance as a guaranteed value, or the coins fall below the loan | Requests show balances as observations, with source, time and confirmation status. There is no price feed and no early liquidation: the lend review says the borrower may let the lender keep the vault instead of repaying | UI review | policy |
 
+## Dead man's switch threats
+
+The switch (`contracts/switch`) holds a sealed vault while its owner keeps checking in, and hands
+it to the beneficiary they named once a whole interval passes without one. Like the other escrow
+contracts it can't change Bearer's rules: a vault reaches it only through Bearer's sealed-only
+gate, and nothing in it breaks a seal. Tests: `cargo test -p switch` (unit) and
+`contracts/tests/switch.test.ts` (sandbox, against the locked Bearer wasm).
+
+| # | Attack | Defence | Test | Status |
+|---|---|---|---|---|
+| D1 | Fake arming by calling `nft_on_transfer` directly | Only the Bearer contract may call it | `only_bearer_can_arm` (unit and sandbox) | ✅ |
+| D2 | Put an opened vault in a switch, or drain one while it's held | The vault arrives through Bearer's gate (sealed only) and stays in escrow; nothing here calls `break_seal`, so the owner can't open it while it's held; Bearer's gate checks again in the receipt that moves it out | `opened_vault_cannot_be_armed`, `owner_cannot_open_an_armed_vault` (sandbox) | ✅ |
+| D3 | Someone else checks in, changes the beneficiary or takes the vault back | Only the owner, and only while it's armed | `only_the_owner_checks_in_updates_or_takes_back` (unit), `only_the_owner_checks_in, updates or takes back` (sandbox) | ✅ |
+| D4 | The vault is handed over early, or to someone other than the beneficiary | `release` works only once a whole interval has passed since the last check-in, and only moves the vault to the beneficiary the owner named; anyone may trigger it, so the beneficiary needn't wait for anyone | `nobody_can_release_before_a_whole_interval_of_silence`, `a_check_in_stops_a_release_that_would_have_been_due` (unit), `released_vault_goes_to_the_beneficiary_only` (sandbox) | ✅ |
+| D5 | A hand-over or take-back stops halfway | `release` refuses under 80 Tgas and `take_back` under 50; callbacks never panic; a vault that didn't move leaves the switch armed as it was | `release_needs_gas_for_the_whole_hand_over`, `a_failed_take_back_keeps_the_switch_armed` (unit) | ✅ |
+| D6 | Fill the contract's storage for free | Each switch holds a 0.01 NEAR deposit, checked against its storage including room for the longest beneficiary an update could name, and paid back to the owner however the switch ends. Bad terms send the vault straight back | `arming_needs_a_deposit`, `a_longer_beneficiary_fits_in_the_bytes_the_deposit_reserved` (unit), `arming_without_deposit_returns_the_vault` (sandbox) | ✅ |
+| D7 | The vault goes nowhere: the beneficiary is mistyped (an account nobody has), or is the owner, the switch or Bearer | Those three are refused at arming and on update. `release` sends the beneficiary 1 yoctoNEAR first and, if their account doesn't exist, puts the switch back as it was. The site checks the account exists before arming, and the owner can name someone else at any time | `arming_terms_are_checked`, `a_missing_beneficiary_puts_the_switch_back` (unit), `missing_beneficiary_keeps_the_vault armed` (sandbox) | ✅ |
+| D8 | A vault sent with plain `nft_transfer` is stuck in the contract | `return_unarmed` sends it to the holder before it, read from Bearer's custody log; never an armed vault | `return_unarmed` tests (sandbox) | ✅ |
+| D9 | Admin or upgrade powers over the switch, including its key holder acting as the owner of a vault in it (breaking its seal) | No admin, owner or upgrade methods. `bearer-switch.testnet` runs the reproducible build of `c74b2c8` but still has its key until it's locked (`spike:switch lock`, same guards as the market's). The site says so on every switch panel | not run | open |
+| D10 | The owner comes back after the interval ran out, racing someone handing the vault over | A check-in counts until the vault has actually been handed over; whichever lands first wins. Once a hand-over is in flight, check-ins are refused until it settles | `the_owner_can_still_check_in_after_the_due_date_until_it_is_released`, `anyone_can_release_once_it_is_due_and_it_locks_the_switch` (unit), `a_late_check_in_still_counts` (sandbox) | ✅ |
+| D11 | The owner loses their key or forgets to check in, and the vault goes before they meant it to | That's what a switch does; the interval is theirs to choose, up to ten years. The vault page and My vaults show the clock; there is no reminder service. Who the beneficiary is and when the owner last checked in are public | by design | documented |
+
 ## What you are trusting
 
 - **NEAR's MPC network** to sign only what the Bearer contract requests, and to keep its key shares safe.

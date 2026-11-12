@@ -93,9 +93,9 @@ in [docs/SPIKES.md](docs/SPIKES.md).
 **1. Local sandbox (simulated chains).** The contracts run in a real NEAR sandbox with a mock MPC
 signer. These are simulations, not transactions on Bitcoin, Base or Solana.
 
-- 73 sandbox tests (28 for the vault, 13 for the market, 13 for the schedule, 16 for lending, 3 for
-  a receiver that breaks the seal in its transfer callback and asks for the vault back) and 73 unit
-  tests. Each signed
+- 86 sandbox tests (28 for the vault, 13 for the market, 13 for the schedule, 16 for lending, 13 for
+  the switch, 3 for a receiver that breaks the seal in its transfer callback and asks for the vault
+  back) and 91 unit tests. Each signed
   transaction is checked independently: viem for Base, bitcoinjs-lib and noble for Bitcoin,
   `@solana/web3.js` for Solana.
 - `pnpm demo:dry` runs the vault's lifecycle and the attacks against simulated ledgers that apply
@@ -181,7 +181,7 @@ keys and sends nothing:
 pnpm verify        # or: node scripts/verify.mjs  (Node 22+, nothing to install)
 ```
 
-You should see 41 ✓ in under a minute, ending `41 claims in … s: 41 ✓, 0 ✗`. Among them:
+You should see 43 ✓ in under a minute, ending `43 claims in … s: 43 ✓, 0 ✗`. Among them:
 
 - each of the four contracts has no access keys, runs the wasm committed in `contracts/res/`, and
   names a commit that is in this repository;
@@ -192,8 +192,9 @@ You should see 41 ✓ in under a minute, ending `41 claims in … s: 41 ✓, 0 �
 - each recorded attack failed with its expected error;
 - vault No. 0010 went through three Bearer links and on to an account, still sealed, and a link's own
   key, with no wallet, broke vault No. 0012's seal and withdrew its Bitcoin;
-- the sale, the scheduled handover, the repaid and the foreclosed loans, the wallet withdrawal and
-  both T10 transactions are on chain as described, and the second T10 transaction never confirmed.
+- the sale, the scheduled handover, the repaid and the foreclosed loans, the switch's hand-over and
+  the vault it kept for a missing beneficiary, the wallet withdrawal and both T10 transactions are
+  on chain as described, and the second T10 transaction never confirmed.
 
 `✗` means the chain disagrees, and the command exits 1. `?` means a public endpoint didn't answer;
 run it again, and `--strict` makes that fail too (exit 2). `--json report.json` writes every result
@@ -283,10 +284,13 @@ What people could use them for:
   the borrower included ([docs/features/lend.md](docs/features/lend.md)). It runs on
   `bearer-lend.testnet`, reproducibly built and locked like the market: one loan repaid, one
   foreclosed and one taken back on testnet, each balance change exact (docs/SPIKES.md).
+- **If I go quiet.** Keep saving into a vault and check in now and then. Stop for a whole interval
+  (a year, say) and anyone can hand it to the person you named, sealed, and only to them; until then
+  you can change who, or take it back ([docs/features/switch.md](docs/features/switch.md)).
 - **Collectibles.** A named, finished vault with a printable certificate, holding native assets,
   that can be handed on again while sealed.
 
-These show what the model can do. Like the rest, the market, the schedule and lending are testnet
+These show what the model can do. Like the rest, the market, the schedule, lending and the switch are testnet
 prototypes.
 
 ## The web app
@@ -366,6 +370,7 @@ contracts/bearer    the NEAR contract (near-sdk 5.30)
 contracts/market    the market: sells sealed vaults from escrow
 contracts/schedule  the scheduled handover: holds a sealed vault until a date
 contracts/lend      lending: holds a pledged vault until the loan is repaid or the lender takes it
+contracts/switch    if I go quiet: holds a vault while its owner checks in, then hands it to their beneficiary
 contracts/mock-signer   an MPC signer stand-in for the sandbox
 contracts/mock-receiver an NFT receiver that breaks the seal in its transfer callback (T6, sandbox only)
 contracts/tests     sandbox tests (near-sandbox) and testnet scripts

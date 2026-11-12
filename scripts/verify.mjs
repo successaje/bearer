@@ -453,6 +453,40 @@ claim("Lending", "Vault No. 0025 went to the lender, still sealed, after its loa
   return "foreclose(25) by bob; custody alice → lend → bob; sealed, 0 signatures";
 });
 
+// 6c. The switch: a vault handed on after its owner went quiet, and one kept while its beneficiary
+// didn't exist (docs/features/switch.md).
+
+const SWITCH = "bearer-switch.testnet";
+const SW_RELEASE = "5pL3cBmmJuPaPo6cr3qk1szzkxFrq8JV6SjteN25b4cW";
+const SW_MISSING = "9nM1Au5mwka3kTLw1uxkde6nUpD8zdyefxkS8DubirGt";
+const STRANGER = "bearer-1108-ffb3.testnet";
+const eventsOf = (tx) =>
+  tx.receipts_outcome.flatMap((r) => r.outcome.logs).filter((l) => l.startsWith("EVENT_JSON:")).map((l) => JSON.parse(l.slice(11)));
+
+claim("Dead man's switch", "Vault No. 0029 went to bob, still sealed, after alice stopped checking in; a stranger triggered it", `NEAR archival RPC, tx ${short(SW_RELEASE)}`, async () => {
+  const [tx, v] = await Promise.all([nearTx(SW_RELEASE, STRANGER), vault("29")]);
+  expect(tx, "transaction not found");
+  const [call] = calls(tx);
+  expect(tx.status.SuccessValue !== undefined && tx.transaction.receiver_id === SWITCH && call?.method_name === "release", `it isn't a successful release on ${SWITCH}`);
+  expect(argsOf(call).token_id === "29" && ![ALICE, BOB].includes(tx.transaction.signer_id), `release(${argsOf(call).token_id}) by ${tx.transaction.signer_id}`);
+  expect(eventsOf(tx).some((e) => e.standard === "bearer_switch" && e.event === "released"), "no released event");
+  expect(inOrder(v.custody, [ALICE, SWITCH, BOB]), "its custody doesn't show alice → switch → bob");
+  expect(v.state.kind === "sealed" && v.signatures_requested === 0, `state ${v.state.kind}, ${v.signatures_requested} signatures`);
+  return `release(29) by ${tx.transaction.signer_id}; custody alice → switch → bob; sealed, 0 signatures`;
+});
+
+claim("Dead man's switch", "Vault No. 0030 stayed in the switch when its beneficiary didn't exist, then went back to alice", `NEAR archival RPC, tx ${short(SW_MISSING)}`, async () => {
+  const [tx, v] = await Promise.all([nearTx(SW_MISSING, STRANGER), vault("30")]);
+  expect(tx, "transaction not found");
+  const [call] = calls(tx);
+  expect(tx.transaction.receiver_id === SWITCH && call?.method_name === "release" && argsOf(call).token_id === "30", "it isn't release(30) on the switch");
+  const missing = eventsOf(tx).find((e) => e.standard === "bearer_switch" && e.event === "beneficiary_missing");
+  expect(missing, "no beneficiary_missing event");
+  expect(!eventsOf(tx).some((e) => e.event === "nft_transfer"), "the vault moved in that transaction");
+  expect(inOrder(v.custody, [ALICE, SWITCH, ALICE]), "its custody doesn't show alice → switch → alice");
+  return `release(30): beneficiary_missing (${missing.data[0].beneficiary}); custody alice → switch → alice; ${v.state.kind}`;
+});
+
 // 7. Bearer links: a vault sent as a link, then passed on (docs/features/bearer-links.md).
 
 claim("Bearer links", "Vault No. 0010 passed through three links and on to an account, still sealed", "bearer.testnet vault view", async () => {

@@ -1,0 +1,89 @@
+{
+  "measured_at": "2026-11-12T00:38:05.567Z",
+  "bearer": "bearer.testnet",
+  "switch": "bearer-switch.testnet",
+  "switch_code_hash": "8UD16nKpgh2aZFd3SB6WUwZB29yBN5U7UxzsgBkonFhh",
+  "steps": [
+    {
+      "step": "a stranger hands vault 29 to bob",
+      "by": "bearer-1108-ffb3.testnet",
+      "call": "bearer-switch.testnet.release",
+      "tx": "https://testnet.nearblocks.io/txns/5pL3cBmmJuPaPo6cr3qk1szzkxFrq8JV6SjteN25b4cW",
+      "tgas": 15.26,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "released"
+      ]
+    },
+    {
+      "step": "alice takes vault 30 back",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-switch.testnet.take_back",
+      "tx": "https://testnet.nearblocks.io/txns/HBey72Mruo2PMXgjzWkrhcjoTcPuBwURS53h4Kj1oTmw",
+      "tgas": 11.521,
+      "refused": null,
+      "events": [
+        "nft_transfer",
+        "taken_back"
+      ]
+    }
+  ],
+  "taken_back": "earlier, in the part this run picked up from",
+  "released": {
+    "token_id": "29",
+    "owner": "bob.bearer-1108-ffb3.testnet",
+    "state": {
+      "kind": "sealed"
+    },
+    "signatures_requested": 0,
+    "custody": [
+      "alice.bearer-1108-ffb3.testnet",
+      "bearer-switch.testnet",
+      "bob.bearer-1108-ffb3.testnet"
+    ],
+    "owner_deposit_back_yocto": "10000000000000000000000",
+    "deposit_back_exact": true
+  },
+  "missing_beneficiary": {
+    "token_id": "30",
+    "beneficiary": "ghost.bearer-1108-ffb3.testnet",
+    "after_release_attempt": {
+      "switch": {
+        "token_id": "30",
+        "owner": "alice.bearer-1108-ffb3.testnet",
+        "beneficiary": "ghost.bearer-1108-ffb3.testnet",
+        "interval_ns": "70000000000",
+        "last_check_in_ns": "1794443719075927759",
+        "armed_at_ns": "1794443719075927759",
+        "deposit": "10000000000000000000000",
+        "state": {
+          "kind": "armed"
+        }
+      },
+      "vault": {
+        "owner": "bearer-switch.testnet",
+        "state": {
+          "kind": "sealed"
+        },
+        "signatures_requested": 0,
+        "custody": [
+          "alice.bearer-1108-ffb3.testnet",
+          "bearer-switch.testnet"
+        ]
+      }
+    },
+    "finally": {
+      "owner": "alice.bearer-1108-ffb3.testnet",
+      "state": {
+        "kind": "sealed"
+      },
+      "signatures_requested": 0,
+      "custody": [
+        "alice.bearer-1108-ffb3.testnet",
+        "bearer-switch.testnet",
+        "alice.bearer-1108-ffb3.testnet"
+      ]
+    }
+  }
+}

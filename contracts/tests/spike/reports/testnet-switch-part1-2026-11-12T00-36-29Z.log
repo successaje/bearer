@@ -1,0 +1,28 @@
+alice creates "Switch run: taken back": ok · 28.249 Tgas · events nft_mint, vault_created, keys_set · https://testnet.nearblocks.io/txns/J2XWkDtJdsLBzUoMyvsKUeDk3fsAFNyX8GHAsBnSYnUw
+alice creates "Switch run: released": ok · 28.2 Tgas · events nft_mint, vault_created, keys_set · https://testnet.nearblocks.io/txns/N3McVpomoZvLCzJF593KrRC3drYVEzowYTJ1o422ndQ
+alice creates "Switch run: no such heir": ok · 28.776 Tgas · events nft_mint, vault_created, keys_set · https://testnet.nearblocks.io/txns/6W5n3FqXMbvbJrSs7QuwpKPtxiaVW4L5wweaHwQYZsxi
+alice pays three switch deposits: ok · 2.037 Tgas · events none · https://testnet.nearblocks.io/txns/7mR9z19SoxUAyT8imadDBsLWmp2geYa2jq7f5Mh6THwh
+alice puts vault 28 in a switch for bob, a year between check-ins: ok · 9.323 Tgas · events nft_transfer, armed · https://testnet.nearblocks.io/txns/97sPWLBPQPxqvmPswFcchR8Hkuc6zJVBorkBXsY6aRpQ
+alice breaks the seal on her vault in the switch: refused, ERR_NOT_OWNER · 2.305 Tgas · events none · https://testnet.nearblocks.io/txns/AkP8yubwmHguJQBb5HnwCETWmQLowextLC6C3weUn1t6
+bob checks in for alice: refused, ERR_NOT_OWNER · 2.12 Tgas · events none · https://testnet.nearblocks.io/txns/wNxsYYeoanjodBiSxbjdXzYZUTv7m2n2c1LDtB5LDwQ
+a stranger hands it over early: refused, ERR_NOT_SILENT · 1.885 Tgas · events none · https://testnet.nearblocks.io/txns/DaCcD5tQumVEJVGypk6i637LYuV2RJMh7coY1tzWTf9F
+alice checks in: ok · 2.369 Tgas · events checked_in · https://testnet.nearblocks.io/txns/6yCCN9mqFirKXXnpy1j41tes2276LrDF6KNsYwg7nSEr
+alice changes it to two years: ok · 2.421 Tgas · events updated · https://testnet.nearblocks.io/txns/3LYpUAtRVisPyzq9GfVdG8crRSiLqY2JnzZzBSbKpc5i
+alice takes it back: ok · 11.541 Tgas · events nft_transfer, taken_back · https://testnet.nearblocks.io/txns/3gBk1Q7hqFHToDXLfghuTqsG4LwdzMV8FEt7B7hFuPWS
+alice puts vault 29 in a switch for bob, 70 s between check-ins: ok · 9.322 Tgas · events nft_transfer, armed · https://testnet.nearblocks.io/txns/FQu7tTsEEjrnpiMy6t26zq2jyqZfiYbHEHJHdFJrDgTL
+alice puts vault 30 in a switch for ghost.bearer-1108-ffb3.testnet, which doesn't exist: ok · 9.342 Tgas · events nft_transfer, armed · https://testnet.nearblocks.io/txns/9GdDBw5wWCLRSFkvAcsK97ZPv2WUoM1fKTxoNTCD57gw
+waiting for 2026-11-12T00:36:29.075Z…
+a stranger hands vault 30 to ghost.bearer-1108-ffb3.testnet: refused, ActionError · 5.624 Tgas · events beneficiary_missing · https://testnet.nearblocks.io/txns/9nM1Au5mwka3kTLw1uxkde6nUpD8zdyefxkS8DubirGt
+file:///Users/finisher/Documents/github/bearer/.worktrees/switch/contracts/tests/spike/switch-testnet.ts:111
+  if (expect !== null ? code !== expect : code) throw new Error(`${label}: expected ${expect ?? "success"}, got ${code ?? "success"}`);
+                                                      ^
+
+Error: a stranger hands vault 30 to ghost.bearer-1108-ffb3.testnet: expected success, got ActionError
+    at tx (file:///Users/finisher/Documents/github/bearer/.worktrees/switch/contracts/tests/spike/switch-testnet.ts:111:55)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async run (file:///Users/finisher/Documents/github/bearer/.worktrees/switch/contracts/tests/spike/switch-testnet.ts:216:3)
+    at async file:///Users/finisher/Documents/github/bearer/.worktrees/switch/contracts/tests/spike/switch-testnet.ts:278:25
+
+Node.js v24.2.0
+
+[exited with code 0]

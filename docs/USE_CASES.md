@@ -16,8 +16,8 @@ take anything out. Every use case below leans on at least one of these:
   sealed.
 
 Status: **Live** works on the hosted site today (`bearer.testnet`). **v2** works on the v2
-contract (`bearer-v2.testnet`) and in the v2 preview, not on the hosted site. **Idea** needs new
-work.
+contract (`bearer-v2.testnet`) and in the v2 preview, not on the hosted site. **Branch** works on
+testnet and in that branch's preview, not on the hosted site yet. **Idea** needs new work.
 
 ## Gifts and family
 
@@ -57,6 +57,7 @@ work.
 | 17 | **Borrow against Bitcoin on NEAR without wrapping it.** A lending contract holds a sealed vault as collateral and returns it on repayment; if it isn't repaid by the due date, the lender takes it. | A sealed vault can't be drained, so the lender knows the collateral is still there. The market and the schedule already hold vaults the same way. | Live (`bearer-lend.testnet`, locked; [docs/features/lend.md](features/lend.md)) |
 | 18 | **Proof of funds before a deal.** A seller shares the vault page; the buyer sees confirmed coins and the seal before agreeing. | Live checks from the chains, not a screenshot. | Live |
 | 19 | **Grants and bounties paid in native coins.** A DAO schedules a vault to each grantee for milestone day. | Paid in native BTC or SOL, scheduled from NEAR, with the date kept by a contract. | Live (schedule) |
+| 20 | **If I go quiet.** Savings that pass on: the owner checks in now and then, and if they stop for a whole interval (a year, say), anyone can hand the vault to the person they named. | The beneficiary can check that nothing has been taken out while it waited, and it reaches them with no custodian, lawyer or fixed date. The owner keeps adding to it and can change their mind at any time. | Branch (`switch`, `bearer-switch.testnet`; [docs/features/switch.md](features/switch.md)) |
 
 ## What Bearer doesn't do
 

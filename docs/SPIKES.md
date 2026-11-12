@@ -3,6 +3,49 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-12 · If I go quiet: the dead man's switch on testnet
+
+`bearer-switch.testnet` (faucet-created) runs `contracts/res/switch.wasm`, the reproducible build of
+`c74b2c8`: two builds from a clean checkout gave identical bytes (194,274 bytes, sha256
+`6efa0f8b…1cf8`); on-chain code hash `8UD16nKp…nFhh`, which matches. It was initialised with
+`nft_contract = bearer.testnet` and a 0.01 NEAR switch deposit
+([tx](https://testnet.nearblocks.io/txns/6NWnmL9gCzQScr5HM9AjXtqK8obYrfmjtwkw23GVAxg6)). It isn't locked yet: the account still has
+its key (D9).
+
+`pnpm spike:switch run` put three fresh vaults of alice's in the switch:
+
+- **Taken back.** No. 0028, for bob, a year between check-ins. alice breaking its seal was refused
+  (`ERR_NOT_OWNER`), so was bob checking in for her (`ERR_NOT_OWNER`), and so was a stranger
+  handing it over early (`ERR_NOT_SILENT`). alice checked in
+  ([tx](https://testnet.nearblocks.io/txns/6yCCN9mqFirKXXnpy1j41tes2276LrDF6KNsYwg7nSEr)), changed the interval to two years
+  ([tx](https://testnet.nearblocks.io/txns/3LYpUAtRVisPyzq9GfVdG8crRSiLqY2JnzZzBSbKpc5i)) and took it back
+  ([tx](https://testnet.nearblocks.io/txns/3gBk1Q7hqFHToDXLfghuTqsG4LwdzMV8FEt7B7hFuPWS)): it came back sealed.
+- **Handed on.** No. 0029, for bob, 70 s between check-ins. alice went quiet; after the interval a
+  stranger (the parent test account) called `release` and the vault went to bob
+  ([tx](https://testnet.nearblocks.io/txns/5pL3cBmmJuPaPo6cr3qk1szzkxFrq8JV6SjteN25b4cW)), sealed with 0 signatures; custody shows
+  alice, then the switch, then bob. alice signed nothing meanwhile, and her balance rose by exactly
+  her 0.01 NEAR deposit.
+- **No such heir.** No. 0030, for `ghost.bearer-1108-ffb3.testnet`, an account nobody has created.
+  After the interval the stranger's `release` sent the 1-yoctoNEAR probe, which failed; the switch
+  emitted `beneficiary_missing` and kept the vault, sealed
+  ([tx](https://testnet.nearblocks.io/txns/9nM1Au5mwka3kTLw1uxkde6nUpD8zdyefxkS8DubirGt)). alice then took it back
+  ([tx](https://testnet.nearblocks.io/txns/HBey72Mruo2PMXgjzWkrhcjoTcPuBwURS53h4Kj1oTmw)).
+
+Putting a vault in the switch took 9.3 Tgas, a check-in 2.4, an update 2.4, taking it back 11.5, a
+hand-over 15.3 and the refused hand-over 5.6, one run each. The run stopped once, after the
+refused hand-over: the script had counted the probe's expected failure as an error. The contract
+had already done the right thing, so the run was finished from there (`SWITCH_QUIET=29,30`)
+instead of minting three more vaults. Both parts are kept:
+[`testnet-switch-part1-2026-11-12T00-36-29Z.log`](../contracts/tests/spike/reports/testnet-switch-part1-2026-11-12T00-36-29Z.log)
+(console output up to the stop) and
+[`testnet-switch-2026-11-12T00-38-05.963Z.json`](../contracts/tests/spike/reports/testnet-switch-2026-11-12T00-38-05.963Z.json).
+
+```bash
+cd contracts/tests
+pnpm spike:switch setup
+pnpm spike:switch run
+```
+
 ## 2026-11-11 · Borrowing against a vault, on the locked contract
 
 `bearer-lend.testnet` (faucet-created) runs `contracts/res/lend.wasm`, the reproducible build of

@@ -112,7 +112,7 @@ export function SwitchPanel({
           </span>
         ) : !viewer ? (
           <Button variant={quiet ? "primary" : "secondary"} onClick={onConnect}>
-            Connect a wallet {quiet ? "to hand it over" : "to check in"}
+            {quiet ? "Connect a wallet to hand it over" : `Are you ${sw.owner}? Connect to check in`}
           </Button>
         ) : isOwner ? (
           <>

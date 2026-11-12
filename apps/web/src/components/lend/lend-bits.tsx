@@ -13,12 +13,14 @@ export function LendLock({ compact = false }: { compact?: boolean }) {
   return <EscrowLock name="Lending" account={LEND_CONTRACT} holds="a pledged vault" facts={facts.data} compact={compact} />;
 }
 
-/** "10 min", "1 day", "30 days", "1 year". */
+/** "10 min", "1 day", "3 days 21 h", "30 days", "1 year". Under a week, leftover hours are kept. */
 export function termText(ms: number) {
   const min = Math.round(ms / 60_000);
   if (min < 60) return `${min} min`;
   const h = Math.round(min / 60);
   if (h < 24) return `${h} h`;
+  const whole = Math.floor(h / 24);
+  if (h % 24 && whole < 7) return `${whole === 1 ? "1 day" : `${whole} days`} ${h % 24} h`;
   const d = Math.round(h / 24);
   if (d % 365 === 0) return d === 365 ? "1 year" : `${d / 365} years`;
   return d === 1 ? "1 day" : `${d} days`;

@@ -75,6 +75,11 @@ with `return_unarmed` (D8).
   with alice's deposit back to the yoctoNEAR; one kept by the switch while its beneficiary didn't
   exist, then taken back. The owner opening the vault, someone else checking in, and an early
   hand-over were each refused. `pnpm verify` re-reads the hand-over and the kept vault on chain.
+- A switch stays on testnet for visitors: alice's vault No. 0031, "For Bob, if I go quiet", for
+  bob with a silence of 3 days 21 h, so it falls due at the start of judging, 16 Nov 2026 00:00 UTC
+  ([tx](https://testnet.nearblocks.io/txns/6wD9VohdprNwm32RMTEr3sutR857EcxUcwgc8vdxj9PM)). Until
+  then its page counts down; from then, anyone with a testnet account can hand it to bob. It holds
+  no coins: the links treasury has too few sats left for another payment.
 - The simulated demo seeds ada's switch for zara (No. 0031) and tunde's overdue one naming ada
   (No. 0033), so every action can be tried without a wallet.
 

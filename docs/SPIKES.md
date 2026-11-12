@@ -3,14 +3,19 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
-## 2026-11-12 · If I go quiet: the dead man's switch on testnet
+## 2026-11-12 · If I go quiet: the dead man's switch, on the locked contract
 
 `bearer-switch.testnet` (faucet-created) runs `contracts/res/switch.wasm`, the reproducible build of
 `c74b2c8`: two builds from a clean checkout gave identical bytes (194,274 bytes, sha256
 `6efa0f8b…1cf8`); on-chain code hash `8UD16nKp…nFhh`, which matches. It was initialised with
 `nft_contract = bearer.testnet` and a 0.01 NEAR switch deposit
-([tx](https://testnet.nearblocks.io/txns/6NWnmL9gCzQScr5HM9AjXtqK8obYrfmjtwkw23GVAxg6)). It isn't locked yet: the account still has
-its key (D9).
+([tx](https://testnet.nearblocks.io/txns/6NWnmL9gCzQScr5HM9AjXtqK8obYrfmjtwkw23GVAxg6)). It was locked after the run (below).
+
+**Locked**, with the owner's go-ahead: `CONFIRM_LOCK=bearer-switch.testnet pnpm spike:switch lock`
+checked the deployed code hash against `contracts/res/switch.wasm`, then deleted the only key, a
+full-access key ([tx](https://testnet.nearblocks.io/txns/GyLmqGMPoCNf83WzN7BWvsy9EtK3KLxsDeQpvdtUfbnZ)). Afterwards three RPCs (rpc.testnet.near.org,
+test.rpc.fastnear.com, archival-rpc.testnet.fastnear.com) reported 0 keys and the same code hash.
+Report: [`testnet-switch-lock-2026-11-12T00-53-14.870Z.json`](../contracts/tests/spike/reports/testnet-switch-lock-2026-11-12T00-53-14.870Z.json).
 
 `pnpm spike:switch run` put three fresh vaults of alice's in the switch:
 

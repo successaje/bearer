@@ -1,10 +1,11 @@
 # Feature: if I go quiet (a dead man's switch)
 
-**Contract:** `contracts/switch`, deployed as `bearer-switch.testnet` · **On the site:** "If I go
+**Contract:** `contracts/switch`, deployed as `bearer-switch.testnet` (reproducible build of `c74b2c8`,
+locked) · **On the site:** "If I go
 quiet" on a sealed vault the owner holds; a switch panel on the vault's page ("I'm still here",
 "Change who or how long", "Take it back", or "Take what's yours" for the beneficiary once it's
-due); "If you go quiet" and "Left to you" on My vaults · **Status:** on branch `switch`; run on
-testnet on 2026-11-12 on the reproducible build of `c74b2c8`, not locked yet
+due); "If you go quiet" and "Left to you" on My vaults · **Status:** live on the hosted site; run on
+testnet and locked on 2026-11-12
 
 **For:** whoever decides whether this ships. What it does, the rules, and what was checked.
 
@@ -77,10 +78,10 @@ with `return_unarmed` (D8).
 - The simulated demo seeds ada's switch for zara (No. 0031) and tunde's overdue one naming ada
   (No. 0033), so every action can be tried without a wallet.
 
-## Before it's locked
+## Locked
 
-`bearer-switch.testnet` runs the reproducible build and still has its key (D9), so whoever holds
-that key could act as the owner of a vault in the switch. The site says so on every switch panel.
-To lock it like the other escrow contracts: `CONFIRM_LOCK=bearer-switch.testnet pnpm spike:switch
-lock`, which refuses unless the deployed code is `contracts/res/switch.wasm`. Locking can't be
-undone.
+`bearer-switch.testnet` runs `contracts/res/switch.wasm`, the reproducible build of `c74b2c8` (two
+builds, identical bytes; code hash `8UD16nKp…nFhh`), and has no keys: its only one was deleted on
+2026-11-12 ([tx](https://testnet.nearblocks.io/txns/GyLmqGMPoCNf83WzN7BWvsy9EtK3KLxsDeQpvdtUfbnZ)), so nobody can change it or act as the owner of a vault in it (D9).
+The Locked contracts workflow rebuilds it from `c74b2c8` and compares the result with the code on
+chain, and `pnpm verify` checks the keys, the code hash and the commit.

@@ -181,9 +181,9 @@ keys and sends nothing:
 pnpm verify        # or: node scripts/verify.mjs  (Node 22+, nothing to install)
 ```
 
-You should see 43 ✓ in under a minute, ending `43 claims in … s: 43 ✓, 0 ✗`. Among them:
+You should see 47 ✓ in under a minute, ending `47 claims in … s: 47 ✓, 0 ✗`. Among them:
 
-- each of the four contracts has no access keys, runs the wasm committed in `contracts/res/`, and
+- each of the five contracts has no access keys, runs the wasm committed in `contracts/res/`, and
   names a commit that is in this repository;
 - the coin deposited at vault No. 0006's address stayed put until a withdrawal spent it, and that
   spend is, byte for byte, the one the contract signed after its new holder broke the seal;
@@ -245,7 +245,7 @@ shasum -a 256 contracts/target/near/bearer/bearer.wasm   # 05b27506…8619, as i
 ```
 
 The [Locked contracts](https://github.com/successaje/bearer/actions/workflows/locked-contracts.yml)
-workflow does this on GitHub for all four locked contracts, each from the commit it names, and
+workflow does this on GitHub for all five locked contracts, each from the commit it names, and
 also compares the result with the code hash on NEAR testnet.
 
 **Repeat the testnet runs** from `contracts/tests`. This needs `BEARER_TESTNET_PARENT` in `.env`,
@@ -286,7 +286,9 @@ What people could use them for:
   foreclosed and one taken back on testnet, each balance change exact (docs/SPIKES.md).
 - **If I go quiet.** Keep saving into a vault and check in now and then. Stop for a whole interval
   (a year, say) and anyone can hand it to the person you named, sealed, and only to them; until then
-  you can change who, or take it back ([docs/features/switch.md](docs/features/switch.md)).
+  you can change who, or take it back ([docs/features/switch.md](docs/features/switch.md)). It runs
+  on `bearer-switch.testnet`, reproducibly built and locked: one vault handed on by a stranger after
+  its owner went quiet, one kept while its beneficiary didn't exist (docs/SPIKES.md).
 - **Collectibles.** A named, finished vault with a printable certificate, holding native assets,
   that can be handed on again while sealed.
 
@@ -332,8 +334,9 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 - **Testnet prototype, not audited.**
 - **Trust.** It relies on NEAR, its MPC signing network, the deployed contracts and each external
-  chain's normal operation. Bearer's, the market's, the schedule's and the lending contracts are
-  open source, reproducibly built and locked: none has a key, so nobody can change them.
+  chain's normal operation. Bearer's, the market's, the schedule's, the lending and the switch
+  contracts are open source, reproducibly built and locked: none has a key, so nobody can change
+  them.
 - **Opened is final.** Once opened, a vault can't be transferred or sealed again.
 - **Balances.** The ones shown come from public data sources (Blockstream Esplora, Base Sepolia RPC,
   Solana devnet RPC), with their source, time and confirmation status. They can lag or be

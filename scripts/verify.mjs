@@ -176,13 +176,14 @@ const sats = (n) => `${Number(n).toLocaleString("en-US")} sats`;
 const checks = [];
 const claim = (group, text, source, run) => checks.push({ group, text, source, run });
 
-// 1. The four contracts are locked and run the builds committed in contracts/res.
+// 1. The five contracts are locked and run the builds committed in contracts/res.
 
 const LOCKED = [
   { account: BEARER, wasm: "bearer.wasm", lockTx: "J87dPH7D1LG7PLwvyzqwFbBKMsQ7pAd7Nxfn1DrvsaVT" },
   { account: "bearer-market.testnet", wasm: "market.wasm", lockTx: "G8t9cc9xKa7ymc84hCtk8xeRG2JKBao8auFLKLg1SHVK" },
   { account: "bearer-schedule.testnet", wasm: "schedule.wasm", lockTx: "6wAyfjD218s7DvCwuzK7nEtAdLDQK5eZujY3caDJRekx" },
   { account: "bearer-lend.testnet", wasm: "lend.wasm", lockTx: "Cia5mDdMobJJCPWUx6kgcAhuNDiYhBxBPukb1XW4ZFuX" },
+  { account: "bearer-switch.testnet", wasm: "switch.wasm", lockTx: "GyLmqGMPoCNf83WzN7BWvsy9EtK3KLxsDeQpvdtUfbnZ" },
 ];
 const SUMS = readFileSync(join(ROOT, "contracts/res/SHA256SUMS"), "utf8");
 

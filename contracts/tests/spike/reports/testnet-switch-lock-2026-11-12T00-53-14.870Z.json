@@ -1,0 +1,11 @@
+{
+  "measured_at": "2026-11-12T00:53:14.863Z",
+  "contract": "bearer-switch.testnet",
+  "code_hash": "8UD16nKpgh2aZFd3SB6WUwZB29yBN5U7UxzsgBkonFhh",
+  "wasm": "contracts/res/switch.wasm",
+  "deleted_keys": [
+    "ed25519:48zgQ3jYm9wQBCyonoqczPGq64WSZNbLGg4z4DdwzP8d"
+  ],
+  "tx": "https://testnet.nearblocks.io/txns/GyLmqGMPoCNf83WzN7BWvsy9EtK3KLxsDeQpvdtUfbnZ",
+  "keys_after": 0
+}

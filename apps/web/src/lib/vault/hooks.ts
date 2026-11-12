@@ -3,7 +3,7 @@
 import type { AttackKind, ChainTag, Finish, LoanTerms, VaultLoan, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
+import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
 import { getVaultClient } from "./client";
 import { fetchContractFacts } from "./contract-facts";
 
@@ -20,6 +20,8 @@ export const keys = {
   listing: (id: string) => ["listing", id] as const,
   loans: ["loans"] as const,
   loan: (id: string) => ["loan", id] as const,
+  switches: ["switches"] as const,
+  switchFor: (id: string) => ["switch", id] as const,
 };
 
 /** Brief 3.4: deposits appear automatically, polled every 10 s. */
@@ -133,6 +135,8 @@ function useRefresh() {
     void qc.invalidateQueries({ queryKey: keys.listing(id) });
     void qc.invalidateQueries({ queryKey: keys.loans });
     void qc.invalidateQueries({ queryKey: keys.loan(id) });
+    void qc.invalidateQueries({ queryKey: keys.switches });
+    void qc.invalidateQueries({ queryKey: keys.switchFor(id) });
   };
 }
 
@@ -321,6 +325,77 @@ export function useCancelLoanRequest() {
   return useMutation({
     mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).cancelLoanRequest(v.id, v.signer),
     onSuccess: (_r, v) => refresh(v.id),
+  });
+}
+
+/* ---------- a dead man's switch ---------- */
+
+export function useSwitches() {
+  return useQuery({ queryKey: keys.switches, queryFn: async () => (await getVaultClient()).switches(), refetchInterval: POLL_MS });
+}
+
+export function useSwitch(id: string) {
+  return useQuery({ queryKey: keys.switchFor(id), queryFn: async () => (await getVaultClient()).getSwitch(id), refetchInterval: POLL_MS });
+}
+
+/** The switch account's lock state: until it has no full-access keys, its key holder could act as the owner of every vault in it. */
+export function useSwitchFacts() {
+  return useQuery({
+    queryKey: ["switch-facts", SWITCH_CONTRACT],
+    queryFn: () => fetchContractFacts(SWITCH_CONTRACT as string),
+    enabled: Boolean(SWITCH_CONTRACT),
+    staleTime: 60_000,
+  });
+}
+
+export function useSwitchConfig() {
+  return useQuery({
+    queryKey: ["switch-config"],
+    queryFn: async () => (await getVaultClient()).switchConfig(),
+    enabled: Boolean(SWITCH_CONTRACT),
+    staleTime: Infinity,
+  });
+}
+
+export function useArmSwitch() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; beneficiary: string; intervalMs: number; signer: string }) =>
+      (await getVaultClient()).armSwitch(v.id, v.beneficiary, v.intervalMs, v.signer),
+    onSuccess: (_s, v) => refresh(v.id),
+  });
+}
+
+export function useCheckIn() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).checkIn(v.id, v.signer),
+    onSettled: (_s, _e, v) => refresh(v.id),
+  });
+}
+
+export function useUpdateSwitch() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; beneficiary?: string; intervalMs?: number; signer: string }) =>
+      (await getVaultClient()).updateSwitch(v.id, { beneficiary: v.beneficiary, intervalMs: v.intervalMs }, v.signer),
+    onSettled: (_s, _e, v) => refresh(v.id),
+  });
+}
+
+export function useTakeBackSwitch() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).takeBackSwitch(v.id, v.signer),
+    onSettled: (_r, _e, v) => refresh(v.id),
+  });
+}
+
+export function useReleaseSwitch() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).releaseSwitch(v.id, v.signer),
+    onSettled: (_r, _e, v) => refresh(v.id),
   });
 }
 

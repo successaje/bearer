@@ -287,6 +287,41 @@ export interface LoanTerms {
   termMs: number;
 }
 
+/* ---------- a dead man's switch (contracts/switch) ---------- */
+
+export type SwitchState = { kind: "armed" | "taking_back" | "releasing" };
+
+/**
+ * A sealed vault held by the switch. While its owner checks in, nothing happens; they can also
+ * change the beneficiary or the interval, or take it back. Once a whole interval passes without a
+ * check-in, anyone can hand it to the beneficiary, and only to them.
+ */
+export interface VaultSwitch {
+  token_id: string;
+  owner: string;
+  beneficiary: string;
+  /** How long a silence hands the vault over, in nanoseconds. */
+  interval_ns: string;
+  /** The owner's last sign of life: arming, a check-in or an update. */
+  last_check_in_ns: string;
+  armed_at_ns: string;
+  /** Held from the owner's balance; paid back to them when the switch ends, either way. */
+  deposit: string;
+  state: SwitchState;
+}
+
+export interface SwitchConfig {
+  nft_contract: string;
+  switch_deposit: string;
+  min_interval_ns: string;
+  max_interval_ns: string;
+}
+
+/** From this moment anyone may hand the vault to the beneficiary (ms since epoch). */
+export function switchDueMs(s: Pick<VaultSwitch, "last_check_in_ns" | "interval_ns">): number {
+  return Number((BigInt(s.last_check_in_ns) + BigInt(s.interval_ns)) / 1_000_000n);
+}
+
 /* ---------- an account's activity: what happened to the vaults it held, sold or was sent ---------- */
 
 /**
@@ -294,8 +329,11 @@ export interface LoanTerms {
  *   to you on its date; `scheduled_for_you`: someone scheduled one for you. These are other
  *   people's doing (`byOthers`), which is what notifications count.
  * - `foreclosed`: a vault you borrowed against went to the lender. Also other people's doing.
- * - `bought`, `returned` (delisted, a schedule cancelled, a loan repaid or its request cancelled),
- *   `listed`, `scheduled`, `pledged`, `collected` (you took a vault you lent against), `sent`: your own.
+ * - `inherited`: a switch handed you someone's vault after they went quiet; `passed_on`: your own
+ *   switch handed your vault to your beneficiary. Both are triggered by someone else.
+ * - `bought`, `returned` (delisted, a schedule cancelled, a loan repaid or its request cancelled,
+ *   a switch taken back), `listed`, `scheduled`, `pledged`, `collected` (you took a vault you lent
+ *   against), `armed` (you put a vault in a switch), `sent`: your own.
  */
 export type AccountEventKind =
   | "sold"
@@ -303,12 +341,15 @@ export type AccountEventKind =
   | "delivered"
   | "scheduled_for_you"
   | "foreclosed"
+  | "inherited"
+  | "passed_on"
   | "bought"
   | "returned"
   | "listed"
   | "scheduled"
   | "pledged"
   | "collected"
+  | "armed"
   | "sent";
 
 export interface AccountEvent {
@@ -417,6 +458,22 @@ export interface BearerClient {
   forecloseLoan(tokenId: string, signer: string): Promise<VaultView>;
   /** The borrower takes back a request nobody has funded, with its deposit. */
   cancelLoanRequest(tokenId: string, signer: string): Promise<VaultView>;
+
+  /** The switch contract's account, or null where this deployment has none. */
+  readonly switchId: string | null;
+  switches(): Promise<VaultSwitch[]>;
+  getSwitch(tokenId: string): Promise<VaultSwitch | null>;
+  switchConfig(): Promise<SwitchConfig>;
+  /** Puts a sealed vault in the switch for `beneficiary`, paying the switch deposit first if needed. */
+  armSwitch(tokenId: string, beneficiary: string, intervalMs: number, signer: string): Promise<VaultSwitch>;
+  /** "I'm still here": the owner restarts the clock. */
+  checkIn(tokenId: string, signer: string): Promise<VaultSwitch>;
+  /** The owner names a new beneficiary or interval; it counts as a check-in. */
+  updateSwitch(tokenId: string, changes: { beneficiary?: string; intervalMs?: number }, signer: string): Promise<VaultSwitch>;
+  /** The owner takes the vault back, with its deposit; resolves once it's back. */
+  takeBackSwitch(tokenId: string, signer: string): Promise<VaultView>;
+  /** Anyone may, once a whole interval has passed without a check-in; resolves once the beneficiary has it. */
+  releaseSwitch(tokenId: string, signer: string): Promise<VaultView>;
 
   /** The market contract's account, or null where this deployment has none. */
   readonly marketId: string | null;

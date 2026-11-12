@@ -1,4 +1,4 @@
-import type { ChainTag, Finish, HandoverSchedule, MarketListing, ObservedDeposit, VaultLoan, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
+import type { ChainTag, Finish, HandoverSchedule, MarketListing, ObservedDeposit, VaultLoan, VaultSwitch, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
 import { vaultPath } from "@bearer/sdk";
 
 /** Simulated chain state for one vault: what an explorer would show at its addresses. */
@@ -27,7 +27,7 @@ export interface MockVault {
 }
 
 export interface MockState {
-  version: 10;
+  version: 11;
   nextId: number;
   vaults: Record<string, MockVault>;
   accounts: string[];
@@ -37,6 +37,8 @@ export interface MockState {
   schedules: Record<string, HandoverSchedule>;
   /** Loans against vaults, by token. Their vaults are held by MOCK_LEND. */
   loans: Record<string, VaultLoan>;
+  /** Dead man's switches, by token. Their vaults are held by MOCK_SWITCH. */
+  switches: Record<string, VaultSwitch>;
   /** Market sales, for prices and payouts: on testnet these come from the index. */
   sales: MockSale[];
 }
@@ -60,6 +62,11 @@ export const MOCK_SCHEDULE_DEPOSIT = (10n ** 22n).toString();
 export const MOCK_LEND = "lend.testnet";
 /** 0.01 NEAR, as on the testnet lending contract. */
 export const MOCK_LOAN_DEPOSIT = (10n ** 22n).toString();
+
+/** The simulated switch contract (SWITCH_CONTRACT in mock mode). */
+export const MOCK_SWITCH = "switch.testnet";
+/** 0.01 NEAR, as on the testnet switch. */
+export const MOCK_SWITCH_DEPOSIT = (10n ** 22n).toString();
 
 /** The simulated market contract (MARKET_CONTRACT in mock mode). */
 export const MOCK_MARKET = "market.testnet";
@@ -504,14 +511,67 @@ export function seedState(now: number): MockState {
     };
   }
 
+  // Switches. 31: ada's, for her daughter zara, checked in 40 days ago with a year between
+  // check-ins. 33: tunde named ada and then went quiet: over a year without a check-in, so anyone
+  // can hand it to her now.
+  const switches: Record<string, VaultSwitch> = {};
+  const YEAR = 365 * DAY;
+  const armedVaults: {
+    id: string;
+    name: string;
+    finish: Finish;
+    owner: string;
+    beneficiary: string;
+    intervalMs: number;
+    armedAgo: number;
+    checkedInAgo: number;
+    btc: number;
+    sol: number;
+  }[] = [
+    { id: "31", name: "⏳ For Zara, if I go quiet", finish: "midnight", owner: "ada.testnet", beneficiary: "zara.testnet", intervalMs: YEAR, armedAgo: 200 * DAY, checkedInAgo: 40 * DAY, btc: 0.006, sol: 2 },
+    { id: "33", name: "💰 Grandpa Tunde's stack", finish: "ivory", owner: "tunde.testnet", beneficiary: "ada.testnet", intervalMs: YEAR, armedAgo: 500 * DAY, checkedInAgo: 400 * DAY, btc: 0.012, sol: 0 },
+  ];
+  for (const a of armedVaults) {
+    const created = now - a.armedAgo - DAY;
+    const addresses = mockAddresses(a.id);
+    const view = mockView(a.id, MOCK_SWITCH, created, addresses, { name: a.name, finish: a.finish });
+    view.custody = [
+      { account_id: a.owner, since_ns: ns(created) },
+      { account_id: MOCK_SWITCH, since_ns: ns(now - a.armedAgo) },
+    ];
+    vaults[a.id] = {
+      view,
+      addresses,
+      ledger: {
+        btc: ledger([sats(a.btc), [deposit(`${a.id}b`, sats(a.btc), created + HOUR)]]),
+        evm: ledger([0n, []]),
+        sol: a.sol ? ledger([lamports(a.sol), [deposit(`${a.id}s`, lamports(a.sol), created + 2 * HOUR)]]) : ledger([0n, []]),
+      },
+      withdrawals: [],
+      progress: {},
+      keysAt: created,
+    };
+    switches[a.id] = {
+      token_id: a.id,
+      owner: a.owner,
+      beneficiary: a.beneficiary,
+      interval_ns: ns(a.intervalMs),
+      last_check_in_ns: ns(now - a.checkedInAgo),
+      armed_at_ns: ns(now - a.armedAgo),
+      deposit: MOCK_SWITCH_DEPOSIT,
+      state: { kind: "armed" },
+    };
+  }
+
   return {
-    version: 10,
+    version: 11,
     nextId: 64,
     vaults,
-    accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", ATTACKER, "near.testnet", MOCK_MARKET, MOCK_SCHEDULE, MOCK_LEND],
+    accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", "zara.testnet", ATTACKER, "near.testnet", MOCK_MARKET, MOCK_SCHEDULE, MOCK_LEND, MOCK_SWITCH],
     listings,
     schedules,
     loans,
+    switches,
     sales,
   };
 }

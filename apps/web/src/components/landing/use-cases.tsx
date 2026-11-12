@@ -29,6 +29,13 @@ const USES: { tag: string; name: string; finish: Finish; title: string; body: st
     body: "Schedule it for a date. Until then nobody can withdraw, you included. On or after the day, anyone can hand it over, and only to her.",
   },
   {
+    tag: "If you go quiet",
+    name: "⏳ For Zara, if I go quiet",
+    finish: "midnight",
+    title: "Keep saving. If you stop checking in, it's hers.",
+    body: "Put it in a switch and tap \"I'm still here\" now and then. Go quiet for a whole year and anyone can hand it to her, still sealed, and only to her.",
+  },
+  {
     tag: "A wedding gift",
     name: "💌 For Ama & Kwame",
     finish: "ivory",

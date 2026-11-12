@@ -12,6 +12,7 @@ import {
   BUILD_COMMIT,
   IS_SIMULATED,
   LEND_CONTRACT,
+  SWITCH_CONTRACT,
   MARKET_CONTRACT,
   SCHEDULE_CONTRACT,
   explorer,
@@ -79,7 +80,7 @@ export function HoldingsRail({ observations }: { observations: ChainObservation[
         </div>
       )}
       <p className="border-line text-fg-2 mt-5 border-t pt-4 text-[13px] leading-relaxed">
-        Anyone can add coins to its addresses, sealed or not, even while a market, a schedule or a loan holds it. Only
+        Anyone can add coins to its addresses, sealed or not, even while a market, a schedule, a loan or a switch holds it. Only
         whoever holds the vault can ever take them out.
       </p>
     </RailCard>
@@ -90,6 +91,7 @@ function holderName(account: string) {
   if (account === MARKET_CONTRACT) return { name: "The market", detail: account, escrow: true };
   if (account === SCHEDULE_CONTRACT) return { name: "The schedule", detail: account, escrow: true };
   if (account === LEND_CONTRACT) return { name: "The lending contract", detail: account, escrow: true };
+  if (account === SWITCH_CONTRACT) return { name: "The switch", detail: account, escrow: true };
   return { name: shortAccount(account), detail: null, escrow: false };
 }
 
@@ -185,7 +187,7 @@ export function RulesRail({ vault, facts }: { vault: VaultView; facts: ContractF
           title="Only the holder can break the seal"
           live={`Held now by ${heldBy(vault.owner_id)}`}
         >
-          Not a former holder. The market, the schedule and the lending contract hold vaults with no way to open them.
+          Not a former holder. The market, the schedule, the lending contract and the switch hold vaults with no way to open them.
         </Rule>
         <Rule
           icon={<Signature />}

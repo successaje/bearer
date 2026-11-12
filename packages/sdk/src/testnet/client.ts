@@ -14,7 +14,9 @@ import type {
   MarketConfig,
   MarketListing,
   RecordedAttack,
+  SwitchConfig,
   VaultLoan,
+  VaultSwitch,
   VaultView,
   WithdrawRequest,
   Withdrawal,
@@ -55,6 +57,8 @@ export interface TestnetClientOptions {
   scheduleId?: string | null;
   /** The lending contract (contracts/lend) that lends NEAR against this contract's vaults, if any. */
   lendId?: string | null;
+  /** The switch contract (contracts/switch) that hands this contract's vaults on if their owner goes quiet, if any. */
+  switchId?: string | null;
   /** Attacks sent to this contract as real transactions; `runAttack` re-reads their outcome. */
   recordedAttacks?: RecordedAttack[];
   wallet: WalletAdapter;
@@ -82,6 +86,7 @@ export class TestnetBearerClient implements BearerClient {
   private marketCfg: Promise<MarketConfig> | null = null;
   private scheduleDeposit: Promise<string> | null = null;
   private lendCfg: Promise<LendConfig> | null = null;
+  private switchCfg: Promise<SwitchConfig> | null = null;
 
   constructor(private readonly opts: TestnetClientOptions) {
     this.ep = { ...TESTNET_ENDPOINTS, ...opts.endpoints };
@@ -418,6 +423,98 @@ export class TestnetBearerClient implements BearerClient {
     return this.vaultReaches(tokenId, signer, "The vault hasn't come back yet. Check the vault page in a moment.");
   }
 
+  /* ---------- a dead man's switch: escrow until the owner goes quiet (contracts/switch) ---------- */
+
+  get switchId() {
+    return this.opts.switchId ?? null;
+  }
+
+  private switcher() {
+    if (!this.opts.switchId) throw new Error("This deployment has no switch contract.");
+    return this.opts.switchId;
+  }
+
+  async switches() {
+    if (!this.opts.switchId) return [];
+    return this.near.view<VaultSwitch[]>(this.opts.switchId, "switches", { from_index: 0, limit: 100 });
+  }
+
+  async getSwitch(tokenId: string) {
+    if (!this.opts.switchId) return null;
+    return this.near.view<VaultSwitch | null>(this.opts.switchId, "switch_for", { token_id: tokenId });
+  }
+
+  switchConfig() {
+    this.switchCfg ??= this.near.view<SwitchConfig>(this.switcher(), "get_config");
+    return this.switchCfg;
+  }
+
+  async armSwitch(tokenId: string, beneficiary: string, intervalMs: number, signer: string) {
+    this.signerFor(signer);
+    const sw = this.switcher();
+    const [{ switch_deposit }, balance] = await Promise.all([this.switchConfig(), this.near.view<string>(sw, "deposit_of", { account_id: signer })]);
+    const msg = { beneficiary, interval_ns: (BigInt(Math.floor(intervalMs)) * 1_000_000n).toString() };
+    // nft_transfer_call forwards only 1 yoctoNEAR, so the switch deposit is paid first.
+    const send = {
+      receiverId: this.opts.contractId,
+      calls: [{ methodName: "nft_transfer_call", args: { receiver_id: sw, token_id: tokenId, msg: JSON.stringify(msg) }, gas: 100n * TGAS, deposit: ONE_YOCTO }],
+    };
+    const pay = { receiverId: sw, calls: [{ methodName: "deposit_for_switch", args: {}, gas: 30n * TGAS, deposit: BigInt(switch_deposit) }] };
+    const results = await this.sendAll(BigInt(balance) >= BigInt(switch_deposit) ? [send] : [pay, send]);
+    if (results.at(-1)?.returnValue === false) {
+      throw new Error("The switch sent the vault back: check the beneficiary and the interval, and that the vault is still sealed.");
+    }
+    for (let i = 0; i < 20; i++) {
+      const s = await this.getSwitch(tokenId);
+      if (s) return s;
+      await sleep(1000);
+    }
+    throw new Error("The vault was sent, but its switch hasn't appeared yet. Check the vault page in a moment.");
+  }
+
+  async checkIn(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.switcher(), [{ methodName: "check_in", args: { token_id: tokenId }, gas: 30n * TGAS, deposit: ONE_YOCTO }]);
+    const s = await this.getSwitch(tokenId);
+    if (!s) throw new Error("This vault isn't in a switch any more.");
+    return s;
+  }
+
+  async updateSwitch(tokenId: string, changes: { beneficiary?: string; intervalMs?: number }, signer: string) {
+    this.signerFor(signer);
+    const args = {
+      token_id: tokenId,
+      beneficiary: changes.beneficiary ?? null,
+      interval_ns: changes.intervalMs === undefined ? null : (BigInt(Math.floor(changes.intervalMs)) * 1_000_000n).toString(),
+    };
+    await this.opts.wallet.send(this.switcher(), [{ methodName: "update", args, gas: 30n * TGAS, deposit: ONE_YOCTO }]);
+    const s = await this.getSwitch(tokenId);
+    if (!s) throw new Error("This vault isn't in a switch any more.");
+    return s;
+  }
+
+  async takeBackSwitch(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.switcher(), [{ methodName: "take_back", args: { token_id: tokenId }, gas: 100n * TGAS, deposit: ONE_YOCTO }]);
+    return this.vaultReaches(tokenId, signer, "The vault hasn't come back yet. Check the vault page in a moment.");
+  }
+
+  async releaseSwitch(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    const s = await this.getSwitch(tokenId);
+    if (!s) throw new Error("This vault isn't in a switch.");
+    await this.opts.wallet.send(this.switcher(), [{ methodName: "release", args: { token_id: tokenId }, gas: 150n * TGAS, deposit: 0n }]);
+    for (let i = 0; i < 20; i++) {
+      const vault = await this.getVault(tokenId);
+      if (vault?.owner_id === s.beneficiary) return vault;
+      // A beneficiary account that doesn't exist puts the switch back as it was (D7).
+      const now = await this.getSwitch(tokenId);
+      if (now?.state.kind === "armed") throw new Error(`${s.beneficiary} doesn't exist on NEAR, so the vault stays in the switch.`);
+      await sleep(1000);
+    }
+    throw new Error("The hand-over went through, but the vault hasn't arrived yet. Check the vault page in a moment.");
+  }
+
   /* ---------- the market: escrow by transfer (docs/features/market.md) ---------- */
 
   get marketId() {
@@ -567,7 +664,7 @@ export class TestnetBearerClient implements BearerClient {
     for (const m of moves?.data ?? []) if (m.contract_account_id === this.opts.contractId) ids.add(m.token_id);
     const vaults = await Promise.all([...ids].map((id) => this.getVault(id)));
     const market = this.opts.marketId ?? null;
-    const events = vaults.flatMap((v) => (v ? custodyEvents(v, accountId, market, this.opts.scheduleId ?? null, this.opts.lendId ?? null) : []));
+    const events = vaults.flatMap((v) => (v ? custodyEvents(v, accountId, market, this.opts.scheduleId ?? null, this.opts.lendId ?? null, this.opts.switchId ?? null) : []));
 
     // Match each sale to the market's payment to the seller, made in the same transaction a moment after the vault moved.
     const payouts = (receipts?.data ?? [])

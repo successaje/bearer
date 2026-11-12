@@ -31,6 +31,14 @@ export const LEND_CONTRACT: string | null =
   process.env.NEXT_PUBLIC_LEND_CONTRACT ||
   (NETWORK === "mock" ? "lend.testnet" : BEARER_CONTRACT === "bearer.testnet" ? "bearer-lend.testnet" : null);
 
+/**
+ * The switch contract (contracts/switch): holds a vault while its owner checks in, and hands it to
+ * their beneficiary if they go quiet. On testnet it exists only for bearer.testnet.
+ */
+export const SWITCH_CONTRACT: string | null =
+  process.env.NEXT_PUBLIC_SWITCH_CONTRACT ||
+  (NETWORK === "mock" ? "switch.testnet" : BEARER_CONTRACT === "bearer.testnet" ? "bearer-switch.testnet" : null);
+
 /** Code hash of the market's reproducible build (contracts/res/market.wasm), deployed and locked on bearer-market.testnet. */
 export const MARKET_CODE_HASH = process.env.NEXT_PUBLIC_MARKET_CODE_HASH || "7joKh4WSVFGb6EEsUpS6BeC1wtp3pepG2FQwBuAJqt7P";
 

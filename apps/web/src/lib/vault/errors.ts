@@ -55,6 +55,12 @@ export function errorCopy(error: unknown): string {
   if (text.includes("ERR_PRINCIPAL")) return "The smallest loan is 0.001 NEAR.";
   if (text.includes("ERR_REPAYMENT")) return "The repayment can't be less than the loan.";
   if (text.includes("ERR_TERM")) return "The term must be between a minute and ten years.";
+  if (text.includes("ERR_NO_SWITCH_DEPOSIT")) return "The switch deposit didn't arrive, so the vault came back. Try again.";
+  if (text.includes("ERR_NO_SWITCH")) return "This vault isn't in a switch any more.";
+  if (text.includes("ERR_NOT_SILENT")) return "Its owner checked in recently enough, so it can't be handed over yet.";
+  if (text.includes("ERR_BENEFICIARY_MISSING")) return "That account doesn't exist on NEAR, so the vault stays in the switch.";
+  if (text.includes("ERR_BENEFICIARY")) return "Name someone else: the vault goes to them if you go quiet.";
+  if (text.includes("ERR_INTERVAL")) return "Choose a check-in interval between a minute and ten years.";
   if (text.includes("ERR_IN_PROGRESS")) return "A handover or cancellation is already settling. Try again in a moment.";
   return text;
 }

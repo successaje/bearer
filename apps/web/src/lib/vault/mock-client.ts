@@ -12,13 +12,15 @@ import type {
   MarketBalances,
   MarketConfig,
   MarketListing,
+  SwitchConfig,
   VaultLoan,
+  VaultSwitch,
   VaultView,
   Withdrawal,
   WithdrawalProgress,
   WithdrawRequest,
 } from "@bearer/sdk";
-import { CHAIN_TAGS, custodyEvents } from "@bearer/sdk";
+import { CHAIN_TAGS, custodyEvents, switchDueMs } from "@bearer/sdk";
 import { validateAddress } from "@/lib/validation";
 import { CHAIN_META } from "./format";
 import {
@@ -29,6 +31,8 @@ import {
   MOCK_MARKET,
   MOCK_SCHEDULE,
   MOCK_SCHEDULE_DEPOSIT,
+  MOCK_SWITCH,
+  MOCK_SWITCH_DEPOSIT,
   mockAddresses,
   mockHex,
   mockView,
@@ -41,7 +45,7 @@ import {
 import { ATTACK_TESTS, VaultError } from "./errors";
 import { withdrawalAmount } from "./report";
 
-const STORAGE_KEY = "bearer:mock:v10";
+const STORAGE_KEY = "bearer:mock:v11";
 const CUSTODY_CAP = 16;
 const KEYS_DELAY_MS = 1_500;
 
@@ -74,7 +78,7 @@ export class MockBearerClient implements BearerClient {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as MockState;
-        if (parsed.version === 10) return (this.state = parsed);
+        if (parsed.version === 11) return (this.state = parsed);
       }
     } catch {
       // Private mode or corrupt storage: start fresh.
@@ -522,6 +526,115 @@ export class MockBearerClient implements BearerClient {
     return this.publicView(v);
   }
 
+  /* ---------- the simulated switch: same rules as contracts/switch ---------- */
+
+  readonly switchId = MOCK_SWITCH;
+
+  async switches() {
+    await jitter(150, 300);
+    return clone(Object.values(this.load().switches));
+  }
+
+  async getSwitch(tokenId: string) {
+    await jitter(100, 200);
+    return clone(this.load().switches[tokenId] ?? null);
+  }
+
+  async switchConfig(): Promise<SwitchConfig> {
+    return {
+      nft_contract: "bearer-v1.testnet",
+      switch_deposit: MOCK_SWITCH_DEPOSIT,
+      min_interval_ns: ns(60_000),
+      max_interval_ns: ns(10 * 366 * 24 * 3600 * 1000),
+    };
+  }
+
+  private armedSwitch(tokenId: string, signer: string) {
+    const s = this.load().switches[tokenId];
+    if (!s) throw new VaultError("ERR_NO_SWITCH", "This vault isn't in a switch.");
+    if (s.state.kind !== "armed") throw new VaultError("ERR_IN_PROGRESS", "It's already on its way. Check again in a moment.");
+    if (s.owner !== signer) throw new VaultError("ERR_NOT_OWNER", `Only ${s.owner}, who set it up, can do that.`);
+    return s;
+  }
+
+  private checkBeneficiary(owner: string, beneficiary: string) {
+    if (beneficiary === owner || beneficiary === MOCK_SWITCH) throw new VaultError("ERR_BENEFICIARY", "Name someone else: the vault goes to them if you go quiet.");
+  }
+
+  private checkInterval(ms: number) {
+    if (ms < 60_000 || ms > 10 * 366 * 24 * 3600 * 1000) throw new VaultError("ERR_INTERVAL", "Choose between a minute and ten years.");
+  }
+
+  async armSwitch(tokenId: string, beneficiary: string, intervalMs: number, signer: string) {
+    await jitter(1200, 1800);
+    const v = this.vault(tokenId);
+    this.assertOwner(v, signer);
+    if (v.view.state.kind !== "sealed") throw new VaultError("ERR_VAULT_OPENED", "Opened vaults can't change hands, so they can't go in a switch.");
+    this.checkBeneficiary(signer, beneficiary);
+    this.checkInterval(intervalMs);
+    const now = ns(Date.now());
+    const s: VaultSwitch = {
+      token_id: tokenId,
+      owner: signer,
+      beneficiary,
+      interval_ns: ns(intervalMs),
+      last_check_in_ns: now,
+      armed_at_ns: now,
+      deposit: MOCK_SWITCH_DEPOSIT,
+      state: { kind: "armed" },
+    };
+    this.moveTo(v, MOCK_SWITCH);
+    this.load().switches[tokenId] = s;
+    this.save();
+    return clone(s);
+  }
+
+  async checkIn(tokenId: string, signer: string) {
+    await jitter(900, 1400);
+    const s = this.armedSwitch(tokenId, signer);
+    s.last_check_in_ns = ns(Date.now());
+    this.save();
+    return clone(s);
+  }
+
+  async updateSwitch(tokenId: string, changes: { beneficiary?: string; intervalMs?: number }, signer: string) {
+    await jitter(900, 1400);
+    const s = this.armedSwitch(tokenId, signer);
+    if (changes.beneficiary !== undefined) this.checkBeneficiary(s.owner, changes.beneficiary);
+    if (changes.intervalMs !== undefined) this.checkInterval(changes.intervalMs);
+    if (changes.beneficiary !== undefined) s.beneficiary = changes.beneficiary;
+    if (changes.intervalMs !== undefined) s.interval_ns = ns(changes.intervalMs);
+    s.last_check_in_ns = ns(Date.now());
+    this.save();
+    return clone(s);
+  }
+
+  async takeBackSwitch(tokenId: string, signer: string) {
+    await jitter(1500, 2200);
+    this.armedSwitch(tokenId, signer);
+    const v = this.vault(tokenId);
+    this.moveTo(v, signer);
+    delete this.load().switches[tokenId];
+    this.save();
+    return this.publicView(v);
+  }
+
+  async releaseSwitch(tokenId: string) {
+    await jitter(1500, 2200);
+    const s = this.load().switches[tokenId];
+    if (!s) throw new VaultError("ERR_NO_SWITCH", "This vault isn't in a switch.");
+    if (s.state.kind !== "armed") throw new VaultError("ERR_IN_PROGRESS", "It's already on its way. Check again in a moment.");
+    if (Date.now() < switchDueMs(s)) throw new VaultError("ERR_NOT_SILENT", `${s.owner} checked in recently enough; it can't be handed over yet.`);
+    if (!this.load().accounts.includes(s.beneficiary)) {
+      throw new VaultError("ERR_BENEFICIARY_MISSING", `${s.beneficiary} doesn't exist on NEAR, so the vault stays in the switch.`);
+    }
+    const v = this.vault(tokenId);
+    this.moveTo(v, s.beneficiary);
+    delete this.load().switches[tokenId];
+    this.save();
+    return this.publicView(v);
+  }
+
   /* ---------- the simulated market: same rules as contracts/market ---------- */
 
   readonly marketId = MOCK_MARKET;
@@ -615,7 +728,7 @@ export class MockBearerClient implements BearerClient {
     await jitter(200, 400);
     this.advance();
     const state = this.load();
-    const events = Object.values(state.vaults).flatMap((v) => custodyEvents(this.publicView(v), accountId, MOCK_MARKET, MOCK_SCHEDULE, MOCK_LEND));
+    const events = Object.values(state.vaults).flatMap((v) => custodyEvents(this.publicView(v), accountId, MOCK_MARKET, MOCK_SCHEDULE, MOCK_LEND, MOCK_SWITCH));
     for (const e of events) {
       if (e.kind !== "sold") continue;
       const sale = state.sales.find((x) => x.tokenId === e.tokenId && Math.abs(x.atMs - e.atMs) < 60_000);

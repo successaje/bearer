@@ -32,7 +32,7 @@ export function eventCopy(e: AccountEvent): { title: string; body: string } {
     case "bought":
       return { title: `You bought ${own}`, body: `From ${e.counterparty ?? "its seller"}, on the market.` };
     case "returned":
-      return { title: `${no} is back with you`, body: "Delisted, its schedule cancelled, or its loan repaid or taken back. Still sealed." };
+      return { title: `${no} is back with you`, body: "Delisted, its schedule cancelled, its loan repaid or taken back, or out of its switch. Still sealed." };
     case "listed":
       return { title: `You listed ${own}`, body: "The market holds it, sealed, until it sells or you delist it." };
     case "scheduled":
@@ -41,6 +41,12 @@ export function eventCopy(e: AccountEvent): { title: string; body: string } {
       return { title: `You pledged ${own} for a loan`, body: "The lending contract holds it, sealed, until the loan ends." };
     case "collected":
       return { title: `You took ${own}`, body: `${e.counterparty ?? "The borrower"} didn't repay by the due date. It's yours now, still sealed.` };
+    case "inherited":
+      return { title: `${no} came to you`, body: `${e.counterparty ?? "Its owner"} named you and then went quiet, so their switch handed it to you, still sealed.` };
+    case "passed_on":
+      return { title: `${no} went to ${e.counterparty}`, body: "You didn't check in for a whole interval, so your switch handed it to them, still sealed." };
+    case "armed":
+      return { title: `You put ${own} in a switch`, body: "It stays sealed while you check in, and goes to the person you named if you go quiet." };
     case "sent":
       return { title: `You handed ${own} to ${e.counterparty}`, body: "Nothing moved on Bitcoin, Base or Solana." };
   }

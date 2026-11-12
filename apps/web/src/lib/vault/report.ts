@@ -155,11 +155,12 @@ export interface Answer {
   a: string;
 }
 
-/** Who holds a vault in escrow, when the owner on record is the market, the schedule or the lending contract. */
+/** Who holds a vault in escrow, when the owner on record is the market, the schedule, the lending contract or the switch. */
 export type Escrow =
   | { kind: "market"; seller: string }
   | { kind: "schedule"; giver: string; recipient: string }
-  | { kind: "loan"; borrower: string; lender: string | null };
+  | { kind: "loan"; borrower: string; lender: string | null }
+  | { kind: "switch"; owner: string; beneficiary: string };
 
 /** Brief 3.7: every vault page answers these, in plain words. */
 export function fiveQuestions(v: VaultView, obs: ChainObservation[] | undefined, viewer: string | null, escrow: Escrow | null = null): Answer[] {
@@ -188,6 +189,8 @@ export function fiveQuestions(v: VaultView, obs: ChainObservation[] | undefined,
             ? "Nobody while it's for sale: the market holds it and never breaks seals. Whoever buys it can break the seal once it's theirs."
             : escrow?.kind === "loan"
               ? `Nobody while it's pledged: the lending contract holds it and never breaks seals. Repaid in time, it goes back to ${escrow.borrower}${escrow.lender ? `; if not, to ${escrow.lender}` : ""}.`
+              : escrow?.kind === "switch"
+                ? `Nobody while it's in the switch: the switch holds it and never breaks seals. ${escrow.owner} can take it back; if they go quiet, it goes to ${escrow.beneficiary}.`
               : sealed
               ? `Only the current owner (${shortAccount(v.owner_id)}), and only after breaking the seal. Right now nobody has.`
               : `Only ${shortAccount(v.owner_id)}. The vault is opened and can't change hands.`,

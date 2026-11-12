@@ -10,9 +10,10 @@ import { useWallet } from "@/components/wallet/wallet-provider";
 import { formatUsd } from "@/lib/vault/format";
 import { lenderOf } from "@/components/lend/lend-bits";
 import { LoanCard } from "@/components/lend/lend-view";
+import { SwitchCard } from "@/components/switch/switch-card";
 import { ListingCard } from "@/components/market/market-view";
 import { ScheduleCard } from "@/components/schedule/schedule-card";
-import { useListings, useLoans, useNow, useSchedules, useVaultSummaries, useVaults } from "@/lib/vault/hooks";
+import { useListings, useLoans, useNow, useSchedules, useSwitches, useVaultSummaries, useVaults } from "@/lib/vault/hooks";
 import { observedUsd, vaultStatus, type VaultStatus } from "@/lib/vault/report";
 import { cn } from "@/lib/utils";
 import { VaultTile } from "./vault-tile";
@@ -44,6 +45,10 @@ export function MyVaultsView() {
   const loans = useLoans().data ?? [];
   const borrowed = loans.filter((l) => l.borrower === accountId);
   const lent = loans.filter((l) => !!accountId && lenderOf(l) === accountId);
+  // Vaults in a switch are held by the switch contract: yours, and the ones that come to you if their owner goes quiet.
+  const switches = useSwitches().data ?? [];
+  const mySwitches = switches.filter((x) => x.owner === accountId);
+  const namedMe = switches.filter((x) => x.beneficiary === accountId);
 
   if (!ready) return <Frame><GridSkeleton /></Frame>;
 
@@ -173,6 +178,38 @@ export function MyVaultsView() {
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {scheduledByMe.map((x) => (
               <ScheduleCard key={x.token_id} schedule={x} viewer={accountId} now={now} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {mySwitches.length ? (
+        <section aria-labelledby="my-switches" className="mt-14">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="my-switches" className="text-[22px] font-semibold tracking-[-0.025em]">
+              If you go quiet <span className="tabular text-fg-3">{mySwitches.length}</span>
+            </h2>
+            <p className="text-[13px] text-fg-3">Held, sealed, while you check in. Open one to check in, change it or take it back.</p>
+          </div>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {mySwitches.map((x) => (
+              <SwitchCard key={x.token_id} sw={x} viewer={accountId} now={now} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {namedMe.length ? (
+        <section aria-labelledby="named-me" className="mt-14">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="named-me" className="text-[22px] font-semibold tracking-[-0.025em]">
+              Left to you <span className="tabular text-fg-3">{namedMe.length}</span>
+            </h2>
+            <p className="text-[13px] text-fg-3">Someone named you. If they stop checking in, the vault can be handed to you.</p>
+          </div>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {namedMe.map((x) => (
+              <SwitchCard key={x.token_id} sw={x} viewer={accountId} now={now} />
             ))}
           </div>
         </section>

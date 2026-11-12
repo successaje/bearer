@@ -1,7 +1,7 @@
 "use client";
 
 import type { MarketListing, VaultLoan } from "@bearer/sdk";
-import { ArrowDownLeft, ArrowUpRight, CalendarClock, Code, Coins, Eye, HandCoins, History, Link2, PackageOpen, Presentation, ScrollText, Send, ShieldCheck, Store, Swords } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CalendarClock, Code, Coins, Eye, HandCoins, History, Hourglass, Link2, PackageOpen, Presentation, ScrollText, Send, ShieldCheck, Store, Swords } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Tabs } from "radix-ui";
@@ -13,6 +13,8 @@ import { BorrowSheet } from "@/components/lend/borrow-sheet";
 import { LendSheet } from "@/components/lend/lend-sheet";
 import { lenderOf } from "@/components/lend/lend-bits";
 import { LoanPanel } from "@/components/lend/loan-panel";
+import { SwitchPanel } from "@/components/switch/switch-panel";
+import { SwitchSheet } from "@/components/switch/switch-sheet";
 import { BuySheet } from "@/components/market/buy-sheet";
 import { ListSheet } from "@/components/market/list-sheet";
 import { ListingPanel } from "@/components/market/listing-panel";
@@ -22,8 +24,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Callout, Skeleton } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
-import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT } from "@/lib/config";
-import { useContractFacts, useListing, useLoan, useNow, useObservation, useSchedule, useVault, useWithdrawals } from "@/lib/vault/hooks";
+import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
+import { useContractFacts, useListing, useLoan, useNow, useObservation, useSchedule, useSwitch, useVault, useWithdrawals } from "@/lib/vault/hooks";
 import { formatDate, formatUsd, nsToMs, shortAccount, vaultNumber } from "@/lib/vault/format";
 import { fiveQuestions, isSealed, observedUsd, vaultReport, vaultStatus } from "@/lib/vault/report";
 import { Activity } from "./activity";
@@ -43,7 +45,7 @@ import { VaultStatusBadge } from "./vault-status-badge";
 import { WithdrawSheet } from "./withdraw-sheet";
 import { WithdrawalsList } from "./withdrawals-list";
 
-type SheetName = "transfer" | "break" | "withdraw" | "fund" | "list" | "buy" | "schedule" | "borrow" | "lend";
+type SheetName = "transfer" | "break" | "withdraw" | "fund" | "list" | "buy" | "schedule" | "borrow" | "lend" | "switch";
 
 /** The page below the card, one tab at a time. Each tab has a link: /v/1#attack-lab opens that tab. */
 const TABS = [
@@ -120,6 +122,7 @@ export function VaultDetailView() {
   const listingQuery = useListing(id);
   const scheduleQuery = useSchedule(id);
   const loanQuery = useLoan(id);
+  const switchQuery = useSwitch(id);
   const facts = useContractFacts();
   const now = useNow(1000);
   const { accountId, ready, openConnect } = useWallet();
@@ -159,10 +162,13 @@ export function VaultDetailView() {
   const inSchedule = !!scheduled && vault.owner_id === SCHEDULE_CONTRACT;
   const loan = loanQuery.data ?? null;
   const pledged = !!loan && vault.owner_id === LEND_CONTRACT;
+  const sw = switchQuery.data ?? null;
+  const inSwitch = !!sw && vault.owner_id === SWITCH_CONTRACT;
+  const escrowed = inEscrow || inSchedule || pledged || inSwitch;
 
   return (
     <Shell>
-      {wasOwner && handedAt && !(inEscrow && listing.seller === accountId) && !(inSchedule && scheduled.giver === accountId) && !(pledged && loan.borrower === accountId) ? (
+      {wasOwner && handedAt && !(inEscrow && listing.seller === accountId) && !(inSchedule && scheduled.giver === accountId) && !(pledged && loan.borrower === accountId) && !(inSwitch && sw.owner === accountId) ? (
         <Callout tone="warn" icon={<History />} className="mb-8">
           <p className="font-medium text-fg">
             You handed this vault to {shortAccount(vault.owner_id)} on {formatDate(nsToMs(handedAt.since_ns))}. You can&apos;t withdraw from it.
@@ -233,6 +239,10 @@ export function VaultDetailView() {
               <span className="inline-flex items-center gap-1.5">
                 Pledged for a loan by <span className="font-mono text-fg">{loan.borrower}</span>
               </span>
+            ) : inSwitch ? (
+              <span className="inline-flex items-center gap-1.5">
+                In a switch set by <span className="font-mono text-fg">{sw.owner}</span>
+              </span>
             ) : (
               <span className="inline-flex items-center gap-1.5">
                 Owner <span className="font-mono text-fg" title={vault.owner_id}>{shortAccount(vault.owner_id)}</span>
@@ -286,6 +296,12 @@ export function VaultDetailView() {
                       Borrow against it
                     </Button>
                   ) : null}
+                  {SWITCH_CONTRACT ? (
+                    <Button onClick={() => setSheet("switch")} disabled={!vault.keys}>
+                      <Hourglass className="size-4" />
+                      If I go quiet
+                    </Button>
+                  ) : null}
                   <Button onClick={() => setSheet("fund")}>
                     <ArrowDownLeft className="size-4" />
                     Deposit
@@ -324,6 +340,7 @@ export function VaultDetailView() {
               onConnect={() => openConnect()}
             />
           ) : null}
+          {inSwitch ? <SwitchPanel sw={sw} viewer={ready ? accountId : null} now={now} onConnect={() => openConnect()} /> : null}
           {inEscrow ? (
             <ListingPanel
               listing={listing}
@@ -337,7 +354,7 @@ export function VaultDetailView() {
             />
           ) : null}
           <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
-            {sealed && !inEscrow && !inSchedule && !pledged ? (
+            {sealed && !escrowed ? (
               <Link
                 href={`/v/${vault.token_id}/handover`}
                 className="inline-flex items-center gap-1.5 text-[13.5px] font-medium text-fg-2 transition-colors hover:text-fg"
@@ -407,7 +424,9 @@ export function VaultDetailView() {
                       ? { kind: "market", seller: listing.seller }
                       : pledged
                         ? { kind: "loan", borrower: loan.borrower, lender: lenderOf(loan) }
-                        : null,
+                        : inSwitch
+                          ? { kind: "switch", owner: sw.owner, beneficiary: sw.beneficiary }
+                          : null,
                 )}
               />
             </div>
@@ -526,6 +545,10 @@ export function VaultDetailView() {
       {accountId && (isOwner || sheet === "borrow") ? (
         // Stays mounted after pledging so its success screen survives the move to the lending contract.
         <BorrowSheet open={sheet === "borrow"} onOpenChange={(o) => setSheet(o ? "borrow" : null)} vault={vault} signer={accountId} />
+      ) : null}
+      {accountId && (isOwner || sheet === "switch") ? (
+        // Stays mounted after arming so its success screen survives the move to the switch.
+        <SwitchSheet open={sheet === "switch"} onOpenChange={(o) => setSheet(o ? "switch" : null)} vault={vault} signer={accountId} />
       ) : null}
       {accountId && lending ? (
         <LendSheet

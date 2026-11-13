@@ -21,9 +21,34 @@ the owner opens it, withdrawals work and transfers are disabled for good. So con
 assets changes hands without moving them, and without the previous owner keeping a way to take
 them back.
 
-[Try Bearer](https://bearer-near.vercel.app) · [Verify the deployment](https://bearer-near.vercel.app/proof) · [Check the claims: `pnpm verify`](#check-the-claims-yourself) · [Read the threat model](docs/THREAT_MODEL.md) · [Use cases](docs/USE_CASES.md)
+[Try Bearer](https://bearer-near.vercel.app) · [Verify the deployment](https://bearer-near.vercel.app/proof) · [Check the claims: `pnpm verify`](#check-the-claims-yourself) · [Every way a seller could keep the money](THREAT_MODEL.md) · [Full threat model](docs/THREAT_MODEL.md) · [Use cases](docs/USE_CASES.md)
 
 Testnet prototype, built for the NEAR Hackathon (Nov 2026). Not audited. Don't use real funds.
+
+## For judges: do X, see Y
+
+Five checks. The first three need only a browser.
+
+1. **No hidden pre-signed transaction.** Open [vault No. 0009](https://bearer-near.vercel.app/v/9).
+   You'll see *Sealed* and *Signatures ever requested: 0*, marked LIVE: your browser just read them
+   from `bearer.testnet`. A sealed vault can't get a signature at all, and only sealed vaults change
+   hands, so a vault can't be sold with a signed withdrawal held back
+   ([how](#the-hidden-pre-signed-transaction)).
+2. **The attacks fail on testnet.** Open [vault No. 0001's attack lab](https://bearer-near.vercel.app/v/1#attack-lab)
+   and press **Check all**. You'll see five real testnet transactions, each refused with
+   its expected error:
+   - a former owner withdrawing or breaking the seal: `ERR_NOT_OWNER`;
+   - an opened vault changing hands: `ERR_VAULT_OPENED`;
+   - a sealed vault withdrawing: `ERR_VAULT_SEALED`;
+   - a raw signature: `MethodNotFound`.
+3. **Nobody can change the contract.** Open [/proof](https://bearer-near.vercel.app/proof). You'll
+   see *Contract locked* (no access keys) and a code hash that matches the reproducible build in
+   `contracts/res`.
+4. **Every claim, against the chains.** Run `pnpm verify` (Node 22+, nothing to install). You'll see
+   `47 claims in … s: 47 ✓, 0 ✗`. One of them: every sealed vault on `bearer.testnet` has 0
+   signatures.
+5. **The whole flow, offline.** Run `pnpm install && pnpm demo:dry`. You'll see it run against the
+   committed contracts, with simulated chains labelled `SIMULATED`, ending `✓ 22/22 checks passed`.
 
 ## The problem
 
@@ -64,6 +89,25 @@ Transfer and withdrawal signing are mutually exclusive:
 
 So a vault that is still sealed has never had a withdrawal signature requested, on any chain, and
 anyone can check that on its public page before accepting it.
+
+## The hidden pre-signed transaction
+
+The attack this design exists for: sign a withdrawal, keep it back, hand over or sell the vault,
+then broadcast it. Bearer doesn't try to detect it afterwards. It makes the setup impossible:
+
+- **A sealed vault can't get a signature.** Every `withdraw_*` on a sealed vault fails with
+  `ERR_VAULT_SEALED`, even for its owner. The contract has no other way to sign: no raw-signing,
+  admin or upgrade method, and its keys are deleted.
+- **Only sealed vaults change hands.** `break_seal` is one-way, and every transfer path refuses an
+  opened vault with `ERR_VAULT_OPENED`.
+- **So a vault you receive has never had a signature requested, on any chain, ever.** Its
+  `signatures_requested` is 0, readable by anyone through the `vault` view and shown live on its
+  page.
+- **Everything the contract did sign is public.** `withdrawals(token_id)` returns each request with
+  the hash of what was signed and the signed transaction, and an NEP-297 event logs it.
+
+[THREAT_MODEL.md](THREAT_MODEL.md) lists every way a seller could try to keep the money, with the
+test and the testnet transaction behind each one.
 
 ## Why NEAR
 

@@ -3,6 +3,8 @@
 **For:** anyone deciding whether to accept, hold or build on a Bearer vault, and the judges checking our claims.
 **After reading** you'll know every way we know of that someone could try to keep or take a vault's coins, what stops each one, and which test proves it.
 
+The short version, the ways a seller could try to keep the money and why each fails, is [THREAT_MODEL.md](../THREAT_MODEL.md) at the root.
+
 Status: 2026-11-09. Rows are marked ✅ once their test passes (`contracts/tests`, `cargo test`). "Partly" means only part of the defence is tested; "policy" rows are handled by design or wording, not by a test. "Base, Bitcoin, Solana" means proven for each chain's `withdraw_*` in the sandbox.
 
 ## The rule everything rests on

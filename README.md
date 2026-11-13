@@ -67,7 +67,7 @@ find. Each item, where it is, and how far Bearer goes:
 | Tests for the transfer path, including a sale in the middle of a payout | `transfer_rejected_during_pending_signature` (T5), `a_signature_in_flight_blocks_the_sale` and `a_deposit_during_a_pending_sale_belongs_to_the_buyer` (`contracts/tests/market.test.ts`), with T1–T6 in `vault.test.ts` | Met |
 | A history view per NFT: what it earned, what it paid out, who held it | Each vault's *History* tab lists the deposits observed at its addresses, every withdrawal and every holder ([vault No. 0001](https://bearer-near.vercel.app/v/1#history)) | Met |
 | Earning: payments that accrue to the holder | Anyone can pay into a vault's addresses at any time, and whatever arrives belongs to whoever holds it when it's opened, so selling a sealed vault sells future payments too. There is no royalty split or yield | Partly |
-| A gated page only current holders can open | The vault page shows the holder's actions (transfer, list, borrow, break the seal, withdraw) only to the connected holder, and the contract enforces each one. There is no separate members-only content page | Partly |
+| A gated page only current holders can open | `/v/[id]/holders`: the holder signs a NEP-413 message, and the server checks the signature, that the key is a full-access key of the account, and that the account holds the vault now; anyone else, a former holder included, is refused ([docs/features/holders.md](docs/features/holders.md), `apps/web/src/app/api/holders/route.ts`) | Met |
 | Dynamic NFTs | NEP-177 metadata whose media is a live image of the vault's seal (`lib.rs`) | Met |
 | Sub-accounts | Not used for vaults; a Bearer link is an implicit NEAR account made from a key | Not used |
 
@@ -289,6 +289,9 @@ workflow runs it daily with `--strict`, so its badge is green only when every cl
    chains) and press **Check all** in its attack lab.
 3. Open the [market](https://bearer-near.vercel.app/market). Connecting a testnet wallet lets you
    create, transfer, list and buy.
+4. Open [vault No. 0009's holders' page](https://bearer-near.vercel.app/v/9/holders) and sign with any
+   testnet wallet. You're refused: `finishr.testnet` holds it. Create a vault, and its holders' page
+   opens for you; transfer it, and it closes for you and opens for the new holder.
 
 **Local, simulated.** Needs Node 22.22+ (near-sandbox's minimum) and pnpm 10.2.1:
 

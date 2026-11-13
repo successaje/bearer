@@ -4,6 +4,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import * as bitcoin from "bitcoinjs-lib";
 import { Account } from "near-api-js";
 import { DEFAULT_PRIVATE_KEY, DEFAULT_PUBLIC_KEY, Sandbox } from "near-sandbox";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -339,5 +340,114 @@ describe("delisting", () => {
     );
     expect((await vault(id)).owner_id).toBe(market.accountId);
     await delist(alice, id);
+  });
+});
+
+/**
+ * A vault as a receivables account: anyone can pay into its addresses at any time, and whatever
+ * arrives belongs to whoever holds the vault when it's opened. The contract never sees a deposit; it
+ * decides who may get a signature that spends one, and that is what these tests check.
+ */
+describe("payments into a vault that is for sale", () => {
+  const WITHDRAW_DEPOSIT = 10n * MILLI;
+  const BUYER_BTC = "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx";
+  /** A payment of 50,000 sats that lands at the vault's Bitcoin address while it's listed. */
+  const PAYMENT = { txid: "d".repeat(64), vout: 1, value_sat: "50000" };
+  const spendPayment = { inputs: [PAYMENT], to_address: BUYER_BTC, amount_sat: "49500", fee_sat: "500" };
+
+  type Withdrawal = { status: "pending" | "signed" | "failed"; signed_raw_tx: string | null };
+  const withdrawals = (id: string) => view<Withdrawal[]>(bearer.accountId, "withdrawals", { token_id: id });
+  const breakSeal = (who: Account, id: string) =>
+    who.callFunction({ contractId: bearer.accountId, methodName: "break_seal", args: { token_id: id }, deposit: ONE_YOCTO, gas: 30n * TGAS });
+  const withdrawBtc = (who: Account, id: string) =>
+    who.callFunction({
+      contractId: bearer.accountId,
+      methodName: "withdraw_btc",
+      args: { token_id: id, params: spendPayment },
+      deposit: WITHDRAW_DEPOSIT + ONE_YOCTO,
+      gas: 150n * TGAS,
+    });
+  const withdrawEvm = (who: Account, id: string) =>
+    who.callFunction({
+      contractId: bearer.accountId,
+      methodName: "withdraw_evm",
+      args: {
+        token_id: id,
+        params: {
+          chain_id: "84532",
+          nonce: "0",
+          to: "0x3fa2b1c47d9e0f5a6b8c2d4e6f80a1b3c519cd00",
+          amount_wei: "800000000000000",
+          gas_limit: "21000",
+          max_fee_per_gas: "2000000000",
+          max_priority_fee_per_gas: "1000000",
+        },
+      },
+      deposit: WITHDRAW_DEPOSIT + ONE_YOCTO,
+      gas: 150n * TGAS,
+    });
+
+  /** A refusal, whichever check the contract runs first: the caller isn't the owner, or the vault is sealed. */
+  async function expectRefused(p: Promise<unknown>) {
+    let err: unknown;
+    try {
+      await p;
+    } catch (e) {
+      err = e;
+    }
+    expect(err, "expected a refusal").toBeDefined();
+    expect(`${String(err)} ${JSON.stringify(err, Object.getOwnPropertyNames(err as object))}`).toMatch(/ERR_NOT_OWNER|ERR_VAULT_SEALED/);
+  }
+
+  async function sealedVaultWithKeys(owner: Account) {
+    const id = await createVault(owner);
+    await until(() => view<{ keys: unknown }>(bearer.accountId, "vault", { token_id: id }), (v) => v.keys !== null);
+    return id;
+  }
+
+  it("a_deposit_during_a_pending_sale_belongs_to_the_buyer (M2, M3)", async () => {
+    const price = NEAR;
+    const id = await sealedVaultWithKeys(alice);
+    await depositForListing(alice);
+    await sendToMarket(alice, id, price);
+
+    // The payment lands while the vault is listed. The seller can't get a signature that spends it.
+    await expectRefused(withdrawBtc(alice, id));
+
+    await buy(bob, id, price);
+    await until(() => listing(id), (l) => l === null);
+    expect((await vault(id)).owner_id).toBe(bob.accountId);
+
+    // After the sale the seller still can't, and the buyer must break the seal first.
+    await expectRefused(withdrawBtc(alice, id));
+    await expectPanic(withdrawBtc(bob, id), "ERR_VAULT_SEALED");
+    expect((await vault(id)).signatures_requested).toBe(0);
+
+    await breakSeal(bob, id);
+    await expectPanic(withdrawBtc(alice, id), "ERR_NOT_OWNER");
+    await withdrawBtc(bob, id);
+
+    // The one signature ever requested for this vault spends the payment, to the buyer.
+    const [w] = await until(() => withdrawals(id), (ws) => ws[0]?.status === "signed");
+    expect(w.status).toBe("signed");
+    const tx = bitcoin.Transaction.fromHex(w.signed_raw_tx as string);
+    expect(tx.ins.map((i) => [Buffer.from(i.hash).reverse().toString("hex"), i.index])).toEqual([[PAYMENT.txid, PAYMENT.vout]]);
+    expect(bitcoin.address.fromOutputScript(tx.outs[0].script, bitcoin.networks.testnet)).toBe(BUYER_BTC);
+    expect(tx.outs[0].value).toBe(49_500n);
+    expect((await vault(id)).signatures_requested).toBe(1);
+  });
+
+  it("a_signature_in_flight_blocks_the_sale (M2)", async () => {
+    const id = await sealedVaultWithKeys(alice);
+    await breakSeal(alice, id);
+    await depositForListing(alice);
+    // Ask for a withdrawal and list at the same moment: the vault is opened, so the listing fails.
+    const [, listed] = await Promise.allSettled([withdrawEvm(alice, id), sendToMarket(alice, id, NEAR)]);
+    expect(listed.status).toBe("rejected");
+    const reason = (listed as PromiseRejectedResult).reason;
+    expect(`${String(reason)} ${JSON.stringify(reason, Object.getOwnPropertyNames(reason as object))}`).toContain("ERR_VAULT_OPENED");
+    expect(await listing(id)).toBeNull();
+    expect((await vault(id)).owner_id).toBe(alice.accountId);
+    await alice.callFunction({ contractId: market.accountId, methodName: "withdraw_deposit", args: {}, deposit: ONE_YOCTO, gas: 30n * TGAS });
   });
 });

@@ -4,7 +4,9 @@
 [![Locked contracts](https://github.com/successaje/bearer/actions/workflows/locked-contracts.yml/badge.svg?branch=main)](https://github.com/successaje/bearer/actions/workflows/locked-contracts.yml)
 [![Claims on chain](https://github.com/successaje/bearer/actions/workflows/claims.yml/badge.svg?branch=main)](https://github.com/successaje/bearer/actions/workflows/claims.yml)
 
-**Bitcoin that changes hands without a Bitcoin transaction.**
+**A wallet NFT that can't be sold with a hidden pre-signed withdrawal: by construction, not by policy.**
+
+Bitcoin that changes hands without a Bitcoin transaction.
 
 A Bearer vault is a NEAR NFT that controls its own Bitcoin address, plus Base and Solana ones.
 While it's sealed, it moves to its next owner in one NEAR transaction: final in about 5 seconds,
@@ -49,6 +51,25 @@ Five checks. The first three need only a browser.
    signatures.
 5. **The whole flow, offline.** Run `pnpm install && pnpm demo:dry`. You'll see it run against the
    committed contracts, with simulated chains labelled `SIMULATED`, ending `✓ 22/22 checks passed`.
+
+## How Bearer meets the NFT track brief
+
+The track asks for "NFTs as accounts: assets that own money, earn royalties, hold inventory, and
+carry credentials, memberships or access rights", and its example brief lists what a judge should
+find. Each item, where it is, and how far Bearer goes:
+
+| The brief asks for | In Bearer | Status |
+|---|---|---|
+| An NFT that owns money | A vault is a NEP-171 token that controls its own native Bitcoin, Base and Solana addresses through Chain Signatures (`contracts/bearer/src/lib.rs`, `withdraw_{btc,evm,sol}.rs`) | Met |
+| Selling the NFT moves the wallet, its balance and its rights | One NEAR transaction moves the vault; nothing moves on the other chains; only the holder can ever get a withdrawal signed (`transfer.rs`, `seal.rs`) | Met |
+| The README explains how control passes on transfer and what stops the old owner keeping access | [How Bearer works](#how-bearer-works) and [The hidden pre-signed transaction](#the-hidden-pre-signed-transaction) | Met |
+| A threat model of every way a seller could try to keep the money | [THREAT_MODEL.md](THREAT_MODEL.md), with the full model in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) | Met |
+| Tests for the transfer path, including a sale in the middle of a payout | `transfer_rejected_during_pending_signature` (T5), `a_signature_in_flight_blocks_the_sale` and `a_deposit_during_a_pending_sale_belongs_to_the_buyer` (`contracts/tests/market.test.ts`), with T1–T6 in `vault.test.ts` | Met |
+| A history view per NFT: what it earned, what it paid out, who held it | Each vault's *History* tab lists the deposits observed at its addresses, every withdrawal and every holder ([vault No. 0001](https://bearer-near.vercel.app/v/1#history)) | Met |
+| Earning: payments that accrue to the holder | Anyone can pay into a vault's addresses at any time, and whatever arrives belongs to whoever holds it when it's opened, so selling a sealed vault sells future payments too. There is no royalty split or yield | Partly |
+| A gated page only current holders can open | The vault page shows the holder's actions (transfer, list, borrow, break the seal, withdraw) only to the connected holder, and the contract enforces each one. There is no separate members-only content page | Partly |
+| Dynamic NFTs | NEP-177 metadata whose media is a live image of the vault's seal (`lib.rs`) | Met |
+| Sub-accounts | Not used for vaults; a Bearer link is an implicit NEAR account made from a key | Not used |
 
 ## The problem
 
@@ -106,6 +127,14 @@ then broadcast it. Bearer doesn't try to detect it afterwards. It makes the setu
 - **Everything the contract did sign is public.** `withdrawals(token_id)` returns each request with
   the hash of what was signed and the signed transaction, and an NEP-297 event logs it.
 
+Three ways a wallet NFT can answer this attack, and what each leaves the buyer to check:
+
+| Approach | How it works | What the buyer still has to check |
+|---|---|---|
+| Keep a record of signatures | The contract lists what it has signed; the buyer reads the list before buying | That every earlier signature is already spent or can no longer be used |
+| Refuse signatures around a sale | Signing is blocked for a period, such as an ownership epoch | That no signature from before that period is still waiting to be broadcast |
+| **The seal (Bearer)** | A sealed vault can't get a signature at all, and only sealed vaults change hands | Nothing beyond the vault's live state: 0 signatures, ever |
+
 [THREAT_MODEL.md](THREAT_MODEL.md) lists every way a seller could try to keep the money, with the
 test and the testnet transaction behind each one.
 
@@ -137,7 +166,7 @@ in [docs/SPIKES.md](docs/SPIKES.md).
 **1. Local sandbox (simulated chains).** The contracts run in a real NEAR sandbox with a mock MPC
 signer. These are simulations, not transactions on Bitcoin, Base or Solana.
 
-- 86 sandbox tests (28 for the vault, 13 for the market, 13 for the schedule, 16 for lending, 13 for
+- 88 sandbox tests (28 for the vault, 15 for the market, 13 for the schedule, 16 for lending, 13 for
   the switch, 3 for a receiver that breaks the seal in its transfer callback and asks for the vault
   back) and 91 unit tests. Each signed
   transaction is checked independently: viem for Base, bitcoinjs-lib and noble for Bitcoin,
@@ -315,6 +344,11 @@ link needs no contract of its own. Each way keeps the vault sealed until it arri
 What people could use them for:
 
 - **Gifts.** Put coins in a sealed vault and hand it to someone, who opens it when they want.
+- **Receivables.** Anyone can pay into a vault's addresses at any time, and whatever arrives
+  belongs to whoever holds it when it's opened. Selling a sealed vault sells what is in it and every
+  payment still to come; `a_deposit_during_a_pending_sale_belongs_to_the_buyer` shows a payment made
+  mid-sale ending up the buyer's. Collecting means breaking the seal, after which the vault can't be
+  sold: a receivable here is sold whole, not skimmed.
 - **Gifts for a day.** Schedule a vault for a birthday or a graduation. Until then it stays sealed
   and nobody can withdraw, the giver included. The giver chooses whether they can cancel
   ([docs/features/schedule.md](docs/features/schedule.md)).

@@ -389,14 +389,14 @@ export const THREATS: Threat[] = [
     id: "M2",
     attack: "Sell an opened vault, or one the seller no longer holds",
     defence: "The vault arrives through Bearer's sealed-only gate and stays in escrow; the gate checks again as it moves to the buyer",
-    tests: ["opened_vault_cannot_be_listed"],
+    tests: ["opened_vault_cannot_be_listed", "a_signature_in_flight_blocks_the_sale"],
     status: "proven",
   },
   {
     id: "M3",
     attack: "Buyer pays and gets nothing, pays a different price, or races another buyer",
     defence: "Exact price; a sale in flight locks the listing; the vault moves before any money; a vault that didn't move refunds the buyer",
-    tests: ["sold_vault_moves_first_then_seller_is_paid", "buy_needs_the_exact_price", "double_buy_race", "failed_move_refunds_the_buyer"],
+    tests: ["sold_vault_moves_first_then_seller_is_paid", "a_deposit_during_a_pending_sale_belongs_to_the_buyer", "buy_needs_the_exact_price", "double_buy_race", "failed_move_refunds_the_buyer"],
     status: "proven",
   },
   {

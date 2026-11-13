@@ -427,7 +427,8 @@ docs                architecture, threat model, decisions, spikes, and one page 
 
 ## Hackathon disclosure
 
-Built for the NEAR Hackathon (window starting 2026-10-19). Libraries: near-sdk,
+Built for the NEAR Hackathon (1 to 14 Nov 2026). This repository's first commit is 2026-11-08,
+inside the code window, which opened with the 2026-10-19 announcement (rule Q-001). Libraries: near-sdk,
 near-contract-standards, k256 and ed25519-dalek (mock signer), Next.js, React, TanStack Query,
 Radix, near-connect (@hot-labs), qrcode.react, viem, bitcoinjs-lib, @noble and @scure,
 @solana/web3.js. AI tools: Claude Code (Anthropic) was used throughout for code, tests and

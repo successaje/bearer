@@ -1,6 +1,7 @@
 "use client";
 
 import type { MarketListing, VaultLoan } from "@bearer/sdk";
+import { mergeHistory, recordEvents } from "@bearer/sdk";
 import { ArrowDownLeft, ArrowUpRight, CalendarClock, Code, Coins, Eye, HandCoins, History, Hourglass, Link2, LockKeyhole, PackageOpen, Presentation, ReceiptText, ScrollText, Send, ShieldCheck, Store, Swords } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
@@ -25,7 +26,7 @@ import { CopyButton } from "@/components/ui/copy-button";
 import { Callout, Skeleton } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
 import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
-import { useContractFacts, useListing, useLoan, useNow, useObservation, useSchedule, useSwitch, useVault, useWithdrawals } from "@/lib/vault/hooks";
+import { useContractFacts, useListing, useLoan, useNow, useObservation, useSchedule, useSwitch, useVault, useVaultHistory, useWithdrawals } from "@/lib/vault/hooks";
 import { formatDate, formatUsd, nsToMs, shortAccount, vaultNumber } from "@/lib/vault/format";
 import { fiveQuestions, isSealed, observedUsd, vaultReport, vaultStatus } from "@/lib/vault/report";
 import { Activity } from "./activity";
@@ -133,6 +134,7 @@ export function VaultDetailView() {
   const [lending, setLending] = useState<VaultLoan | null>(null);
   const received = useJustReceived(query.data, ready ? accountId : null);
   const { tab, selectTab, openTab, tabsRef } = useHashTab(!!query.data && !!now);
+  const historyQuery = useVaultHistory(vault, tab === "history");
 
   if (query.isPending || !now) return <VaultDetailSkeleton />;
   if (query.isError) return <Shell><ErrorState error={query.error} onRetry={() => void query.refetch()} /></Shell>;
@@ -475,7 +477,21 @@ export function VaultDetailView() {
         <Tabs.Content value="history" className={TAB_GRID}>
           <div className="min-w-0">
             <h2 className="sr-only">History</h2>
-            <Activity vault={vault} withdrawals={withdrawals.data ?? []} observations={observations} now={now} />
+            <Activity
+              vault={vault}
+              withdrawals={withdrawals.data ?? []}
+              observations={observations}
+              history={{
+                // What was logged as the vault moved, plus the escrow records this page keeps polling,
+                // so a check-in or a loan's funding shows without asking the index again.
+                events: mergeHistory(
+                  (historyQuery.data?.events ?? []).filter((e) => e.from === "log"),
+                  recordEvents({ listing, schedule: scheduled, loan, switch: sw }),
+                ),
+                state: historyQuery.isPending ? "loading" : historyQuery.isError ? "error" : historyQuery.data?.complete ? "complete" : "partial",
+              }}
+              now={now}
+            />
           </div>
           <Rail>
             <CustodyRail vault={vault} />

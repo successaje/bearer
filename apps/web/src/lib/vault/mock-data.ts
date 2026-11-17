@@ -1,4 +1,4 @@
-import type { ChainTag, Finish, HandoverSchedule, MarketListing, ObservedDeposit, VaultLoan, VaultSwitch, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
+import type { ChainTag, EscrowEvent, Finish, HandoverSchedule, MarketListing, ObservedDeposit, VaultLoan, VaultSwitch, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
 import { vaultPath } from "@bearer/sdk";
 
 /** Simulated chain state for one vault: what an explorer would show at its addresses. */
@@ -41,6 +41,11 @@ export interface MockState {
   switches: Record<string, VaultSwitch>;
   /** Market sales, for prices and payouts: on testnet these come from the index. */
   sales: MockSale[];
+  /**
+   * What the simulated escrows logged, by token: only the events a vault's own transfers carry on
+   * testnet. Missing from demo state saved before it existed.
+   */
+  events?: Record<string, EscrowEvent[]>;
 }
 
 export interface MockSale {
@@ -391,6 +396,7 @@ export function seedState(now: number): MockState {
 
   // 34: ada listed it for 1.5 NEAR and mira bought it two hours ago: the demo's sale notification.
   const sales: MockSale[] = [];
+  const events: Record<string, EscrowEvent[]> = {};
   {
     const id = "34";
     const created = now - 4 * DAY;
@@ -417,6 +423,10 @@ export function seedState(now: number): MockState {
     };
     const price = 15n * 10n ** 23n;
     sales.push({ tokenId: id, seller: "ada.testnet", buyer: "mira.testnet", price: price.toString(), paid: (price + BigInt(MOCK_LISTING_DEPOSIT)).toString(), atMs: sold });
+    events[id] = [
+      { escrow: "market", event: "listed", data: { token_id: id, seller: "ada.testnet", price: price.toString() }, at_ns: ns(listed), from: "log", tx: null },
+      { escrow: "market", event: "sold", data: { token_id: id, seller: "ada.testnet", buyer: "mira.testnet", price: price.toString() }, at_ns: ns(sold), from: "log", tx: null },
+    ];
   }
 
   // 21: ada's gift for theo, handed over in six months. Can't be cancelled.
@@ -573,5 +583,6 @@ export function seedState(now: number): MockState {
     loans,
     switches,
     sales,
+    events,
   };
 }

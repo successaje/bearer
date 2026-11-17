@@ -5,6 +5,8 @@ import type {
   BearerClient,
   ChainObservation,
   ChainTag,
+  EscrowEvent,
+  EscrowName,
   Finish,
   HandoverSchedule,
   LendConfig,
@@ -14,13 +16,14 @@ import type {
   MarketListing,
   SwitchConfig,
   VaultLoan,
+  VaultHistory,
   VaultSwitch,
   VaultView,
   Withdrawal,
   WithdrawalProgress,
   WithdrawRequest,
 } from "@bearer/sdk";
-import { CHAIN_TAGS, custodyEvents, switchDueMs } from "@bearer/sdk";
+import { CHAIN_TAGS, custodyEvents, mergeHistory, recordEvents, switchDueMs } from "@bearer/sdk";
 import { validateAddress } from "@/lib/validation";
 import { CHAIN_META } from "./format";
 import {
@@ -386,6 +389,7 @@ export class MockBearerClient implements BearerClient {
       state: { kind: "waiting" },
     };
     this.moveTo(v, MOCK_SCHEDULE);
+    this.logEvent(v, "schedule", "scheduled", { giver: signer, recipient, release_at_ns: s.release_at_ns, cancellable });
     this.load().schedules[tokenId] = s;
     this.save();
     return clone(s);
@@ -402,6 +406,7 @@ export class MockBearerClient implements BearerClient {
     }
     const v = this.vault(tokenId);
     this.moveTo(v, s.recipient);
+    this.logEvent(v, "schedule", "released", { giver: s.giver, recipient: s.recipient });
     delete this.load().schedules[tokenId];
     this.save();
     return this.publicView(v);
@@ -416,6 +421,7 @@ export class MockBearerClient implements BearerClient {
     if (Date.now() * 1e6 >= Number(s.release_at_ns)) throw new VaultError("ERR_TOO_LATE", "The date has passed, so it can only be handed over now.");
     const v = this.vault(tokenId);
     this.moveTo(v, signer);
+    this.logEvent(v, "schedule", "cancelled", { giver: signer });
     delete this.load().schedules[tokenId];
     this.save();
     return this.publicView(v);
@@ -470,6 +476,7 @@ export class MockBearerClient implements BearerClient {
       state: { kind: "requested" },
     };
     this.moveTo(v, MOCK_LEND);
+    this.logEvent(v, "lend", "requested", { borrower: signer, principal: l.principal, repayment: l.repayment, term_ns: l.term_ns });
     this.load().loans[tokenId] = l;
     this.save();
     return clone(l);
@@ -496,6 +503,7 @@ export class MockBearerClient implements BearerClient {
     if (Date.now() * 1e6 >= Number(l.state.due_at_ns)) throw new VaultError("ERR_PAST_DUE", "The due date has passed, so only the lender can act now.");
     const v = this.vault(tokenId);
     this.moveTo(v, signer);
+    this.logEvent(v, "lend", "repaid", { borrower: signer, lender: l.state.lender, repayment: l.repayment });
     delete this.load().loans[tokenId];
     this.save();
     return this.publicView(v);
@@ -509,6 +517,7 @@ export class MockBearerClient implements BearerClient {
     if (Date.now() * 1e6 < Number(l.state.due_at_ns)) throw new VaultError("ERR_NOT_DUE", "The borrower can still repay until the due date.");
     const v = this.vault(tokenId);
     this.moveTo(v, signer);
+    this.logEvent(v, "lend", "foreclosed", { borrower: l.borrower, lender: signer });
     delete this.load().loans[tokenId];
     this.save();
     return this.publicView(v);
@@ -521,6 +530,7 @@ export class MockBearerClient implements BearerClient {
     if (l.borrower !== signer) throw new VaultError("ERR_NOT_BORROWER", `Only ${l.borrower} can take it back.`);
     const v = this.vault(tokenId);
     this.moveTo(v, signer);
+    this.logEvent(v, "lend", "cancelled", { borrower: signer });
     delete this.load().loans[tokenId];
     this.save();
     return this.publicView(v);
@@ -584,6 +594,7 @@ export class MockBearerClient implements BearerClient {
       state: { kind: "armed" },
     };
     this.moveTo(v, MOCK_SWITCH);
+    this.logEvent(v, "switch", "armed", { owner: signer, beneficiary, interval_ns: s.interval_ns, due_at_ns: ns(Date.now() + intervalMs) });
     this.load().switches[tokenId] = s;
     this.save();
     return clone(s);
@@ -614,6 +625,7 @@ export class MockBearerClient implements BearerClient {
     this.armedSwitch(tokenId, signer);
     const v = this.vault(tokenId);
     this.moveTo(v, signer);
+    this.logEvent(v, "switch", "taken_back", { owner: signer });
     delete this.load().switches[tokenId];
     this.save();
     return this.publicView(v);
@@ -630,6 +642,7 @@ export class MockBearerClient implements BearerClient {
     }
     const v = this.vault(tokenId);
     this.moveTo(v, s.beneficiary);
+    this.logEvent(v, "switch", "released", { owner: s.owner, beneficiary: s.beneficiary });
     delete this.load().switches[tokenId];
     this.save();
     return this.publicView(v);
@@ -659,6 +672,14 @@ export class MockBearerClient implements BearerClient {
     if (v.view.custody.length > CUSTODY_CAP) v.view.custody.shift();
   }
 
+  /** What the escrow logs as the vault moves; call right after moveTo, so it's the move's time. */
+  private logEvent(v: MockVault, escrow: EscrowName, event: string, data: Record<string, unknown>) {
+    const state = this.load();
+    const log = ((state.events ??= {})[v.view.token_id] ??= []);
+    const at = v.view.custody[v.view.custody.length - 1].since_ns;
+    log.push({ escrow, event, data: { token_id: v.view.token_id, ...data }, at_ns: at, from: "log", tx: null });
+  }
+
   async listVault(tokenId: string, priceYocto: string, signer: string): Promise<MarketListing> {
     await jitter(1200, 1800);
     const v = this.vault(tokenId);
@@ -674,6 +695,7 @@ export class MockBearerClient implements BearerClient {
       state: { kind: "listed" },
     };
     this.moveTo(v, MOCK_MARKET);
+    this.logEvent(v, "market", "listed", { seller: signer, price: priceYocto });
     this.load().listings[tokenId] = listing;
     this.save();
     return clone(listing);
@@ -687,6 +709,7 @@ export class MockBearerClient implements BearerClient {
     if (listing.price !== priceYocto) throw new VaultError("ERR_WRONG_PRICE", "The price changed. Check it and try again.");
     const v = this.vault(tokenId);
     this.moveTo(v, signer);
+    this.logEvent(v, "market", "sold", { seller: listing.seller, buyer: signer, price: listing.price });
     delete this.load().listings[tokenId];
     const paid = (BigInt(listing.price) + BigInt(listing.deposit)).toString();
     this.load().sales.push({ tokenId, seller: listing.seller, buyer: signer, price: listing.price, paid, atMs: Date.now() });
@@ -701,6 +724,7 @@ export class MockBearerClient implements BearerClient {
     if (listing.seller !== signer) throw new VaultError("ERR_NOT_SELLER", `Only ${listing.seller} can delist it.`);
     const v = this.vault(tokenId);
     this.moveTo(v, signer);
+    this.logEvent(v, "market", "delisted", { seller: signer });
     delete this.load().listings[tokenId];
     this.save();
     return this.publicView(v);
@@ -742,6 +766,21 @@ export class MockBearerClient implements BearerClient {
     }
     events.sort((a, b) => b.atMs - a.atMs);
     return { events, source: "the simulated demo", partial: false };
+  }
+
+  /** Same reading as testnet: what the escrows logged as the vault moved, plus their current records. */
+  async vaultHistory(tokenId: string): Promise<VaultHistory> {
+    await jitter(200, 400);
+    this.advance();
+    const state = this.load();
+    const logged: EscrowEvent[] = clone(state.events?.[tokenId] ?? []);
+    const record = recordEvents({
+      listing: state.listings[tokenId],
+      schedule: state.schedules[tokenId],
+      loan: state.loans[tokenId],
+      switch: state.switches[tokenId],
+    });
+    return { events: mergeHistory(logged, record), source: "the simulated demo", complete: true };
   }
 
   async simulateDeposit(tokenId: string, chain: ChainTag) {

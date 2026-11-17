@@ -379,6 +379,52 @@ export interface AccountActivity {
   partial: boolean;
 }
 
+/* ---------- one vault's history: what the escrow contracts logged about it ---------- */
+
+export type EscrowName = "market" | "schedule" | "lend" | "switch";
+
+/**
+ * Something an escrow contract logged about a vault, as a NEP-297 event: a listing and its price,
+ * a sale, a loan's terms, a schedule's date, a switch's beneficiary. `event` and `data` are as
+ * the contract logged them: amounts in yoctoNEAR and times in nanoseconds, as strings.
+ *
+ * Market: `listed` (seller, price), `sold` (seller, buyer, price), `delisted` (seller).
+ * Schedule: `scheduled` (giver, recipient, release_at_ns, cancellable), `released`, `cancelled`.
+ * Lend: `requested` (borrower, principal, repayment, term_ns), `funded` (lender, due_at_ns),
+ * `repaid` (lender, repayment), `foreclosed` (lender), `cancelled`.
+ * Switch: `armed` (owner, beneficiary, interval_ns, due_at_ns), `checked_in`, `updated`,
+ * `released` (beneficiary), `taken_back`.
+ * Any of them: `returned` (sent in without a valid message, so sent back) and `payout_failed`
+ * (account_id, amount: a payment that bounced and waits to be claimed).
+ */
+export interface EscrowEvent {
+  escrow: EscrowName;
+  event: string;
+  data: Record<string, unknown>;
+  /** When it happened, in nanoseconds, on the same clock as the custody log. */
+  at_ns: string;
+  /**
+   * `log`: read from the transaction that moved the vault. `record`: read from the escrow's current
+   * record, the only place a loan's funding and a switch's latest check-in are kept, since neither
+   * moves the vault.
+   */
+  from: "log" | "record";
+  /** The NEAR transaction that logged it, where there is one to link to. */
+  tx: string | null;
+}
+
+export interface VaultHistory {
+  /** Oldest first. */
+  events: EscrowEvent[];
+  /** Where it came from, as the UI names it. */
+  source: string;
+  /**
+   * False if the index of the vault's transactions couldn't be read: then only the escrow it's in
+   * now is covered, and earlier sales and loans show without their terms.
+   */
+  complete: boolean;
+}
+
 /** What the market holds for an account: bounced payouts to claim, and listing deposit not in use. */
 export interface MarketBalances {
   claimable: string;
@@ -494,6 +540,12 @@ export interface BearerClient {
 
   /** What happened to the vaults this account has held: sales, handovers, schedules, loans. */
   accountActivity(accountId: string): Promise<AccountActivity>;
+  /**
+   * What the escrow contracts logged about one vault, oldest first: every listing, sale, loan,
+   * schedule and switch it has been through, with prices, terms and dates, plus what the escrow
+   * holding it now records.
+   */
+  vaultHistory(tokenId: string): Promise<VaultHistory>;
 
   /** Simulated adapter only: pretend a deposit arrived. */
   simulateDeposit?(tokenId: string, chain: ChainTag): Promise<void>;

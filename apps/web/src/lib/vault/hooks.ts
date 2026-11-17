@@ -1,7 +1,7 @@
 "use client";
 
 import type { AttackKind, ChainTag, Finish, LoanTerms, VaultLoan, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
 import { getVaultClient } from "./client";
@@ -231,6 +231,26 @@ export function useAccountActivity(accountId: string | null) {
     refetchInterval: 60_000,
     staleTime: 30_000,
     retry: 1,
+  });
+}
+
+/* ---------- one vault's history: the History tab ---------- */
+
+/**
+ * What the escrows logged as the vault moved. NearBlocks' free index is rate-limited, so it's read
+ * when the History tab opens and again only when the vault moves, or a minute after the index
+ * refused. Check-ins and loan funding come from the escrow records the page already polls.
+ */
+export function useVaultHistory(vault: VaultView | null | undefined, enabled: boolean) {
+  const moved = vault?.custody.at(-1)?.since_ns ?? "";
+  return useQuery({
+    queryKey: ["history", vault?.token_id ?? "", moved],
+    queryFn: async () => (await getVaultClient()).vaultHistory((vault as VaultView).token_id),
+    enabled: Boolean(vault) && enabled,
+    staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+    retry: 1,
+    refetchInterval: (q) => (q.state.data && !q.state.data.complete ? 60_000 : false),
   });
 }
 

@@ -6,6 +6,7 @@ import type {
   ChainObservation,
   ChainTag,
   ContractConfig,
+  EscrowEvent,
   Finish,
   HandoverSchedule,
   LendConfig,
@@ -16,6 +17,7 @@ import type {
   RecordedAttack,
   SwitchConfig,
   VaultLoan,
+  VaultHistory,
   VaultSwitch,
   VaultView,
   WithdrawRequest,
@@ -28,7 +30,7 @@ import { broadcastRaw, btcParams, chainStatus, chainTxId, evmParams, solParams, 
 import { TESTNET_ENDPOINTS, type TestnetEndpoints } from "./config";
 import { observeBtc, observeEvm, observeSol } from "./observe";
 import { NearRpc, getJson, jsonRpc } from "./rpc";
-import { custodyEvents } from "../activity";
+import { custodyEvents, escrowEventsInLogs, mergeHistory, recordEvents, type LoggedOutcome } from "../activity";
 
 const TGAS = 10n ** 12n;
 const ONE_YOCTO = 1n;
@@ -689,6 +691,88 @@ export class TestnetBearerClient implements BearerClient {
     }
     events.sort((a, b) => b.atMs - a.atMs);
     return { events, source: "NearBlocks index and the contracts' own records", partial: !receipts && Boolean(market) };
+  }
+
+  private txLogs = new Map<string, Promise<LoggedOutcome[]>>();
+
+  /** Every receipt's logs in one transaction, from an archival node. Never changes, so kept. */
+  private txOutcomes(hash: string) {
+    let hit = this.txLogs.get(hash);
+    if (!hit) {
+      type Status = { receipts_outcome: { outcome: LoggedOutcome }[] };
+      // Archival nodes find a transaction by its hash; the sender only routes the lookup.
+      hit = jsonRpc<Status>(this.ep.nearArchival, "EXPERIMENTAL_tx_status", {
+        tx_hash: hash,
+        sender_account_id: this.opts.contractId,
+        wait_until: "NONE",
+      }).then((r) => r.receipts_outcome.map((o) => ({ executor_id: o.outcome.executor_id, logs: o.outcome.logs })));
+      hit.catch(() => this.txLogs.delete(hash));
+      this.txLogs.set(hash, hit);
+    }
+    return hit;
+  }
+
+  /**
+   * Every transaction that minted or moved the vault, newest first, from NearBlocks' index. Each
+   * page of 25 costs one credit of its rate limit, so the next page is read only when this one is
+   * full; a vault's custody log keeps 16 holders, so a fourth page is never needed in practice.
+   */
+  private async vaultMoves(tokenId: string) {
+    // The row's own timestamp is the transfer's block: the custody log's clock, to the nanosecond.
+    type Move = { transaction_hash: string; block_timestamp: string };
+    type Page = { data?: Move[]; meta?: { next_page?: string | null } };
+    const base = `${this.ep.nearblocks}/nfts/${encodeURIComponent(this.opts.contractId)}/tokens/${encodeURIComponent(tokenId)}/txns`;
+    const rows: Move[] = [];
+    let next: string | null = null;
+    for (let page = 0; page < 4; page++) {
+      const url: string = next ? `${base}?next=${encodeURIComponent(next)}` : base;
+      const r: Page | null = await getJson<Page>(url).catch(() => null);
+      if (!r?.data) return { rows, complete: false };
+      rows.push(...r.data);
+      next = r.data.length >= 25 ? (r.meta?.next_page ?? null) : null;
+      if (!next) return { rows, complete: true };
+    }
+    return { rows, complete: false };
+  }
+
+  /**
+   * NearBlocks' index lists every transaction that moved the vault (one call; it's rate-limited).
+   * Each one's logs are read from an archival node, and the escrow contracts' events in them are
+   * kept: a listing logs its price, a sale its buyer, a loan request its terms. Funding a loan and
+   * checking in to a switch don't move the vault, so those come from the escrow's current record.
+   * If the index can't be read, the current record is all there is, and `complete` is false.
+   */
+  async vaultHistory(tokenId: string): Promise<VaultHistory> {
+    const escrows = { market: this.opts.marketId, schedule: this.opts.scheduleId, lend: this.opts.lendId, switch: this.opts.switchId };
+    const [moves, listing, schedule, loan, sw] = await Promise.all([
+      this.vaultMoves(tokenId),
+      this.getListing(tokenId),
+      this.getSchedule(tokenId),
+      this.getLoan(tokenId),
+      this.getSwitch(tokenId),
+    ]);
+    let complete = moves.complete;
+    const logged: EscrowEvent[] = [];
+    // One transaction can move the vault more than once (a refused listing comes straight back).
+    const txs = [...new Map(moves.rows.map((m) => [m.transaction_hash, m.block_timestamp])).entries()];
+    for (let i = 0; i < txs.length; i += 4) {
+      const batch = await Promise.all(
+        txs.slice(i, i + 4).map(([tx, at]) =>
+          this.txOutcomes(tx)
+            .then((outcomes) => escrowEventsInLogs(outcomes, tokenId, escrows, at, tx))
+            .catch(() => {
+              complete = false;
+              return [];
+            }),
+        ),
+      );
+      logged.push(...batch.flat());
+    }
+    return {
+      events: mergeHistory(logged, recordEvents({ listing, schedule, loan, switch: sw })),
+      source: "NearBlocks index, NEAR archival RPC and the contracts' own records",
+      complete,
+    };
   }
 
   /**

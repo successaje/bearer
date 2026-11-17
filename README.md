@@ -66,7 +66,7 @@ find. Each item, where it is, and how far Bearer goes:
 | A threat model of every way a seller could try to keep the money | [THREAT_MODEL.md](THREAT_MODEL.md), with the full model in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) | Met |
 | Tests for the transfer path, including a sale in the middle of a payout | `transfer_rejected_during_pending_signature` (T5), `a_signature_in_flight_blocks_the_sale` and `a_deposit_during_a_pending_sale_belongs_to_the_buyer` (`contracts/tests/market.test.ts`), with T1–T6 in `vault.test.ts` | Met |
 | A history view per NFT: what it earned, what it paid out, who held it | Each vault's *History* tab lists the deposits observed at its addresses, every withdrawal and every holder ([vault No. 0001](https://bearer-near.vercel.app/v/1#history)) | Met |
-| Earning: payments that accrue to the holder | Anyone can pay into a vault's addresses at any time, and whatever arrives belongs to whoever holds it when it's opened, so selling a sealed vault sells future payments too. There is no royalty split or yield | Partly |
+| Earning: payments that accrue to the holder | Anyone can pay into a vault's addresses at any time, and whatever arrives belongs to whoever holds it when it's opened, so selling a sealed vault sells future payments too. `/v/[id]/pay` turns that into a shareable payment request with wallet-ready QR codes, and shows what has arrived ([docs/features/pay.md](docs/features/pay.md)). There is no royalty split or yield | Partly |
 | A gated page only current holders can open | `/v/[id]/holders`: the holder signs a NEP-413 message, and the server checks the signature, that the key is a full-access key of the account, and that the account holds the vault now; anyone else, a former holder included, is refused ([docs/features/holders.md](docs/features/holders.md), `apps/web/src/app/api/holders/route.ts`) | Met |
 | Dynamic NFTs | NEP-177 metadata whose media is a live image of the vault's seal (`lib.rs`) | Met |
 | Sub-accounts | Not used for vaults; a Bearer link is an implicit NEAR account made from a key | Not used |
@@ -351,7 +351,9 @@ What people could use them for:
   belongs to whoever holds it when it's opened. Selling a sealed vault sells what is in it and every
   payment still to come; `a_deposit_during_a_pending_sale_belongs_to_the_buyer` shows a payment made
   mid-sale ending up the buyer's. Collecting means breaking the seal, after which the vault can't be
-  sold: a receivable here is sold whole, not skimmed.
+  sold: a receivable here is sold whole, not skimmed. A payment link (`/v/[id]/pay?chain=btc&amount=…`)
+  asks for an amount on any of the three chains; it names the vault, never an address, so it keeps
+  paying whoever holds the vault after a sale.
 - **Gifts for a day.** Schedule a vault for a birthday or a graduation. Until then it stays sealed
   and nobody can withdraw, the giver included. The giver chooses whether they can cancel
   ([docs/features/schedule.md](docs/features/schedule.md)).

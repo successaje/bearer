@@ -1,7 +1,7 @@
 "use client";
 
 import type { MarketListing, VaultLoan } from "@bearer/sdk";
-import { ArrowDownLeft, ArrowUpRight, CalendarClock, Code, Coins, Eye, HandCoins, History, Hourglass, Link2, LockKeyhole, PackageOpen, Presentation, ScrollText, Send, ShieldCheck, Store, Swords } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CalendarClock, Code, Coins, Eye, HandCoins, History, Hourglass, Link2, LockKeyhole, PackageOpen, Presentation, ReceiptText, ScrollText, Send, ShieldCheck, Store, Swords } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Tabs } from "radix-ui";
@@ -369,6 +369,13 @@ export function VaultDetailView() {
             >
               <ScrollText className="size-4" />
               Print a bearer certificate
+            </Link>
+            <Link
+              href={`/v/${vault.token_id}/pay`}
+              className="inline-flex items-center gap-1.5 text-[13.5px] font-medium text-fg-2 transition-colors hover:text-fg"
+            >
+              <ReceiptText className="size-4" />
+              Get paid into it
             </Link>
             {!IS_SIMULATED ? (
               <Link

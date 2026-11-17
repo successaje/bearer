@@ -227,7 +227,8 @@ export function useAccountActivity(accountId: string | null) {
     queryKey: ["activity", accountId],
     queryFn: async () => (await getVaultClient()).accountActivity(accountId as string),
     enabled: Boolean(accountId),
-    // NearBlocks' free index is rate-limited, so once a minute; a failed read keeps the last one.
+    // The chain once a minute. The client asks NearBlocks' rate-limited index far less often
+    // (see accountActivity); a failed read keeps the last one.
     refetchInterval: 60_000,
     staleTime: 30_000,
     retry: 1,

@@ -36,16 +36,29 @@ and the setting stays in this browser.
 ## Where the numbers come from
 
 - **Which vaults to read.** NearBlocks' index lists the vaults that moved in or out of your account
-  (`/v3/accounts/{account}/nft-txns`), plus the ones you hold now.
+  (`/v3/accounts/{account}/nft-txns?contract=bearer.testnet`), plus the ones you hold now and any
+  seen before.
 - **What happened to each.** Each vault's custody log on-chain lists every holder in order. A sale
   reads seller → market → buyer; a scheduled handover reads giver → schedule → recipient.
 - **What you were paid.** The market's transfer to you in the sale's transaction, from NearBlocks
-  (`/v3/accounts/{account}/receipts`).
+  (`/v3/accounts/{account}/receipts?predecessor=bearer-market.testnet`).
 - **The price.** The buyer's deposit on that transaction, read from an archival NEAR node.
 
-NearBlocks' free index is rate-limited, so the site reads it once a minute. If a read fails, the
-bell keeps what it had. The custody log keeps the last 16 holders of a vault, so older history
-drops off.
+The chain is read once a minute. NearBlocks' free index is rate-limited, and every 25 rows it
+returns cost a credit, so it's read far less often:
+
+- **The first read** goes through up to four pages of your Bearer transfers.
+- **After that, every 10 minutes**, the newest page only. A vault that leaves your account in
+  between is still followed, because it was seen there.
+- **Payouts** are looked up only while a sale's payout is missing: on the next read for a sale in
+  the last 15 minutes, since the index takes a moment to catch up, and every 10 minutes for older
+  ones.
+
+So an open tab costs one or two credits every 10 minutes. Before 17 Nov 2026 it cost eight a
+minute (100 rows of transfers and 100 of receipts); that day NearBlocks refused this development
+machine's calls for hours. If the first read fails, the bell says so and tries again a minute later; after that
+a failed read keeps what it had. The custody log keeps the last 16 holders of a vault, so older
+history drops off.
 
 Checked against testnet for `finishr.testnet`: the sale of No. 0005 to `takaba.testnet` for 2 NEAR,
 paid 2.01 NEAR in [2wReQN8A…](https://testnet.nearblocks.io/txns/2wReQN8Ajer7Cx93KYFnZyxFncpo2KVQFBT3vTsxnmxm),

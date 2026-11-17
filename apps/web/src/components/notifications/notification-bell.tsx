@@ -14,8 +14,9 @@ import { cn } from "@/lib/utils";
 
 /**
  * What other people did that concerns the connected account: a vault of theirs sold, or one handed
- * or scheduled to them. Read from the chain and NearBlocks' index once a minute, so nothing is sent
- * anywhere; browser alerts, if turned on, show only while a Bearer tab is open.
+ * or scheduled to them. Read from the chain once a minute and from NearBlocks' rate-limited index
+ * every 10, so nothing is sent anywhere; browser alerts, if turned on, show only while a Bearer tab
+ * is open.
  */
 export function NotificationBell() {
   const { accountId } = useWallet();
@@ -144,7 +145,7 @@ export function NotificationBell() {
               </label>
             ) : null}
             <p className={cn("text-[11.5px] text-fg-3", alerts.supported && "mt-2")}>
-              Read from NEAR testnet and NearBlocks&apos; index, once a minute.
+              Read from NEAR testnet every minute, and NearBlocks&apos; index every 10.
             </p>
           </div>
         </Popover.Content>

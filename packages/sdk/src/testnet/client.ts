@@ -1,5 +1,6 @@
 import type {
   AccountActivity,
+  AccountEvent,
   AttackKind,
   AttackResult,
   BearerClient,
@@ -68,6 +69,14 @@ export interface TestnetClientOptions {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** How often an account's activity asks NearBlocks' rate-limited index again; the chain is read every time. */
+const REINDEX_MS = 10 * 60_000;
+/** A sale this recent whose payout the index hasn't listed yet is looked for again on the next read. */
+const RECENT_SALE_MS = 15 * 60_000;
+
+/** A payment from the market to an account, as NearBlocks lists it. */
+type Payout = { tx: string; atMs: number; amount: string };
 
 function addressOf(v: VaultView, chain: ChainTag) {
   const a = chain === "btc" ? v.btc_address : chain === "evm" ? v.evm_address : v.sol_address;
@@ -645,44 +654,100 @@ export class TestnetBearerClient implements BearerClient {
     return hit;
   }
 
+  /** What the index told us about each account, kept between reads so it's asked rarely. */
+  private activityIndex = new Map<string, { ids: Set<string>; indexedAt: number; payouts: Map<string, Payout> }>();
+
   /**
-   * Which vaults moved through the account comes from NearBlocks' index (rate-limited, so two
-   * calls); what happened to each is read from its custody log on-chain. A sale's payout is the
-   * market's transfer to the seller, and its price is what the buyer attached to that transaction,
-   * read from an archival node. Throws if the index can't be read, so callers keep what they had.
+   * Bearer vaults that minted to or moved through the account, newest first, from NearBlocks'
+   * index. Each page of 25 costs one credit of its rate limit; a next page is read only while
+   * they come back full. Throws if the index refuses.
+   */
+  private async accountVaultIds(accountId: string, pages: number) {
+    type Move = { contract_account_id: string; token_id: string };
+    type Page = { data?: Move[]; meta?: { next_page?: string | null } };
+    const base = `${this.ep.nearblocks}/accounts/${encodeURIComponent(accountId)}/nft-txns?contract=${encodeURIComponent(this.opts.contractId)}`;
+    const ids: string[] = [];
+    let next: string | null = null;
+    for (let i = 0; i < pages; i++) {
+      const url: string = next ? `${base}&next=${encodeURIComponent(next)}` : base;
+      const r: Page | null = await getJson<Page>(url);
+      if (!r) break; // No history at all.
+      if (!r.data) throw new Error("NearBlocks' index didn't answer");
+      for (const m of r.data) if (m.contract_account_id === this.opts.contractId) ids.push(m.token_id);
+      next = r.data.length >= 25 ? (r.meta?.next_page ?? null) : null;
+      if (!next) break;
+    }
+    return ids;
+  }
+
+  /** The market's latest 25 payments to the account (one credit): sale payouts, and deposits back. */
+  private async marketPayouts(accountId: string, market: string): Promise<Payout[]> {
+    type Receipt = { predecessor_account_id: string; transaction_hash: string; actions: { action: string }[]; actions_agg: { deposit: string }; block: { block_timestamp: string } };
+    const url = `${this.ep.nearblocks}/accounts/${encodeURIComponent(accountId)}/receipts?predecessor=${encodeURIComponent(market)}`;
+    const r = await getJson<{ data?: Receipt[] }>(url);
+    return (r?.data ?? [])
+      .filter((x) => x.predecessor_account_id === market && x.actions.some((a) => a.action === "TRANSFER"))
+      .map((x) => ({ tx: x.transaction_hash, atMs: Number(BigInt(x.block.block_timestamp) / 1_000_000n), amount: x.actions_agg.deposit }));
+  }
+
+  /**
+   * What happened to each vault the account has held is read from its custody log on-chain, every
+   * time. Which vaults those are comes from the ones it holds now, the ones seen before, and
+   * NearBlocks' index. The index is rate-limited, so it's asked on the first read and then every
+   * 10 minutes; a vault that leaves the account in between is still read, since it was seen here.
+   * A sale's payout is the market's transfer to the seller, and its price is what the buyer
+   * attached to that transaction, read from an archival node. Payouts are asked for only while a
+   * sale's is missing: on the next read for a sale in the last 15 minutes (the index takes a
+   * moment to catch up), with the 10-minute read for older ones. Throws if the index can't be
+   * read the first time, so callers keep what they had.
    */
   async accountActivity(accountId: string): Promise<AccountActivity> {
-    const nb = this.ep.nearblocks;
-    const enc = encodeURIComponent(accountId);
-    type Move = { contract_account_id: string; token_id: string };
-    type Receipt = { predecessor_account_id: string; transaction_hash: string; actions: { action: string }[]; actions_agg: { deposit: string }; block: { block_timestamp: string } };
-    const [moves, receipts, owned, schedules] = await Promise.all([
-      getJson<{ data: Move[] }>(`${nb}/accounts/${enc}/nft-txns?limit=100`),
-      this.opts.marketId ? getJson<{ data: Receipt[] }>(`${nb}/accounts/${enc}/receipts?limit=100`).catch(() => null) : null,
+    const market = this.opts.marketId ?? null;
+    const known = this.activityIndex.get(accountId);
+    const index = known ?? { ids: new Set<string>(), indexedAt: 0, payouts: new Map<string, Payout>() };
+    const due = Date.now() - index.indexedAt >= REINDEX_MS;
+    let partial = false;
+    const [found, owned, schedules] = await Promise.all([
+      // The whole history the first time; after that, anything new is on the newest page.
+      due
+        ? this.accountVaultIds(accountId, known ? 1 : 4).catch((e: unknown) => {
+            if (!known) throw e;
+            partial = true;
+            return null;
+          })
+        : null,
       this.listVaults(accountId),
       this.opts.scheduleId ? this.schedules() : Promise.resolve([] as HandoverSchedule[]),
     ]);
-    const ids = new Set(owned.map((v) => v.token_id));
-    for (const m of moves?.data ?? []) if (m.contract_account_id === this.opts.contractId) ids.add(m.token_id);
-    const vaults = await Promise.all([...ids].map((id) => this.getVault(id)));
-    const market = this.opts.marketId ?? null;
+    if (found) {
+      for (const id of found) index.ids.add(id);
+      index.indexedAt = Date.now();
+    }
+    for (const v of owned) index.ids.add(v.token_id);
+    this.activityIndex.set(accountId, index);
+
+    const vaults = await Promise.all([...index.ids].map((id) => this.getVault(id)));
     const events = vaults.flatMap((v) => (v ? custodyEvents(v, accountId, market, this.opts.scheduleId ?? null, this.opts.lendId ?? null, this.opts.switchId ?? null) : []));
 
     // Match each sale to the market's payment to the seller, made in the same transaction a moment after the vault moved.
-    const payouts = (receipts?.data ?? [])
-      .filter((r) => r.predecessor_account_id === market && r.actions.some((a) => a.action === "TRANSFER"))
-      .map((r) => ({ tx: r.transaction_hash, atMs: Number(BigInt(r.block.block_timestamp) / 1_000_000n), amount: r.actions_agg.deposit }));
+    const payoutFor = (e: AccountEvent) => [...index.payouts.values()].find((x) => x.atMs >= e.atMs - 5_000 && x.atMs <= e.atMs + 60_000);
+    const sold = events.filter((e) => e.kind === "sold");
+    if (market && sold.some((e) => !payoutFor(e) && (due || Date.now() - e.atMs < RECENT_SALE_MS))) {
+      try {
+        for (const p of await this.marketPayouts(accountId, market)) index.payouts.set(p.tx, p);
+      } catch {
+        partial = true;
+      }
+    }
     await Promise.all(
-      events
-        .filter((e) => e.kind === "sold")
-        .map(async (e) => {
-          const p = payouts.find((x) => x.atMs >= e.atMs - 5_000 && x.atMs <= e.atMs + 60_000);
-          if (!p) return;
-          const tx = e.counterparty ? await this.txCall(p.tx, e.counterparty).catch(() => null) : null;
-          e.paidYocto = p.amount;
-          e.tx = p.tx;
-          e.priceYocto = tx?.method === "buy" ? tx.deposit : null;
-        }),
+      sold.map(async (e) => {
+        const p = payoutFor(e);
+        if (!p) return;
+        const tx = e.counterparty ? await this.txCall(p.tx, e.counterparty).catch(() => null) : null;
+        e.paidYocto = p.amount;
+        e.tx = p.tx;
+        e.priceYocto = tx?.method === "buy" ? tx.deposit : null;
+      }),
     );
     for (const s of schedules) {
       if (s.recipient !== accountId || s.state.kind !== "waiting") continue;
@@ -690,7 +755,7 @@ export class TestnetBearerClient implements BearerClient {
       events.push({ id: `scheduled_for_you:${s.token_id}:${s.scheduled_at_ns}`, kind: "scheduled_for_you", tokenId: s.token_id, atMs, counterparty: s.giver, byOthers: true, releaseAtMs: Number(BigInt(s.release_at_ns) / 1_000_000n) });
     }
     events.sort((a, b) => b.atMs - a.atMs);
-    return { events, source: "NearBlocks index and the contracts' own records", partial: !receipts && Boolean(market) };
+    return { events, source: "NearBlocks index and the contracts' own records", partial };
   }
 
   private txLogs = new Map<string, Promise<LoggedOutcome[]>>();

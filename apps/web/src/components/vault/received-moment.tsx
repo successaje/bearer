@@ -17,11 +17,11 @@ const seenKey = (v: VaultView) => `bearer:received:${v.token_id}:${v.custody[v.c
 export function useJustReceived(vault: VaultView | null | undefined, viewer: string | null) {
   const [show, setShow] = useState(false);
   const latest = vault?.custody[vault.custody.length - 1];
-  // A vault coming back from the lending contract (repaid, or a request taken back) or out of a
-  // switch to whoever put it there isn't a hand-over.
+  // A vault coming back out of an escrow to whoever put it there isn't a hand-over: delisted,
+  // a schedule cancelled, a loan repaid or its request taken back, a switch taken back.
   const back = vault?.custody.at(-2)?.account_id;
-  const home =
-    !!back && (back === LEND_CONTRACT || back === SWITCH_CONTRACT) && vault?.custody.at(-3)?.account_id === viewer;
+  const escrows = [MARKET_CONTRACT, SCHEDULE_CONTRACT, LEND_CONTRACT, SWITCH_CONTRACT];
+  const home = !!back && escrows.includes(back) && vault?.custody.at(-3)?.account_id === viewer;
   const fresh = !!vault && !!viewer && vault.owner_id === viewer && vault.custody.length > 1 && latest?.account_id === viewer && !home;
   const key = vault && fresh ? seenKey(vault) : null;
   useEffect(() => {

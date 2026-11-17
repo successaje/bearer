@@ -30,6 +30,9 @@ visibly intact. Nothing opens, cracks or tears in this moment; the card only arr
 
 - Shows only when the connected account is the owner, the vault has changed hands, and the newest
   custody entry is the viewer.
+- Not when a vault comes back out of an escrow to whoever put it there: delisted, a schedule
+  cancelled, a loan repaid or its request taken back, a switch taken back. Before 17 Nov 2026 a
+  delisted vault opened this moment and called itself "Bought from" its own seller.
 - A Radix dialog: focus is trapped, Esc and the button close it.
 - Reduced motion: no slide or flip; the card appears at rest.
 

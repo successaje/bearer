@@ -9,7 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
-    "check:nearai": "node --no-warnings --import ./scripts/ts-hooks.mjs --experimental-transform-types scripts/nearai-check.mts"
+    "check:nearai": "node --no-warnings --env-file-if-exists=../../.env --env-file-if-exists=.env.local --import ./scripts/ts-hooks.mjs --experimental-transform-types scripts/nearai-check.mts"
   },
   "dependencies": {
     "@bearer/sdk": "workspace:*",

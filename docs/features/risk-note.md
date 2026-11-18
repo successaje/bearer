@@ -71,12 +71,30 @@ Hopper GPUs passed by NVIDIA, one signing key `0x3b753b44…fa0c`, in 4.8–7.7 
 (Intel then rejects the quote's signature), an unbound signing address, and reply signatures over
 other hashes, by another key or by the gateway.
 
+The same day, with a key, a real note on vault No. 0027's loan (1 NEAR lent, 1.05 back, overdue
+since 13 Nov, 0.00006 tBTC of collateral): rated **higher** risk, "the vault is intact and sealed but
+the loan is overdue and the collateral is only ~$6 of testnet tBTC". The enclaves were attested
+first (all seven checks), and the reply's signature recovered to `0x3b753b44…fa0c` over
+`z-ai/glm-5.3-flash:2cc3e01c…8e25:5e6d0a17…c3b5`; 26.8 s in all. The whole result, request and reply
+bytes included, is in
+[`apps/web/scripts/reports/risk-note-27-2026-11-18.json`](../../apps/web/scripts/reports/risk-note-27-2026-11-18.json),
+and `check:nearai -- --verify` re-checks it offline: the hashes, the signed text, the signer and that
+the note is the signed reply. A copy with "higher" edited to "lower" in the reply fails.
+
+At GLM's default reasoning effort the same note took 75 s (817 reasoning tokens); the request sets
+`reasoning_effort: "low"`, which brought it to about 12–15 s. NEAR AI ignored the other ways of
+turning reasoning down that were tried.
+
 ## Try it
 
 - `pnpm --filter web check:nearai`: the live attestation and the tamper tests, no key needed. With
-  `NEAR_AI_API_KEY` set, add `-- --ask 27` to write a real note on vault No. 0027's loan.
+  `NEAR_AI_API_KEY` in the environment, the repository's `.env` or `apps/web/.env.local`, add
+  `-- --ask 27` to write a real note on vault No. 0027's loan.
+- `pnpm --filter web check:nearai -- --verify scripts/reports/risk-note-27-2026-11-18.json`: the
+  saved real note, checked offline.
 - `pnpm dev`, open a pledged vault (`/v/27`) and press **Check the enclaves now**. With
-  `NEAR_AI_API_KEY` in `apps/web/.env.local`, **Get a risk note** works too.
+  `NEAR_AI_API_KEY` in `apps/web/.env.local` (the app reads that file, not the repository's `.env`),
+  **Get a risk note** works too.
 - In the simulated demo the panel shows a labelled stand-in written by the page; no model is asked.
 
 ## Setup and cost

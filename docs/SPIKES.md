@@ -23,7 +23,14 @@ against `z-ai/glm-5.3-flash` on `cloud-api.near.ai`, with no API key:
 - Whole check: 4.8–7.7 s. Tamper tests caught: another nonce, a changed compose, the debug bit set
   (Intel: "ISV enclave report signature is invalid"), an unbound signing address.
 
-Not yet run: a real note with its reply signature, which needs a NEAR AI Cloud key.
+**A real note**, with a key: on vault No. 0027's loan, rated "higher" risk; the attestation passed
+first, then the reply's signature (`provider_tee`) recovered to the attested key over
+`z-ai/glm-5.3-flash:sha256(request):sha256(reply)`; 26.8 s in all. Small calls: 2.8 s for a reply, 0.7 s
+for its signature. At GLM's default reasoning effort the note took 74.5 s (817 of 1,044 completion
+tokens were reasoning; one earlier run passed 90 s and timed out); with `reasoning_effort: "low"`,
+11.7 s on a short prompt. `chat_template_kwargs.enable_thinking` and `thinking.type` were ignored. Saved
+as `apps/web/scripts/reports/risk-note-27-2026-11-18.json`; `check:nearai -- --verify` re-checks it
+offline, and an edited copy fails.
 
 ## 2026-11-18 · Standing payments: a vault paying on Base Sepolia, then locked
 

@@ -5,8 +5,12 @@
  *   pnpm --filter web check:nearai
  *
  * With NEAR_AI_API_KEY set, `-- --ask <vault number>` also writes a real risk note on that vault's
- * loan and checks the reply's signature (it spends a little NEAR AI credit).
+ * loan and checks the reply's signature (it spends a little NEAR AI credit). It reads the key from
+ * the environment, the repository's .env or apps/web/.env.local.
+ *
+ * `-- --verify <file>` checks a saved note offline instead, e.g. the one in scripts/reports.
  */
+import { readFileSync } from "node:fs";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import {
@@ -16,8 +20,10 @@ import {
   fetchReport,
   newNonce,
   personalSignSigner,
+  sha256Hex,
 } from "../src/lib/nearai/attest";
 import { loanFacts, NEAR_AI_MODEL, writeRiskNote } from "../src/lib/nearai/risk-note";
+import type { RiskNoteResult } from "../src/lib/nearai/types";
 
 let passed = 0;
 let failed = 0;
@@ -26,6 +32,27 @@ const t = (name: string, ok: boolean, detail = "") => {
   if (ok) passed++;
   else failed++;
 };
+
+// 0. A saved note, checked offline: its bytes hash to what was signed, the signature recovers to
+// the key its attestation bound, and the note shown is the signed reply.
+const saved = process.argv.indexOf("--verify");
+if (saved > 0) {
+  const r = JSON.parse(readFileSync(process.argv[saved + 1] ?? "", "utf8")) as RiskNoteResult;
+  const reqHash = sha256Hex(r.requestBody);
+  const respHash = sha256Hex(r.responseBody);
+  t("The request bytes hash to the request hash", reqHash === r.requestHash, reqHash);
+  t("The reply bytes hash to the reply hash", respHash === r.responseHash, respHash);
+  t(
+    "NEAR AI signed exactly {model}:{request hash}:{reply hash}",
+    r.signature?.text === `${r.model}:${reqHash}:${respHash}`,
+  );
+  const signer = r.signature ? personalSignSigner(r.signature.text, r.signature.signature) : null;
+  t("The signature recovers to the key the attestation bound", signer === r.evidence.signingAddress, `${signer}`);
+  const reply = JSON.parse(r.responseBody) as { choices: { message: { content: string } }[] };
+  t("The note is the signed reply's content", reply.choices[0].message.content === r.raw);
+  console.log(`\n${passed} passed, ${failed} failed`);
+  process.exit(failed ? 1 : 0);
+}
 
 console.log(`NEAR AI Cloud, model ${NEAR_AI_MODEL}\n`);
 

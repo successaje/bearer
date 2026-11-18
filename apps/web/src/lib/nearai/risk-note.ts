@@ -163,6 +163,8 @@ export async function writeRiskNote(facts: ReturnType<typeof describe>, apiKey: 
     ],
     response_format: { type: "json_object" },
     temperature: 0,
+    // GLM reasons before answering; at its default effort a note took 75 s, at low about 12.
+    reasoning_effort: "low",
     max_tokens: 1500,
   });
   const res = await fetch(`${NEAR_AI_API}/chat/completions`, {
@@ -175,7 +177,7 @@ export async function writeRiskNote(facts: ReturnType<typeof describe>, apiKey: 
     },
     body: requestBody,
     cache: "no-store",
-    signal: AbortSignal.timeout(90_000),
+    signal: AbortSignal.timeout(150_000),
   });
   const responseBody = await res.text();
   if (!res.ok) throw new Error(`NEAR AI answered HTTP ${res.status}: ${responseBody.slice(0, 200)}`);

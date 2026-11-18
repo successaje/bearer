@@ -1,0 +1,154 @@
+{
+  "model": "z-ai/glm-5.3-flash",
+  "facts": {
+    "as_of": "2026-11-18T18:12:01.937Z",
+    "vault": {
+      "number": "27",
+      "state": "sealed",
+      "signatures_ever_requested": 0,
+      "withdrawals_ever": 0,
+      "created_at": "2026-11-11T23:10:58.261Z",
+      "holders_before_pledge": 1,
+      "borrower_held_it_since": "2026-11-11T23:10:58.261Z",
+      "pledged_at": "2026-11-11T23:12:37.645Z"
+    },
+    "collateral": [
+      {
+        "chain": "Bitcoin testnet4",
+        "asset": "tBTC",
+        "confirmed": "0.00006",
+        "pending": "0",
+        "usd_estimate": 6,
+        "source": "Blockstream Esplora testnet4"
+      },
+      {
+        "chain": "Base Sepolia",
+        "asset": "ETH",
+        "confirmed": "0",
+        "pending": "0",
+        "usd_estimate": 0,
+        "source": "Base Sepolia RPC"
+      },
+      {
+        "chain": "Solana devnet",
+        "asset": "SOL",
+        "confirmed": "0",
+        "pending": "0",
+        "usd_estimate": 0,
+        "source": "Solana devnet RPC"
+      }
+    ],
+    "collateral_usd_estimate_total": 6,
+    "loan": {
+      "state": "active",
+      "borrower": "alice.bearer-1108-ffb3.testnet",
+      "principal_near": "1",
+      "repayment_near": "1.05",
+      "interest_percent": 5,
+      "term_days": 1,
+      "due_at": "2026-11-13T20:35:32.765Z",
+      "overdue": true,
+      "lender": "finishr.testnet"
+    },
+    "rules": [
+      "While the vault is pledged, the lending contract holds it and never breaks its seal, so nobody can withdraw from it, the borrower included.",
+      "If the borrower repays exactly the repayment before the due date, the vault goes back to them; from the due date on, only the lender can take it, still sealed.",
+      "A sealed vault has never had a withdrawal signature requested, so nobody holds a pre-signed transaction against its coins.",
+      "Balances are observed from public testnet data and can lag. Testnet coins have no market value; usd_estimate prices them as if they were real, at fixed estimates.",
+      "There is no NEAR price in these facts."
+    ]
+  },
+  "evidence": {
+    "model": "z-ai/glm-5.3-flash",
+    "nonce": "e3fe4beb4bda3457d62a2e17fe58b7863254cf39de3446ecc70b526fc237f034",
+    "signingAddress": "0x3b753b4406613c5e70ae640508632b600424fa0c",
+    "instances": 3,
+    "composes": [
+      {
+        "name": "dstack-nvidia-0.5.11",
+        "sha256": "c900dc7304663b73b623cd5d941fbdab6f02858017b371ae28de445a16d2e2d0"
+      },
+      {
+        "name": "dstack-nvidia-0.5.12",
+        "sha256": "e8416a02d6f7ce47baaa52e3925b934fd30834b04fc9086b363db9b1d12c729d"
+      },
+      {
+        "name": "dstack-nvidia-0.5.11",
+        "sha256": "a7de0bba194b6466c5c7b8dcfb907b6b60404ab2ba6de8b5d0cf63c2145d6868"
+      }
+    ],
+    "ok": true,
+    "checks": [
+      {
+        "id": "fresh",
+        "label": "Fresh",
+        "ok": true,
+        "detail": "Our nonce e3fe4beb\u2026f034 came back in all 3 instances."
+      },
+      {
+        "id": "intel",
+        "label": "Intel TDX",
+        "ok": true,
+        "detail": "Each quote checked against Intel's certification service: UpToDate."
+      },
+      {
+        "id": "debug",
+        "label": "Not debuggable",
+        "ok": true,
+        "detail": "The enclave's debug bit is off, so its memory can't be read from outside."
+      },
+      {
+        "id": "code",
+        "label": "Published code",
+        "ok": true,
+        "detail": "Each quote binds the docker compose its enclave runs (dstack-nvidia-0.5.11, sha256 c900dc73\u2026e2d0; dstack-nvidia-0.5.12, sha256 e8416a02\u2026729d; dstack-nvidia-0.5.11, sha256 a7de0bba\u20266868), and its event log replays to the quote's RTMR3. The compose pins every image by digest; NEAR AI's compose-manager in it loads the model."
+      },
+      {
+        "id": "gpu",
+        "label": "NVIDIA GPUs",
+        "ok": true,
+        "detail": "NVIDIA's attestation service passed 24 HOPPER GPUs with our nonce; its signed answer checks against NVIDIA's keys."
+      },
+      {
+        "id": "bound",
+        "label": "Key in the enclave",
+        "ok": true,
+        "detail": "Each quote's report data is the instance's signing address, then our nonce."
+      },
+      {
+        "id": "key",
+        "label": "One signing key",
+        "ok": true,
+        "detail": "Every instance signs as 0x3b753b4406613c5e70ae640508632b600424fa0c."
+      }
+    ],
+    "checkedAt": "2026-11-18T18:12:01.947Z"
+  },
+  "note": {
+    "rating": "higher",
+    "summary": "The vault is intact and sealed but the loan is overdue and the collateral is only ~$6 of testnet tBTC, so recovery value is minimal.",
+    "points": [
+      "Vault sealed since pledge, zero withdrawals or signature requests ever, so collateral is locked and untampered.",
+      "Confirmed collateral: 0.00006 tBTC on Bitcoin testnet4 (~$6); Base Sepolia and Solana devnet balances are zero with nothing pending.",
+      "Loan of 1 NEAR (repay 1.05) was due 2026-11-13 and is overdue; from the due date only the lender can take the sealed vault.",
+      "Vault created and pledged 2026-11-11 by the same single holder; short, thin history."
+    ],
+    "caveat": "Balances come from public testnet sources and may lag; testnet coins have no real value."
+  },
+  "raw": "{\"rating\": \"higher\", \"summary\": \"The vault is intact and sealed but the loan is overdue and the collateral is only ~$6 of testnet tBTC, so recovery value is minimal.\", \"points\": [\"Vault sealed since pledge, zero withdrawals or signature requests ever, so collateral is locked and untampered.\", \"Confirmed collateral: 0.00006 tBTC on Bitcoin testnet4 (~$6); Base Sepolia and Solana devnet balances are zero with nothing pending.\", \"Loan of 1 NEAR (repay 1.05) was due 2026-11-13 and is overdue; from the due date only the lender can take the sealed vault.\", \"Vault created and pledged 2026-11-11 by the same single holder; short, thin history.\", \"All assets are testnet coins with no market value; the $6 figure is a fixed estimate, and no NEAR price is given.\"], \"caveat\": \"Balances come from public testnet sources and may lag; testnet coins have no real value.\"}",
+  "signature": {
+    "ok": true,
+    "text": "z-ai/glm-5.3-flash:2cc3e01cd61ccad3161e4fb63386b9a0e689aee1b8f4f4bb90f314d0c87c8e25:5e6d0a17f7b2f77d787e8bf362e6fac36c6c6fdaaaef1fce083148be75e3c3b5",
+    "signature": "0xb5b90e3d70fdb3a5e016db007123d160fd51f2aace08ddfd34f825b11acf88717ea2ba9cae6bb41a7083bb486275ab235a3be51e990ff774d153ca9808911d471c",
+    "signer": "0x3b753b4406613c5e70ae640508632b600424fa0c",
+    "kind": "provider_tee",
+    "detail": "Signed inside the attested enclave by 0x3b753b4406613c5e70ae640508632b600424fa0c, over the SHA-256 of the exact request and reply."
+  },
+  "requestBody": "{\"model\":\"z-ai/glm-5.3-flash\",\"messages\":[{\"role\":\"system\",\"content\":\"You write short risk notes for people deciding whether to lend NEAR against a Bearer vault. A Bearer vault is an NFT on NEAR that controls native Bitcoin, Base ETH and Solana SOL addresses; here it is pledged as collateral for a NEAR loan. Use only the facts you are given. Never invent prices, balances or history. There is no NEAR price, so do not compare the loan's NEAR amount with the collateral's dollar estimate; judge what the facts do show: whether the collateral is intact and locked, how much is there and on which chains, pending deposits, the vault's history, and the terms. Reply with one JSON object and nothing else: {\\\"rating\\\": \\\"lower\\\" | \\\"moderate\\\" | \\\"higher\\\" (risk to the lender), \\\"summary\\\": one sentence, \\\"points\\\": up to 4 short strings, \\\"caveat\\\": one short string}.\"},{\"role\":\"user\",\"content\":\"Facts, read from NEAR testnet and public chain data just now:\\n{\\n  \\\"as_of\\\": \\\"2026-11-18T18:12:01.937Z\\\",\\n  \\\"vault\\\": {\\n    \\\"number\\\": \\\"27\\\",\\n    \\\"state\\\": \\\"sealed\\\",\\n    \\\"signatures_ever_requested\\\": 0,\\n    \\\"withdrawals_ever\\\": 0,\\n    \\\"created_at\\\": \\\"2026-11-11T23:10:58.261Z\\\",\\n    \\\"holders_before_pledge\\\": 1,\\n    \\\"borrower_held_it_since\\\": \\\"2026-11-11T23:10:58.261Z\\\",\\n    \\\"pledged_at\\\": \\\"2026-11-11T23:12:37.645Z\\\"\\n  },\\n  \\\"collateral\\\": [\\n    {\\n      \\\"chain\\\": \\\"Bitcoin testnet4\\\",\\n      \\\"asset\\\": \\\"tBTC\\\",\\n      \\\"confirmed\\\": \\\"0.00006\\\",\\n      \\\"pending\\\": \\\"0\\\",\\n      \\\"usd_estimate\\\": 6,\\n      \\\"source\\\": \\\"Blockstream Esplora testnet4\\\"\\n    },\\n    {\\n      \\\"chain\\\": \\\"Base Sepolia\\\",\\n      \\\"asset\\\": \\\"ETH\\\",\\n      \\\"confirmed\\\": \\\"0\\\",\\n      \\\"pending\\\": \\\"0\\\",\\n      \\\"usd_estimate\\\": 0,\\n      \\\"source\\\": \\\"Base Sepolia RPC\\\"\\n    },\\n    {\\n      \\\"chain\\\": \\\"Solana devnet\\\",\\n      \\\"asset\\\": \\\"SOL\\\",\\n      \\\"confirmed\\\": \\\"0\\\",\\n      \\\"pending\\\": \\\"0\\\",\\n      \\\"usd_estimate\\\": 0,\\n      \\\"source\\\": \\\"Solana devnet RPC\\\"\\n    }\\n  ],\\n  \\\"collateral_usd_estimate_total\\\": 6,\\n  \\\"loan\\\": {\\n    \\\"state\\\": \\\"active\\\",\\n    \\\"borrower\\\": \\\"alice.bearer-1108-ffb3.testnet\\\",\\n    \\\"principal_near\\\": \\\"1\\\",\\n    \\\"repayment_near\\\": \\\"1.05\\\",\\n    \\\"interest_percent\\\": 5,\\n    \\\"term_days\\\": 1,\\n    \\\"due_at\\\": \\\"2026-11-13T20:35:32.765Z\\\",\\n    \\\"overdue\\\": true,\\n    \\\"lender\\\": \\\"finishr.testnet\\\"\\n  },\\n  \\\"rules\\\": [\\n    \\\"While the vault is pledged, the lending contract holds it and never breaks its seal, so nobody can withdraw from it, the borrower included.\\\",\\n    \\\"If the borrower repays exactly the repayment before the due date, the vault goes back to them; from the due date on, only the lender can take it, still sealed.\\\",\\n    \\\"A sealed vault has never had a withdrawal signature requested, so nobody holds a pre-signed transaction against its coins.\\\",\\n    \\\"Balances are observed from public testnet data and can lag. Testnet coins have no market value; usd_estimate prices them as if they were real, at fixed estimates.\\\",\\n    \\\"There is no NEAR price in these facts.\\\"\\n  ]\\n}\"}],\"response_format\":{\"type\":\"json_object\"},\"temperature\":0,\"reasoning_effort\":\"low\",\"max_tokens\":1500}",
+  "responseBody": "{\"id\":\"54d3c6f7f0f849119bf00c1490412348\",\"object\":\"chat.completion\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"rating\\\": \\\"higher\\\", \\\"summary\\\": \\\"The vault is intact and sealed but the loan is overdue and the collateral is only ~$6 of testnet tBTC, so recovery value is minimal.\\\", \\\"points\\\": [\\\"Vault sealed since pledge, zero withdrawals or signature requests ever, so collateral is locked and untampered.\\\", \\\"Confirmed collateral: 0.00006 tBTC on Bitcoin testnet4 (~$6); Base Sepolia and Solana devnet balances are zero with nothing pending.\\\", \\\"Loan of 1 NEAR (repay 1.05) was due 2026-11-13 and is overdue; from the due date only the lender can take the sealed vault.\\\", \\\"Vault created and pledged 2026-11-11 by the same single holder; short, thin history.\\\", \\\"All assets are testnet coins with no market value; the $6 figure is a fixed estimate, and no NEAR price is given.\\\"], \\\"caveat\\\": \\\"Balances come from public testnet sources and may lag; testnet coins have no real value.\\\"}\"},\"finish_reason\":\"stop\",\"logprobs\":null,\"matched_stop\":154827}],\"model\":\"z-ai/glm-5.3-flash\",\"created\":1795025527,\"usage\":{\"prompt_tokens\":814,\"total_tokens\":1038,\"completion_tokens\":224,\"prompt_tokens_details\":{\"cached_tokens\":0},\"reasoning_tokens\":1,\"completion_tokens_details\":{\"reasoning_tokens\":1}}}",
+  "requestHash": "2cc3e01cd61ccad3161e4fb63386b9a0e689aee1b8f4f4bb90f314d0c87c8e25",
+  "responseHash": "5e6d0a17f7b2f77d787e8bf362e6fac36c6c6fdaaaef1fce083148be75e3c3b5",
+  "chatId": "54d3c6f7f0f849119bf00c1490412348",
+  "at": "2026-11-18T18:12:28.725Z",
+  "simulated": false
+}

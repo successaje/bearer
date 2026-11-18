@@ -44,6 +44,10 @@ jobs:
             account: bearer-switch.testnet
             commit: c74b2c8868ba98f309ea73c0f62bec69b35d9551
             short: c74b2c8
+          - contract: standing
+            account: bearer-standing.testnet
+            commit: f4420f175f22dd05d77a0da5e5bb197107ffdc7d
+            short: f4420f1
     steps:
       - name: Check out this commit, for SHA256SUMS
         uses: actions/checkout@v4

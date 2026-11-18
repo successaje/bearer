@@ -176,7 +176,7 @@ const sats = (n) => `${Number(n).toLocaleString("en-US")} sats`;
 const checks = [];
 const claim = (group, text, source, run) => checks.push({ group, text, source, run });
 
-// 1. The five contracts are locked and run the builds committed in contracts/res.
+// 1. The six contracts are locked and run the builds committed in contracts/res.
 
 const LOCKED = [
   { account: BEARER, wasm: "bearer.wasm", lockTx: "J87dPH7D1LG7PLwvyzqwFbBKMsQ7pAd7Nxfn1DrvsaVT" },
@@ -184,6 +184,7 @@ const LOCKED = [
   { account: "bearer-schedule.testnet", wasm: "schedule.wasm", lockTx: "6wAyfjD218s7DvCwuzK7nEtAdLDQK5eZujY3caDJRekx" },
   { account: "bearer-lend.testnet", wasm: "lend.wasm", lockTx: "Cia5mDdMobJJCPWUx6kgcAhuNDiYhBxBPukb1XW4ZFuX" },
   { account: "bearer-switch.testnet", wasm: "switch.wasm", lockTx: "GyLmqGMPoCNf83WzN7BWvsy9EtK3KLxsDeQpvdtUfbnZ" },
+  { account: "bearer-standing.testnet", wasm: "standing.wasm", lockTx: "AomwgGxHemBz2St6vCoRooPnSje7ZnGr2cYsfUkrrviX" },
 ];
 const SUMS = readFileSync(join(ROOT, "contracts/res/SHA256SUMS"), "utf8");
 
@@ -487,6 +488,42 @@ claim("Dead man's switch", "Vault No. 0030 stayed in the switch when its benefic
   expect(inOrder(v.custody, [ALICE, SWITCH, ALICE]), "its custody doesn't show alice → switch → alice");
   return `release(30): beneficiary_missing (${missing.data[0].beneficiary}); custody alice → switch → alice; ${v.state.kind}`;
 });
+
+// 6d. Standing payments: vault No. 0037 paid twice on Base Sepolia, one period apart
+// (docs/features/standing.md).
+
+const STANDING = "bearer-standing.testnet";
+const PAY_TO = "0x02f7ad77c02397a941ba832a866a24bec64b81e8";
+const PAY_WEI = 50_000_000_000_000n;
+const PAYMENTS = [
+  { n: 1, near: "4WpbZyGjXaxxwTs2HSb1RyMEDSAxA2ZyrfoRKz8uLgaq", base: "0x39297f516c04f6f73e6aed05aa7e708125aca17b5ba3753ad177e88bef813037" },
+  { n: 2, near: "FtmfgmqHdJn8hpYptZCA8fnadPfyneABuF3n63rbVT1U", base: "0x481ea868bb1080300326e20544b1d02f067ea9c9e7c0c19401d0193f89abb2bb" },
+];
+
+for (const p of PAYMENTS) {
+  claim("Standing payments", `Vault No. 0037, payment ${p.n}: bob collected it, and Bearer signed exactly 0.00005 ETH to the plan's address`, `NEAR archival RPC, tx ${short(p.near)}`, async () => {
+    const tx = await nearTx(p.near, BOB);
+    expect(tx, "transaction not found");
+    const [call] = calls(tx);
+    expect(tx.transaction.receiver_id === STANDING && call?.method_name === "collect" && argsOf(call).token_id === "37", `it isn't collect(37) on ${STANDING}`);
+    const events = eventsOf(tx);
+    const paid = events.find((e) => e.standard === "bearer_standing" && e.event === "paid")?.data[0];
+    expect(paid, "no paid event");
+    expect(paid.to === PAY_TO && BigInt(paid.amount) === PAY_WEI && paid.payment === p.n, `paid ${paid.amount} to ${paid.to} as payment ${paid.payment}`);
+    expect(events.some((e) => e.standard === "bearer" && e.event === "withdrawal_signed"), "Bearer didn't sign in that transaction");
+    const opened = events.some((e) => e.standard === "bearer" && e.event === "vault_opened");
+    expect(opened === (p.n === 1), opened ? "the seal broke on a later payment" : "the first payment didn't break the seal");
+    return `collect(37) by bob: payment ${p.n}, ${paid.amount} wei to ${short(paid.to)}, signed${opened ? "; the seal broke in the same transaction" : ""}`;
+  });
+
+  claim("Standing payments", `Vault No. 0037, payment ${p.n}: confirmed on Base Sepolia, from the vault to the plan's address`, "Base Sepolia RPC", async () => {
+    const [tx, r, v] = await Promise.all([base("eth_getTransactionByHash", [p.base]), base("eth_getTransactionReceipt", [p.base]), vault("37")]);
+    expect(tx && r, "transaction not found");
+    expect(r.status === "0x1", `receipt ${r.status}`);
+    expect(tx.from.toLowerCase() === v.evm_address && tx.to.toLowerCase() === PAY_TO && BigInt(tx.value) === PAY_WEI, `${tx.from} → ${tx.to}, ${BigInt(tx.value)} wei`);
+    return `${short(p.base)}: vault No. 0037 → ${short(PAY_TO)}, ${PAY_WEI.toLocaleString("en-US")} wei, block ${Number(r.blockNumber).toLocaleString("en-US")}`;
+  });
+}
 
 // 7. Bearer links: a vault sent as a link, then passed on (docs/features/bearer-links.md).
 

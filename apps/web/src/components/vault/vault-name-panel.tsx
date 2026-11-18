@@ -1,7 +1,7 @@
 "use client";
 
 import type { VaultView } from "@bearer/sdk";
-import { ArrowUpRight, AtSign, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { ArrowUpRight, AtSign, ExternalLink, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { formatWhen, nsToMsNumber } from "@/components/schedule/when";
@@ -22,6 +22,11 @@ import {
 } from "@/lib/vault/hooks";
 
 const LABEL = /^[a-z0-9](?:[a-z0-9-]{1,30})[a-z0-9]$/;
+/** The names contract keeps `vault-0042` for vault No. 0042 (N6). */
+const reservedFor = (label: string, tokenId: string) =>
+  label.startsWith("vault-") && label !== `vault-${tokenId.padStart(4, "0")}`;
+/** Warn this long before a lease ends. */
+const SOON_MS = 60 * 24 * 3600 * 1000;
 
 function useDebounced(value: string, ms: number) {
   const [v, setV] = useState(value);
@@ -35,7 +40,9 @@ function useDebounced(value: string, ms: number) {
 /**
  * The vault's own NEAR account: a name rented under a TLA through House of Stake's contracts,
  * leased to Bearer's names contract. Anyone can pay NEAR into it; only the holder of the opened
- * vault can take it out, so it passes on with a sealed vault like everything else inside.
+ * vault can take it out, so it passes on with a sealed vault like everything else inside. Unlike
+ * the vault's other addresses it also depends on the TLA's contracts: its lease has to be renewed,
+ * and their council can move it (N8, N10).
  */
 export function VaultNamePanel({ vault, viewer }: { vault: VaultView; viewer: string | null }) {
   const name = useVaultName(vault.token_id);
@@ -88,7 +95,24 @@ function Named({
 }) {
   const renew = useRenewName();
   const [withdrawing, setWithdrawing] = useState(false);
+  const [now] = useState(() => Date.now());
   const expires = name.expires_at_ns ? nsToMsNumber(name.expires_at_ns) : null;
+  const ending = expires !== null && (expires - now < SOON_MS || name.lifecycle !== "Active");
+  if (!name.held) {
+    return (
+      <div className="border-warn/40 bg-warn/5 text-fg-2 mt-3 rounded-[10px] border p-3.5 text-[13.5px] leading-relaxed">
+        <p className="text-fg inline-flex items-center gap-2 font-medium">
+          <TriangleAlert aria-hidden className="text-warn size-4" />
+          <span className="font-mono [overflow-wrap:anywhere]">{name.account_id}</span> isn&apos;t this vault&apos;s any
+          more
+        </p>
+        <p className="mt-1.5">
+          Its lease ran out and the name was taken back, so Bearer&apos;s names contract no longer controls it.
+          Don&apos;t send NEAR to it: it wouldn&apos;t go with vault {vaultNumber(vault.token_id)}.
+        </p>
+      </div>
+    );
+  }
   return (
     <>
       <p className="mt-2 flex flex-wrap items-center gap-2 font-mono text-[18px] font-semibold tracking-[-0.01em] [overflow-wrap:anywhere]">
@@ -105,6 +129,15 @@ function Named({
         ) : null}
         {name.lifecycle && name.lifecycle !== "Active" ? <span className="text-warn"> · {name.lifecycle}</span> : null}
       </p>
+      {ending ? (
+        <p className="border-warn/40 bg-warn/5 text-fg-2 mt-3 flex gap-2 rounded-[10px] border p-3 text-[13.5px] leading-relaxed">
+          <TriangleAlert aria-hidden className="text-warn mt-0.5 size-4 shrink-0" />
+          <span>
+            Renew the lease before it ends. Once it has, anyone can sweep this name&apos;s NEAR into the names contract,
+            where it no longer belongs to the vault, and a week later anyone can take the name.
+          </span>
+        </p>
+      ) : null}
       <p className="text-fg-2 mt-3 text-[13.5px] leading-relaxed">
         A real NEAR account with no access keys. Anyone can send NEAR to it. Bearer&apos;s names contract (
         <span className="font-mono">{NAMES_CONTRACT}</span>) holds its lease and sends from it only for whoever holds
@@ -112,6 +145,11 @@ function Named({
         {opened
           ? "This vault is opened, so its holder can take the NEAR out."
           : "This vault is sealed, so the NEAR stays inside and goes with the vault when it changes hands."}
+      </p>
+      <p className="text-fg-3 mt-2 text-[12.5px] leading-relaxed">
+        Unlike the vault&apos;s other addresses, this one also depends on House of Stake&apos;s TLA contracts: the lease
+        lasts a year at a time and anyone can renew it, but the TLA&apos;s council can move a name, and the shared
+        wallet it runs can be changed by its deployer. Keep small amounts here.
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-2.5">
         {isHolder && opened ? (
@@ -221,7 +259,8 @@ function NameIt({ vault, viewer }: { vault: VaultView; viewer: string }) {
   const id = useId();
   const [label, setLabel] = useState(`vault-${vault.token_id.padStart(4, "0")}`);
   const l = label.trim().toLowerCase();
-  const valid = LABEL.test(l);
+  const reserved = reservedFor(l, vault.token_id);
+  const valid = LABEL.test(l) && !reserved;
   const debounced = useDebounced(l, 400);
   const price = useNamePrice(valid && debounced === l ? l : null);
   const name = useNameVault();
@@ -231,7 +270,7 @@ function NameIt({ vault, viewer }: { vault: VaultView; viewer: string }) {
       <p className="text-fg-2 mt-2 text-[14.5px] leading-relaxed">
         Rent this vault a name of its own: a real NEAR account under <span className="font-mono">{TLA_ROOT}</span>.
         Anyone can send NEAR to it, and it goes with the vault; once the vault is opened, its holder can take the NEAR
-        out. It&apos;s rented for good, from whoever holds the vault now.
+        out. A vault is named once. The lease lasts a year, and anyone can renew it.
       </p>
       <form
         className="mt-4 flex flex-wrap items-end gap-2.5"
@@ -273,15 +312,17 @@ function NameIt({ vault, viewer }: { vault: VaultView; viewer: string }) {
         tone={!valid || price.data?.available === false ? "error" : "muted"}
         aria-live="polite"
       >
-        {!valid
-          ? "3 to 32 lower-case letters, digits or inner hyphens."
-          : price.isFetching || debounced !== l
-            ? "Checking…"
-            : price.data?.available === false
-              ? `${l}.${TLA_ROOT} is taken.`
-              : price.data
-                ? `Free. ${formatNear(price.data.total)} for a year: the rent, and a deposit that stays in the account for its storage.`
-                : ""}
+        {reserved
+          ? `Names that start with vault- belong to the vault with that number; this one's is vault-${vault.token_id.padStart(4, "0")}.`
+          : !valid
+            ? "3 to 32 lower-case letters, digits or inner hyphens."
+            : price.isFetching || debounced !== l
+              ? "Checking…"
+              : price.data?.available === false
+                ? `${l}.${TLA_ROOT} is taken.`
+                : price.data
+                  ? `Free. ${formatNear(price.data.total)} for a year: the rent, and a deposit that stays in the account for its storage.`
+                  : ""}
       </FieldMessage>
     </>
   );

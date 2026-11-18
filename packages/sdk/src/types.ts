@@ -439,6 +439,12 @@ export interface VaultName {
   expires_at_ns: string | null;
   /** The registry's view of the lease: Active, Grace, Reclaimable… */
   lifecycle: string | null;
+  /**
+   * Whether the registry still records Bearer's names contract as the lease's owner. If not, the
+   * lease ran out and the name was reclaimed: it isn't the vault's any more, and NEAR sent to it
+   * doesn't go with the vault.
+   */
+  held: boolean;
 }
 
 /** What renting a name costs, in yoctoNEAR: a year's rent plus the account's opening deposit. */

@@ -696,12 +696,13 @@ export class TestnetBearerClient implements BearerClient {
     const accountId = await this.near.view<string | null>(names, "name_of", { token_id: tokenId });
     if (!accountId) return null;
     const label = accountId.slice(0, -(tla.length + 1));
-    type Lease = { expires_at: string; lifecycle: string } | null;
+    type Lease = { owner: string; expires_at: string; lifecycle: string } | null;
     const [account, lease] = await Promise.all([
       jsonRpc<{ amount: string }>(this.ep.near, "query", { request_type: "view_account", finality: "final", account_id: accountId }),
-      this.near.view<Lease>(registry, "get_sub_account", { tla_id: tla, name: label }).catch(() => null),
+      this.near.view<Lease>(registry, "get_sub_account", { tla_id: tla, name: label }),
     ]);
-    return { token_id: tokenId, account_id: accountId, balance: account.amount, expires_at_ns: lease?.expires_at ?? null, lifecycle: lease?.lifecycle ?? null };
+    const held = lease?.owner === names;
+    return { token_id: tokenId, account_id: accountId, balance: account.amount, expires_at_ns: held ? lease.expires_at : null, lifecycle: held ? lease.lifecycle : null, held };
   }
 
   async namePrice(label: string) {

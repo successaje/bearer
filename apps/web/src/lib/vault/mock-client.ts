@@ -802,13 +802,13 @@ export class MockBearerClient implements BearerClient {
   async getVaultName(tokenId: string): Promise<VaultName | null> {
     await jitter(100, 200);
     const n = this.load().names?.[tokenId];
-    return n ? { token_id: tokenId, account_id: n.account_id, balance: n.balance, expires_at_ns: n.expires_at_ns, lifecycle: "Active" } : null;
+    return n ? { token_id: tokenId, account_id: n.account_id, balance: n.balance, expires_at_ns: n.expires_at_ns, lifecycle: "Active", held: true } : null;
   }
 
   async namePrice(label: string): Promise<NamePrice & { available: boolean }> {
     await jitter(150, 250);
     const taken = Object.values(this.load().names ?? {}).some((n) => n.account_id === `${label}.${MOCK_TLA}`);
-    // The same prices as the testnet fleet: $0.001 of rent and a 0.01 NEAR opening deposit.
+    // The testnet fleet's quote: 0.000316 NEAR of rent (padded 5.27%) and a 0.01 NEAR opening deposit.
     return { rent: "315810000000000000000", deposit: (10n ** 22n).toString(), total: "10315810000000000000000", available: !taken };
   }
 
@@ -817,6 +817,7 @@ export class MockBearerClient implements BearerClient {
     const v = this.vault(tokenId);
     this.assertOwner(v, signer);
     if (!/^[a-z0-9](?:[a-z0-9-]{1,30})[a-z0-9]$/.test(label)) throw new VaultError("ERR_BAD_LABEL", "Use 3 to 32 lower-case letters, digits or inner hyphens.");
+    if (label.startsWith("vault-") && label !== `vault-${tokenId.padStart(4, "0")}`) throw new VaultError("ERR_LABEL_RESERVED", "Names that start with vault- belong to the vault with that number.");
     const state = this.load();
     state.names ??= {};
     if (state.names[tokenId]) throw new VaultError("ERR_ALREADY_NAMED", "This vault already has a name.");

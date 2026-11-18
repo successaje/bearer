@@ -1,0 +1,43 @@
+{
+  "measured_at": "2026-11-18T19:45:43.455Z",
+  "contract": "bearer-names.testnet",
+  "vault": "2",
+  "attached_yocto": "10315810000000000000000",
+  "steps": [
+    {
+      "step": "alice names vault 2, which she doesn't hold",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-names.testnet.name_vault",
+      "tx": "https://testnet.nearblocks.io/txns/EShAqq2Kvz8hYxKpdWZhEr2wEanXtvaE96ci2hcvB723",
+      "tgas": 9.811,
+      "refused": null,
+      "events": [
+        "bearer_names:naming_refused"
+      ],
+      "bearer_names": [
+        {
+          "standard": "bearer_names",
+          "version": "1.0.0",
+          "event": "naming_refused",
+          "data": [
+            {
+              "token_id": "2",
+              "by": "alice.bearer-1108-ffb3.testnet",
+              "reason": "not the vault's holder"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": "alice names vault 1 \"vault-0042\", another vault's label",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-names.testnet.name_vault",
+      "tx": "https://testnet.nearblocks.io/txns/D8eDV6j6v26QmEa8PoUbRBCujHtDoNFeZi2m5jktQ7A3",
+      "tgas": 1.99,
+      "refused": "ERR_LABEL_RESERVED",
+      "events": [],
+      "bearer_names": []
+    }
+  ]
+}

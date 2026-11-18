@@ -92,6 +92,7 @@ export function errorCopy(error: unknown): string {
   if (text.includes("ERR_NAME_TAKEN")) return "That name is already rented. Pick another.";
   if (text.includes("ERR_ALREADY_NAMED")) return "This vault already has a name; a vault is named once.";
   if (text.includes("ERR_BAD_LABEL")) return "Use 3 to 32 lower-case letters, digits or inner hyphens.";
+  if (text.includes("ERR_LABEL_RESERVED")) return "Names that start with vault- belong to the vault with that number.";
   if (text.includes("ERR_NAMING_REFUSED")) return "The name wasn't rented, so your deposit went back. Only the vault's holder can name it.";
   if (text.includes("ERR_WITHDRAWAL_REFUSED")) return "Nothing left the name. Only the holder of the opened vault can take NEAR out, and the account keeps what its storage needs.";
   if (text.includes("ERR_NOT_NAMED")) return "This vault has no name yet.";

@@ -12,7 +12,9 @@
 //! can't be overtaken by a sale (N3). While the vault is sealed, the name passes on with it,
 //! untouched, like everything else inside.
 //!
-//! No admin, owner or upgrade methods. Threats N1–N9 in docs/THREAT_MODEL.md.
+//! No admin, owner or upgrade methods. The name is still House of Stake's to govern: its lease
+//! runs out unless renewed, and the TLA's council can move it (N8, N10). Threats N1–N10 in
+//! docs/THREAT_MODEL.md.
 #![allow(deprecated)] // storage-measured collections, as in the Bearer contract
 
 use near_contract_standards::non_fungible_token::TokenId;
@@ -103,6 +105,12 @@ pub fn valid_label(label: &str) -> bool {
         && b[b.len() - 1] != b'-'
 }
 
+/// Bearer's own label for a vault, `vault-0042`, is reserved for that vault, so no other vault can
+/// be named to look like it (N6).
+pub fn label_fits_vault(label: &str, token_id: &str) -> bool {
+    !label.starts_with("vault-") || label == format!("vault-{token_id:0>4}")
+}
+
 /// Whether `caller` may name vault `vault`: they hold it now (N2).
 pub fn may_name(vault: &VaultSummary, caller: &AccountId) -> bool {
     &vault.owner_id == caller
@@ -176,10 +184,12 @@ impl VaultNames {
     /// The vault's holder rents `{label}.{tla}` for it. Attach the registry's price
     /// (`get_rent_price(...).total_yocto`); if the name can't be rented, it all comes back. A vault
     /// is named once, for good.
-    /// Fails: `ERR_BAD_LABEL`, `ERR_ALREADY_NAMED`, `ERR_IN_PROGRESS`, `ERR_DEPOSIT`, `ERR_GAS`.
+    /// Fails: `ERR_BAD_LABEL`, `ERR_LABEL_RESERVED`, `ERR_ALREADY_NAMED`, `ERR_IN_PROGRESS`,
+    /// `ERR_DEPOSIT`, `ERR_GAS`.
     #[payable]
     pub fn name_vault(&mut self, token_id: TokenId, label: String) -> Promise {
         require!(valid_label(&label), "ERR_BAD_LABEL");
+        require!(label_fits_vault(&label, &token_id), "ERR_LABEL_RESERVED");
         require!(self.names.get(&token_id).is_none(), "ERR_ALREADY_NAMED");
         require!(self.pending.get(&token_id).is_none(), "ERR_IN_PROGRESS");
         let attached = env::attached_deposit();

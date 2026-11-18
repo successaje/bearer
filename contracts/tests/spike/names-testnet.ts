@@ -5,7 +5,7 @@
  *
  *   node spike/names-testnet.ts setup   # deploy NAMES_WASM and initialise
  *   node spike/names-testnet.ts run     # name vaults, fund them, and show who can take the NEAR out
- *   node spike/names-testnet.ts refusal # alice asks to name a vault she doesn't hold; her deposit comes back (N2, N7)
+ *   node spike/names-testnet.ts refusal # alice names a vault she doesn't hold, and uses another vault's label (N2, N6, N7)
  *   node spike/names-testnet.ts reclaim # bring back the refunds the registry holds for the contract (N7)
  *   CONFIRM_LOCK=bearer-names.testnet node spike/names-testnet.ts lock   # delete every key
  *
@@ -230,6 +230,7 @@ async function refusal() {
   if (!target) throw new Error("no unnamed vault held by someone other than alice");
   const price = BigInt((await view<{ total_yocto: string }>(REGISTRY, "get_rent_price", { tla_id: TLA, name: label(target) })).total_yocto);
   const { r } = await tx(alice, NAMES, "name_vault", { token_id: target, label: label(target) }, price, `alice names vault ${target}, which she doesn't hold`, { event: "naming_refused", gas: 240n * TGAS });
+  await tx(alice, NAMES, "name_vault", { token_id: OPENED_VAULT, label: label("42") }, price, `alice names vault ${OPENED_VAULT} "${label("42")}", another vault's label`, { expect: "ERR_LABEL_RESERVED", gas: 30n * TGAS });
   const refund = r.receipts_outcome.find((x) => x.outcome.executor_id === ALICE && x.outcome.status.SuccessValue !== undefined);
   console.log(`  name_of(${target}) = ${await view(NAMES, "name_of", { token_id: target })}; held for claim: ${await view(NAMES, "claimable_of", { account_id: ALICE })}; refund receipt to alice: ${refund ? "yes" : "no"}`);
   saveReport("testnet-names-refusal", { measured_at: new Date().toISOString(), contract: NAMES, vault: target, attached_yocto: price.toString(), steps });

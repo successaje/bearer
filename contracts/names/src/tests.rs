@@ -69,6 +69,24 @@ fn labels_are_lower_case_letters_digits_and_inner_hyphens() {
 }
 
 #[test]
+fn a_vaults_own_label_is_reserved_for_it() {
+    assert!(label_fits_vault("vault-0042", "42"));
+    assert!(label_fits_vault("vault-12345", "12345"));
+    assert!(label_fits_vault("zaras-fund", "42"));
+    assert!(!label_fits_vault("vault-0042", "7"));
+    assert!(!label_fits_vault("vault-42", "42"), "only the padded form is Bearer's");
+    assert!(!label_fits_vault("vault-official", "7"));
+}
+
+#[test]
+#[should_panic(expected = "ERR_LABEL_RESERVED")]
+fn another_vaults_label_is_refused() {
+    let mut c = contract();
+    testing_env!(ctx("alice.test", RENT).build());
+    let _ = c.name_vault("7".into(), "vault-0042".into());
+}
+
+#[test]
 fn only_the_holder_names_and_only_the_holder_of_an_opened_vault_withdraws() {
     let v = |owner: &str, kind: &str| VaultSummary { owner_id: acc(owner), state: VaultState { kind: kind.into() } };
     assert!(may_name(&v("alice.test", "sealed"), &acc("alice.test")));

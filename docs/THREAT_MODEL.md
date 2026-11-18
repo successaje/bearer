@@ -170,6 +170,24 @@ locked Bearer wasm), plus `spike:standing` on testnet.
 | P11 | The vault runs dry, or the payee stops collecting | That's the plan's nature: the contract can't see other chains' balances. A payment the vault can't cover is refused by Bearer or fails on its chain, and counts nothing unless signed. A payment not collected within a period after the last one falls due lapses. The page shows what's held and what's due | by design | documented |
 | P12 | Admin or upgrade powers over the contract, including its key holder acting as the owner of every vault in it: unlike the other escrows, that owner could withdraw from opened vaults | No admin, owner or upgrade methods; every key deleted (`spike:standing lock`, same guards as the switch's: it refuses unless the deployed code hash is `contracts/res/standing.wasm`'s). The site shows the lock state live beside every plan | `spike:standing lock` run on `bearer-standing.testnet` 2026-11-18: 0 keys left on three RPCs, code hash `BRHTRhTM…LNck` = the reproducible build of `f4420f1` ([tx](https://testnet.nearblocks.io/txns/AomwgGxHemBz2St6vCoRooPnSje7ZnGr2cYsfUkrrviX)); `pnpm verify` checks both | ✅ |
 
+## Risk note threats
+
+The risk note (`apps/web/src/lib/nearai`, docs/features/risk-note.md) asks an open model in NEAR AI
+Cloud's confidential enclaves for advice on a loan request. It can't move anything; these rows are
+about whether the note shown is what it claims to be. Tests: `pnpm --filter web check:nearai` (live,
+with tamper tests).
+
+| # | Attack | Defence | Test | Status |
+|---|---|---|---|---|
+| A1 | Show a note that didn't come from the attested model (a proxy, a cache, an edited reply) | The reply's signature must recover (EIP-191) to the key the Intel quotes bind, over the SHA-256 of the exact request and reply bytes, signed by the model's enclave (`provider_tee`), not the gateway. Otherwise the note isn't shown | Signatures over other hashes, by another key or by the gateway are refused (check:nearai) | ✅ |
+| A2 | Replay an old attestation, or one for another request | A nonce made for each request must be in every Intel quote's report data and in NVIDIA's signed verdict | A report checked with another nonce: not fresh, not bound, GPUs refused (check:nearai) | ✅ |
+| A3 | A fake or altered Intel quote, or a debuggable enclave | Each quote is verified with DCAP against Intel's certification service and must be `UpToDate`; the debug bit must be off | The debug bit flipped: caught, and Intel rejects the quote's signature (check:nearai) | ✅ |
+| A4 | The enclave runs other code than it claims | The quote's `mr_config_id` must bind the docker compose's hash, the event log's `compose-hash` must agree, and the event log must replay to RTMR3. The compose pins images by digest; the model weights loaded by NEAR AI's compose-manager aren't re-verified here | A changed compose fails (check:nearai) | ✅, compose level |
+| A5 | GPUs outside the enclave, or a forged NVIDIA verdict | NVIDIA's attestation service checks the GPU evidence; its ES384 JWT is verified against NVIDIA's published keys, overall result `true`, our nonce | Live check: 24 Hopper GPUs passed (check:nearai) | ✅ |
+| A6 | A visitor feeds the model false facts, or instructions | The server reads the facts itself from NEAR testnet and public chain data for the vault number given; the request carries nothing else. The vault's name, chosen by its owner, isn't sent | by construction (`loanFacts`) | ✅ |
+| A7 | Run up the NEAR AI bill | Only existing loans can be asked about; each note is kept ten minutes per loan state and an enclave check one minute; the key is a server-only variable | by construction | partly: a determined caller can still make one paid call per loan every ten minutes per server instance |
+| A8 | Treat the note as a guarantee | The page says it's advice, the rating is "risk to the lender", the model is told there's no NEAR price, and the lending contract alone decides | by design | documented |
+
 ## What you are trusting
 
 - **NEAR's MPC network** to sign only what the Bearer contract requests, and to keep its key shares safe.

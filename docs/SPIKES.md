@@ -3,6 +3,28 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-18 · NEAR AI Cloud's enclaves, verified on Bearer's server
+
+`pnpm --filter web check:nearai`, and **Check the enclaves now** on vault No. 0027 through the app,
+against `z-ai/glm-5.3-flash` on `cloud-api.near.ai`, with no API key:
+
+- **Three instances**, each with its own Intel TDX quote (version 4, 5,006–5,010 bytes), all signing
+  as `0x3b753b4406613c5e70ae640508632b600424fa0c`.
+- **Intel:** every quote verified with DCAP against Intel's certification service, status
+  `UpToDate`, no advisories; about 3.5 s each, in parallel. Phala's PCCS didn't answer from here.
+- **Report data:** bytes 0–31 the signing address zero-padded, bytes 32–63 our nonce, in every quote.
+  Debug bit off.
+- **Code:** each quote's `mr_config_id` is `0x01 ‖ sha256(app_compose) ‖ 0×15`; the instances run
+  three composes (dstack-nvidia 0.5.11 and 0.5.12). The event log replays to RTMR3 once empty digests
+  are computed as `sha384(event_type LE32 ‖ ":" ‖ event ‖ ":" ‖ payload)`.
+- **NVIDIA:** 8 Hopper GPUs per instance, 24 in all, passed by NRAS with our nonce as `eat_nonce`, in
+  about 1.4 s. Its ES384 tokens verify against NVIDIA's JWKS only with high-S signatures allowed
+  (`lowS: false` in @noble/curves); Node's own crypto agrees.
+- Whole check: 4.8–7.7 s. Tamper tests caught: another nonce, a changed compose, the debug bit set
+  (Intel: "ISV enclave report signature is invalid"), an unbound signing address.
+
+Not yet run: a real note with its reply signature, which needs a NEAR AI Cloud key.
+
 ## 2026-11-18 · Standing payments: a vault paying on Base Sepolia, then locked
 
 `bearer-standing.testnet` (faucet-created) runs `contracts/res/standing.wasm`, the reproducible build

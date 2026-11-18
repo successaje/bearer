@@ -77,3 +77,8 @@ JavaScript sandbox tests using the `near-sandbox` npm package (nearcore 2.14) an
 ## Web app (`apps/web`)
 
 Next.js 16. Talks to Bearer through the `BearerClient` interface; `testnet` (the default) uses `@bearer/sdk` against the deployed contracts; `NEXT_PUBLIC_NETWORK=mock` uses an in-browser mock.
+
+Two server routes: `/api/holders` checks a NEP-413 signature before opening a vault's holders-only
+page, and `/api/risk-note` asks an open model in NEAR AI Cloud's enclaves for a risk note on a loan,
+verifying the enclaves' Intel and NVIDIA attestation before asking and the reply's signature after
+(`src/lib/nearai`, docs/features/risk-note.md). Its key, `NEAR_AI_API_KEY`, is server-only.

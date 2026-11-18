@@ -113,6 +113,14 @@ function NoteView({ result }: { result: RiskNoteResult }) {
       </p>
     );
   }
+  if (!result.signature?.ok) {
+    return (
+      <p className="text-danger mt-3 text-[13.5px] font-medium">
+        The reply&apos;s signature didn&apos;t verify against the attested enclave key, so the note isn&apos;t shown.
+        The evidence below says why.
+      </p>
+    );
+  }
   const note = result.note;
   return (
     <div className="mt-4">

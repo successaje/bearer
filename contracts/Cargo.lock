@@ -1215,6 +1215,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "names"
+version = "0.1.0"
+dependencies = [
+ "near-contract-standards",
+ "near-sdk",
+]
+
+[[package]]
 name = "near-account-id"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

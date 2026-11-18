@@ -1,0 +1,47 @@
+{
+  "measured_at": "2026-11-18T19:14:28.233Z",
+  "root": "bearer-tla.testnet",
+  "registry": "registry.bearer-tla.testnet",
+  "extension": "ext.bearer-tla.testnet",
+  "recovery": "rec.bearer-tla.testnet",
+  "council": "council.bearer-tla.testnet",
+  "wallet_impl": "impl.hosdemo.testnet",
+  "code": {
+    "registrar": {
+      "from": "hosdemo.testnet",
+      "hash": "FDJaArRGydBTN5XyvnViokgXE4Qn81rhupNA81xXKhuv",
+      "commit": "d12a84b"
+    },
+    "tla_registry": {
+      "from": "registry.hosdemo.testnet",
+      "hash": "DYKXJSzjoAbJHfN9bpR3u3ggAaZoMA8hp1bWaswcUak6",
+      "commit": "d12a84b"
+    },
+    "hos_extension": {
+      "from": "ext.hosdemo.testnet",
+      "hash": "FYqeTgwQXv6Q7y1vcF63S6QB3YqVMpJYakGB32Ln7qZt",
+      "commit": "d12a84b"
+    },
+    "mpc_recovery": {
+      "from": "rec.hosdemo.testnet",
+      "hash": "GqFi2eCNZ3K6VZphTe9E3nJkTfKPvVQyDAunhebbiZAm",
+      "commit": "7def42e"
+    }
+  },
+  "steps": [
+    {
+      "step": "registry: testnet rents, and a rate that never goes stale",
+      "by": "council.bearer-tla.testnet",
+      "call": "registry.bearer-tla.testnet.update_fee_config",
+      "tx": "https://testnet.nearblocks.io/txns/5LSGBuo6cTaartLJJ46Cp7Z63CAu9ph35FLXCANeMTT8",
+      "failed": null
+    },
+    {
+      "step": "registry: name the collection",
+      "by": "council.bearer-tla.testnet",
+      "call": "registry.bearer-tla.testnet.admin_set_nft_metadata",
+      "tx": "https://testnet.nearblocks.io/txns/2LyeQ3C14M21A87iZtz96Wg54T11Zq8b3EpBx3T3YmKq",
+      "failed": null
+    }
+  ]
+}

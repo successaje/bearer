@@ -1,0 +1,96 @@
+{
+  "measured_at": "2026-11-18T19:13:29.674Z",
+  "root": "bearer-tla.testnet",
+  "registry": "registry.bearer-tla.testnet",
+  "extension": "ext.bearer-tla.testnet",
+  "recovery": "rec.bearer-tla.testnet",
+  "council": "council.bearer-tla.testnet",
+  "wallet_impl": "impl.hosdemo.testnet",
+  "code": {
+    "registrar": {
+      "from": "hosdemo.testnet",
+      "hash": "FDJaArRGydBTN5XyvnViokgXE4Qn81rhupNA81xXKhuv",
+      "commit": "d12a84b"
+    },
+    "tla_registry": {
+      "from": "registry.hosdemo.testnet",
+      "hash": "DYKXJSzjoAbJHfN9bpR3u3ggAaZoMA8hp1bWaswcUak6",
+      "commit": "d12a84b"
+    },
+    "hos_extension": {
+      "from": "ext.hosdemo.testnet",
+      "hash": "FYqeTgwQXv6Q7y1vcF63S6QB3YqVMpJYakGB32Ln7qZt",
+      "commit": "d12a84b"
+    },
+    "mpc_recovery": {
+      "from": "rec.hosdemo.testnet",
+      "hash": "GqFi2eCNZ3K6VZphTe9E3nJkTfKPvVQyDAunhebbiZAm",
+      "commit": "7def42e"
+    }
+  },
+  "steps": [
+    {
+      "step": "extension: initialise",
+      "by": "ext.bearer-tla.testnet",
+      "call": "ext.bearer-tla.testnet.new",
+      "tx": "https://testnet.nearblocks.io/txns/J8fy6PEQPne9zDUyzryA9mw8ejkz9j7VTAhCYxYSYz7g",
+      "failed": null
+    },
+    {
+      "step": "recovery: initialise, with unusable watchers",
+      "by": "rec.bearer-tla.testnet",
+      "call": "rec.bearer-tla.testnet.new",
+      "tx": "https://testnet.nearblocks.io/txns/4JtVzeT7CLRvzQ6BP93Dn5LMbNzbZ5qbkXgmpqJ3CTJZ",
+      "failed": null
+    },
+    {
+      "step": "registry: initialise",
+      "by": "registry.bearer-tla.testnet",
+      "call": "registry.bearer-tla.testnet.new",
+      "tx": "https://testnet.nearblocks.io/txns/3VLanMWDbyzUKuEQ2yWLBMS3gQ5XqdSMuEJr5mcXA129",
+      "failed": null
+    },
+    {
+      "step": "registry: set the NEAR/USD rate",
+      "by": "council.bearer-tla.testnet",
+      "call": "registry.bearer-tla.testnet.admin_set_initial_rate",
+      "tx": "https://testnet.nearblocks.io/txns/ACATDaTvz4xiNtvWiDHQcFrpoEDsCmrtZfa11o8eZK1Z",
+      "failed": null
+    },
+    {
+      "step": "registry: the rate never goes stale",
+      "by": "council.bearer-tla.testnet",
+      "call": "registry.bearer-tla.testnet.update_fee_config",
+      "tx": "https://testnet.nearblocks.io/txns/6vpPcD4GjVbN9CYVsq86UfnZGrRoHEcwHBT33ohagRgt",
+      "failed": null
+    },
+    {
+      "step": "registry: register bearer-tla.testnet as an open TLA",
+      "by": "council.bearer-tla.testnet",
+      "call": "registry.bearer-tla.testnet.register_tla",
+      "tx": "https://testnet.nearblocks.io/txns/DAtbENaMhtaVaQgwphXUck29hvs5gpvKoNJ6gQ6M7rAT",
+      "failed": null
+    },
+    {
+      "step": "registry: activate bearer-tla.testnet",
+      "by": "council.bearer-tla.testnet",
+      "call": "registry.bearer-tla.testnet.activate_open_tla",
+      "tx": "https://testnet.nearblocks.io/txns/79t73KWNpyAXCsPHg5Aw4DEu6KUWGANiweQLapDiLPEV",
+      "failed": null
+    },
+    {
+      "step": "recovery: point at the registry",
+      "by": "council.bearer-tla.testnet",
+      "call": "rec.bearer-tla.testnet.set_registry",
+      "tx": "https://testnet.nearblocks.io/txns/2zPZRTr2ejRMVyrd62iMdJYtoBnbXbSXDb8gGJKKCaMr",
+      "failed": null
+    },
+    {
+      "step": "registry: accept recovery",
+      "by": "council.bearer-tla.testnet",
+      "call": "registry.bearer-tla.testnet.add_recovery_authority",
+      "tx": "https://testnet.nearblocks.io/txns/7cnRBsCWhgz12mM4EYBZM2VJ8LQijpgQhbTV2bYMTBPz",
+      "failed": null
+    }
+  ]
+}

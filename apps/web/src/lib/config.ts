@@ -48,6 +48,16 @@ export const STANDING_CONTRACT: string | null =
   process.env.NEXT_PUBLIC_STANDING_CONTRACT ||
   (NETWORK === "mock" ? "standing.testnet" : BEARER_CONTRACT === "bearer.testnet" ? "bearer-standing.testnet" : null);
 
+/**
+ * Vault names (contracts/names): a name rented for a vault under a TLA through House of Stake's
+ * contracts, so the vault has its own NEAR account. On testnet the TLA is bearer-tla.testnet, a
+ * Bearer-run copy of House of Stake's fleet; it exists only for bearer.testnet.
+ */
+const HAS_NAMES = NETWORK === "mock" || BEARER_CONTRACT === "bearer.testnet";
+export const NAMES_CONTRACT: string | null = process.env.NEXT_PUBLIC_NAMES_CONTRACT || (NETWORK === "mock" ? "names.testnet" : HAS_NAMES ? "bearer-names.testnet" : null);
+export const TLA_ROOT: string | null = process.env.NEXT_PUBLIC_TLA_ROOT || (NETWORK === "mock" ? "tla.testnet" : HAS_NAMES ? "bearer-tla.testnet" : null);
+export const TLA_REGISTRY: string | null = process.env.NEXT_PUBLIC_TLA_REGISTRY || (TLA_ROOT ? `registry.${TLA_ROOT}` : null);
+
 /** Code hash of the market's reproducible build (contracts/res/market.wasm), deployed and locked on bearer-market.testnet. */
 export const MARKET_CODE_HASH = process.env.NEXT_PUBLIC_MARKET_CODE_HASH || "7joKh4WSVFGb6EEsUpS6BeC1wtp3pepG2FQwBuAJqt7P";
 

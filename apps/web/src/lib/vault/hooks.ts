@@ -3,7 +3,7 @@
 import type { AttackKind, ChainTag, Finish, LoanTerms, StandingTerms, VaultLoan, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
 import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT, STANDING_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
+import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, NAMES_CONTRACT, SCHEDULE_CONTRACT, STANDING_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
 import { getVaultClient } from "./client";
 import { fetchContractFacts } from "./contract-facts";
 
@@ -24,6 +24,7 @@ export const keys = {
   switchFor: (id: string) => ["switch", id] as const,
   plans: ["plans"] as const,
   plan: (id: string) => ["plan", id] as const,
+  vaultName: (id: string) => ["vault-name", id] as const,
 };
 
 /** Brief 3.4: deposits appear automatically, polled every 10 s. */
@@ -142,6 +143,7 @@ function useRefresh() {
     void qc.invalidateQueries({ queryKey: keys.plans });
     void qc.invalidateQueries({ queryKey: keys.plan(id) });
     void qc.invalidateQueries({ queryKey: ["history", id] });
+    void qc.invalidateQueries({ queryKey: keys.vaultName(id) });
   };
 }
 
@@ -496,6 +498,61 @@ export function useWithdrawThroughPlan() {
   return useMutation({
     mutationFn: async (v: { id: string; request: WithdrawRequest; signer: string }) => (await getVaultClient()).withdrawThroughPlan(v.id, v.request, v.signer),
     onSettled: (_w, _e, v) => refresh(v.id),
+  });
+}
+
+/* ---------- vault names ---------- */
+
+export function useVaultName(id: string) {
+  return useQuery({
+    queryKey: keys.vaultName(id),
+    queryFn: async () => (await getVaultClient()).getVaultName(id),
+    refetchInterval: POLL_MS,
+    enabled: Boolean(NAMES_CONTRACT),
+  });
+}
+
+export function useNamePrice(label: string | null) {
+  return useQuery({
+    queryKey: ["name-price", label],
+    queryFn: async () => (await getVaultClient()).namePrice(label as string),
+    enabled: Boolean(NAMES_CONTRACT && label),
+    staleTime: 30_000,
+  });
+}
+
+/** The names contract's lock state, read from the chain. */
+export function useNamesFacts() {
+  return useQuery({
+    queryKey: ["names-facts", NAMES_CONTRACT],
+    queryFn: () => fetchContractFacts(NAMES_CONTRACT as string),
+    enabled: Boolean(NAMES_CONTRACT),
+    staleTime: 60_000,
+  });
+}
+
+export function useNameVault() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; label: string; signer: string }) => (await getVaultClient()).nameVault(v.id, v.label, v.signer),
+    onSettled: (_n, _e, v) => refresh(v.id),
+  });
+}
+
+export function useWithdrawFromName() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; receiver: string; amountYocto: string; signer: string }) =>
+      (await getVaultClient()).withdrawFromName(v.id, v.receiver, v.amountYocto, v.signer),
+    onSettled: (_n, _e, v) => refresh(v.id),
+  });
+}
+
+export function useRenewName() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).renewName(v.id, v.signer),
+    onSettled: (_n, _e, v) => refresh(v.id),
   });
 }
 

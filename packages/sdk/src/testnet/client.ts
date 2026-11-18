@@ -16,12 +16,14 @@ import type {
   MarketConfig,
   MarketListing,
   RecordedAttack,
+  NamePrice,
   StandingConfig,
   StandingPlan,
   StandingTerms,
   SwitchConfig,
   VaultLoan,
   VaultHistory,
+  VaultName,
   VaultSwitch,
   VaultView,
   WithdrawRequest,
@@ -67,6 +69,10 @@ export interface TestnetClientOptions {
   switchId?: string | null;
   /** The standing-payments contract (contracts/standing) that pays from this contract's vaults every period, if any. */
   standingId?: string | null;
+  /** The names contract (contracts/names), and the TLA and House of Stake registry it rents from, if any. */
+  namesId?: string | null;
+  tlaId?: string | null;
+  tlaRegistryId?: string | null;
   /** Attacks sent to this contract as real transactions; `runAttack` re-reads their outcome. */
   recordedAttacks?: RecordedAttack[];
   wallet: WalletAdapter;
@@ -666,6 +672,87 @@ export class TestnetBearerClient implements BearerClient {
       { methodName: "withdraw", args: { token_id: tokenId, params: { chain: request.chain, ...params } }, gas: 300n * TGAS, deposit: call.deposit },
     ]);
     return this.settledRequest(tokenId, plan.withdrawals);
+  }
+
+  /* ---------- vault names: a TLA name per vault (contracts/names) ---------- */
+
+  get namesId() {
+    return this.opts.namesId ?? null;
+  }
+
+  get tlaId() {
+    return this.opts.tlaId ?? null;
+  }
+
+  private naming() {
+    const { namesId, tlaId, tlaRegistryId } = this.opts;
+    if (!namesId || !tlaId || !tlaRegistryId) throw new Error("This deployment has no vault names.");
+    return { names: namesId, tla: tlaId, registry: tlaRegistryId };
+  }
+
+  async getVaultName(tokenId: string): Promise<VaultName | null> {
+    if (!this.opts.namesId || !this.opts.tlaId || !this.opts.tlaRegistryId) return null;
+    const { names, tla, registry } = this.naming();
+    const accountId = await this.near.view<string | null>(names, "name_of", { token_id: tokenId });
+    if (!accountId) return null;
+    const label = accountId.slice(0, -(tla.length + 1));
+    type Lease = { expires_at: string; lifecycle: string } | null;
+    const [account, lease] = await Promise.all([
+      jsonRpc<{ amount: string }>(this.ep.near, "query", { request_type: "view_account", finality: "final", account_id: accountId }),
+      this.near.view<Lease>(registry, "get_sub_account", { tla_id: tla, name: label }).catch(() => null),
+    ]);
+    return { token_id: tokenId, account_id: accountId, balance: account.amount, expires_at_ns: lease?.expires_at ?? null, lifecycle: lease?.lifecycle ?? null };
+  }
+
+  async namePrice(label: string) {
+    const { tla, registry } = this.naming();
+    const [price, available] = await Promise.all([
+      this.near.view<{ rent_yocto: string; creation_deposit_yocto: string; total_yocto: string }>(registry, "get_rent_price", { tla_id: tla, name: label }),
+      this.near.view<boolean>(registry, "is_name_available", { tla_id: tla, name: label }),
+    ]);
+    return { rent: price.rent_yocto, deposit: price.creation_deposit_yocto, total: price.total_yocto, available } satisfies NamePrice & { available: boolean };
+  }
+
+  async nameVault(tokenId: string, label: string, signer: string) {
+    this.signerFor(signer);
+    const { names } = this.naming();
+    const price = await this.namePrice(label);
+    if (!price.available) throw new Error(`ERR_NAME_TAKEN: ${label}.${this.opts.tlaId} is already rented.`);
+    await this.opts.wallet.send(names, [{ methodName: "name_vault", args: { token_id: tokenId, label }, gas: 240n * TGAS, deposit: BigInt(price.total) }]);
+    for (let i = 0; i < 20; i++) {
+      const n = await this.getVaultName(tokenId);
+      if (n) return n;
+      const pending = await this.near.view<unknown>(names, "pending_of", { token_id: tokenId });
+      if (!pending && i > 1) throw new Error("ERR_NAMING_REFUSED: the name wasn't rented, and your deposit went back.");
+      await sleep(1000);
+    }
+    throw new Error("The name was asked for, but it hasn't appeared yet. Check the vault page in a moment.");
+  }
+
+  async withdrawFromName(tokenId: string, receiver: string, amountYocto: string, signer: string) {
+    this.signerFor(signer);
+    const { names } = this.naming();
+    const before = await this.getVaultName(tokenId);
+    if (!before) throw new Error("ERR_NOT_NAMED: this vault has no name.");
+    await this.opts.wallet.send(names, [{ methodName: "withdraw", args: { token_id: tokenId, receiver_id: receiver, amount: amountYocto }, gas: 100n * TGAS, deposit: ONE_YOCTO }]);
+    for (let i = 0; i < 10; i++) {
+      await sleep(1500);
+      const after = await this.getVaultName(tokenId);
+      if (after && BigInt(after.balance) < BigInt(before.balance)) return after;
+    }
+    throw new Error("ERR_WITHDRAWAL_REFUSED: nothing left the name. Only the holder of the opened vault can take NEAR out, leaving what the account needs for storage.");
+  }
+
+  async renewName(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    const { tla, registry } = this.naming();
+    const name = await this.getVaultName(tokenId);
+    if (!name) throw new Error("ERR_NOT_NAMED: this vault has no name.");
+    const label = name.account_id.slice(0, -(tla.length + 1));
+    const { rent } = await this.namePrice(label);
+    // The quote includes slippage; the registry refunds whatever the rent didn't need.
+    await this.opts.wallet.send(registry, [{ methodName: "renew_sub_account", args: { tla_id: tla, name: label }, gas: 100n * TGAS, deposit: BigInt(rent) }]);
+    return (await this.getVaultName(tokenId)) as VaultName;
   }
 
   /* ---------- the market: escrow by transfer (docs/features/market.md) ---------- */

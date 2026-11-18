@@ -14,12 +14,14 @@ import type {
   MarketBalances,
   MarketConfig,
   MarketListing,
+  NamePrice,
   StandingConfig,
   StandingPlan,
   StandingTerms,
   SwitchConfig,
   VaultLoan,
   VaultHistory,
+  VaultName,
   VaultSwitch,
   VaultView,
   Withdrawal,
@@ -37,8 +39,10 @@ import {
   MOCK_MARKET,
   MOCK_SCHEDULE,
   MOCK_SCHEDULE_DEPOSIT,
+  MOCK_NAMES,
   MOCK_STANDING,
   MOCK_PLAN_DEPOSIT,
+  MOCK_TLA,
   MOCK_SWITCH,
   MOCK_SWITCH_DEPOSIT,
   mockAddresses,
@@ -788,6 +792,64 @@ export class MockBearerClient implements BearerClient {
     p.withdrawals += 1;
     this.save();
     return w;
+  }
+
+  /* ---------- simulated vault names: same rules as contracts/names ---------- */
+
+  readonly namesId = MOCK_NAMES;
+  readonly tlaId = MOCK_TLA;
+
+  async getVaultName(tokenId: string): Promise<VaultName | null> {
+    await jitter(100, 200);
+    const n = this.load().names?.[tokenId];
+    return n ? { token_id: tokenId, account_id: n.account_id, balance: n.balance, expires_at_ns: n.expires_at_ns, lifecycle: "Active" } : null;
+  }
+
+  async namePrice(label: string): Promise<NamePrice & { available: boolean }> {
+    await jitter(150, 250);
+    const taken = Object.values(this.load().names ?? {}).some((n) => n.account_id === `${label}.${MOCK_TLA}`);
+    // The same prices as the testnet fleet: $0.001 of rent and a 0.01 NEAR opening deposit.
+    return { rent: "315810000000000000000", deposit: (10n ** 22n).toString(), total: "10315810000000000000000", available: !taken };
+  }
+
+  async nameVault(tokenId: string, label: string, signer: string) {
+    await jitter(1500, 2200);
+    const v = this.vault(tokenId);
+    this.assertOwner(v, signer);
+    if (!/^[a-z0-9](?:[a-z0-9-]{1,30})[a-z0-9]$/.test(label)) throw new VaultError("ERR_BAD_LABEL", "Use 3 to 32 lower-case letters, digits or inner hyphens.");
+    const state = this.load();
+    state.names ??= {};
+    if (state.names[tokenId]) throw new VaultError("ERR_ALREADY_NAMED", "This vault already has a name.");
+    if (!(await this.namePrice(label)).available) throw new VaultError("ERR_NAME_TAKEN", `${label}.${MOCK_TLA} is already rented.`);
+    state.names[tokenId] = { account_id: `${label}.${MOCK_TLA}`, balance: (10n ** 22n).toString(), expires_at_ns: ns(Date.now() + 365 * 24 * 3600 * 1000) };
+    this.save();
+    return (await this.getVaultName(tokenId)) as VaultName;
+  }
+
+  async withdrawFromName(tokenId: string, receiver: string, amountYocto: string, signer: string) {
+    await jitter(1200, 1800);
+    const n = this.load().names?.[tokenId];
+    if (!n) throw new VaultError("ERR_NOT_NAMED", "This vault has no name.");
+    const v = this.vault(tokenId);
+    if (v.view.owner_id !== signer) throw new VaultError("ERR_WITHDRAWAL_REFUSED", "Only the vault's holder can take NEAR out of its name.");
+    if (v.view.state.kind !== "opened") throw new VaultError("ERR_WITHDRAWAL_REFUSED", "The vault is still sealed, so its name's NEAR stays inside until it's opened.");
+    // The account keeps what its storage needs, as on testnet.
+    const free = BigInt(n.balance) - 4n * 10n ** 21n;
+    if (BigInt(amountYocto) <= 0n || BigInt(amountYocto) > free) throw new VaultError("ERR_WITHDRAWAL_REFUSED", "That's more than the name can send, after what its storage needs.");
+    void receiver;
+    n.balance = (BigInt(n.balance) - BigInt(amountYocto)).toString();
+    this.save();
+    return (await this.getVaultName(tokenId)) as VaultName;
+  }
+
+  async renewName(tokenId: string, signer: string) {
+    await jitter(1000, 1500);
+    void signer;
+    const n = this.load().names?.[tokenId];
+    if (!n) throw new VaultError("ERR_NOT_NAMED", "This vault has no name.");
+    n.expires_at_ns = (BigInt(n.expires_at_ns) + 365n * 24n * 3600n * 1_000_000_000n).toString();
+    this.save();
+    return (await this.getVaultName(tokenId)) as VaultName;
   }
 
   /* ---------- the simulated market: same rules as contracts/market ---------- */

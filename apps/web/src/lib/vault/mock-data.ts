@@ -41,6 +41,8 @@ export interface MockState {
   switches: Record<string, VaultSwitch>;
   /** Standing payment plans, by token. Their vaults are held by MOCK_STANDING. */
   plans: Record<string, StandingPlan>;
+  /** Vault names, by token: the account and its NEAR. Missing from demo state saved before them. */
+  names?: Record<string, MockName>;
   /** Market sales, for prices and payouts: on testnet these come from the index. */
   sales: MockSale[];
   /**
@@ -48,6 +50,13 @@ export interface MockState {
    * testnet. Missing from demo state saved before it existed.
    */
   events?: Record<string, EscrowEvent[]>;
+}
+
+export interface MockName {
+  account_id: string;
+  /** yoctoNEAR held by the name's account. */
+  balance: string;
+  expires_at_ns: string;
 }
 
 export interface MockSale {
@@ -79,6 +88,10 @@ export const MOCK_SWITCH_DEPOSIT = (10n ** 22n).toString();
 export const MOCK_STANDING = "standing.testnet";
 /** 0.01 NEAR, as on testnet. */
 export const MOCK_PLAN_DEPOSIT = (10n ** 22n).toString();
+
+/** The simulated names contract (contracts/names) and the TLA its names live under. */
+export const MOCK_NAMES = "names.testnet";
+export const MOCK_TLA = "tla.testnet";
 
 /** The simulated market contract (MARKET_CONTRACT in mock mode). */
 export const MOCK_MARKET = "market.testnet";
@@ -670,6 +683,10 @@ export function seedState(now: number): MockState {
     loans,
     switches,
     plans,
+    // Ada named Theo's vault; grandma paid 0.25 NEAR into its name. It's sealed, so it stays there.
+    names: {
+      "42": { account_id: `theos-birthday.${MOCK_TLA}`, balance: (260n * 10n ** 21n).toString(), expires_at_ns: ns(now + 330 * DAY) },
+    },
     sales,
     events,
   };

@@ -422,6 +422,32 @@ export const standing = {
   },
 };
 
+/* ---------- vault names (contracts/names, on House of Stake's TLA contracts) ---------- */
+
+/**
+ * A vault's own NEAR account: a name rented under a TLA through House of Stake's contracts, leased
+ * to Bearer's names contract. It has no access keys. Anyone can pay NEAR into it; only the holder of
+ * the opened vault can take it out, so it passes on with a sealed vault like everything inside.
+ */
+export interface VaultName {
+  token_id: string;
+  /** e.g. `vault-0038.bearer-tla.testnet` */
+  account_id: string;
+  /** The name's NEAR, in yoctoNEAR. */
+  balance: string;
+  /** When the lease runs out, unless someone renews it (anyone may). Nanoseconds. */
+  expires_at_ns: string | null;
+  /** The registry's view of the lease: Active, Grace, Reclaimable… */
+  lifecycle: string | null;
+}
+
+/** What renting a name costs, in yoctoNEAR: a year's rent plus the account's opening deposit. */
+export interface NamePrice {
+  rent: string;
+  deposit: string;
+  total: string;
+}
+
 /* ---------- an account's activity: what happened to the vaults it held, sold or was sent ---------- */
 
 /**
@@ -645,6 +671,19 @@ export interface BearerClient {
   takeBackPlanned(tokenId: string, signer: string): Promise<VaultView>;
   /** The giver withdraws through the plan, once it's opened and doesn't bind them. */
   withdrawThroughPlan(tokenId: string, request: WithdrawRequest, signer: string): Promise<Withdrawal>;
+
+  /** The names contract's account, and the TLA its names are rented under; null where there's none. */
+  readonly namesId: string | null;
+  readonly tlaId: string | null;
+  getVaultName(tokenId: string): Promise<VaultName | null>;
+  /** Whether `{label}.{tla}` is free, and what it costs. */
+  namePrice(label: string): Promise<NamePrice & { available: boolean }>;
+  /** The vault's holder rents `{label}.{tla}` for it, for good. */
+  nameVault(tokenId: string, label: string, signer: string): Promise<VaultName>;
+  /** The holder of the opened vault sends some of its name's NEAR to `receiver`. */
+  withdrawFromName(tokenId: string, receiver: string, amountYocto: string, signer: string): Promise<VaultName>;
+  /** Anyone may renew the name's lease for another term, paying its rent. */
+  renewName(tokenId: string, signer: string): Promise<VaultName>;
 
   /** The market contract's account, or null where this deployment has none. */
   readonly marketId: string | null;

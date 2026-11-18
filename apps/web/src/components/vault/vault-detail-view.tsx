@@ -44,6 +44,7 @@ import { CustodyRail, HoldingsRail, RulesRail, VerifyRail } from "./tab-rail";
 import { TechnicalDetails } from "./technical-details";
 import { TransferSheet } from "./transfer-sheet";
 import { VaultCard } from "./vault-card";
+import { VaultNamePanel } from "./vault-name-panel";
 import { VaultStatusBadge } from "./vault-status-badge";
 import { WithdrawSheet } from "./withdraw-sheet";
 import { WithdrawalsList } from "./withdrawals-list";
@@ -360,6 +361,7 @@ export function VaultDetailView() {
           ) : null}
           {inSwitch ? <SwitchPanel sw={sw} viewer={ready ? accountId : null} now={now} onConnect={() => openConnect()} /> : null}
           {inPlan ? <StandingPanel plan={plan} observations={observations} viewer={ready ? accountId : null} now={now} onConnect={() => openConnect()} /> : null}
+          <VaultNamePanel vault={vault} viewer={ready ? accountId : null} />
           {inEscrow ? (
             <ListingPanel
               listing={listing}

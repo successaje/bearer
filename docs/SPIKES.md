@@ -3,6 +3,40 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-18 · Standing payments: a vault paying on Base Sepolia, on the locked contract
+
+`bearer-standing.testnet` (faucet-created) runs the `contracts/build.sh` wasm of `853211f` (code hash
+`4d9yeQhS…5M63`), initialised with `nft_contract = bearer.testnet` and a 0.01 NEAR plan deposit
+([tx](https://testnet.nearblocks.io/txns/6gdJ9BomfUGQfVH9yuTsNUBvSz5qBqzx6Gz4S7VcVYFq)). **Not locked**: it
+still has its deployer's key, and the build isn't the reproducible one yet (the cargo-near 0.22.0
+binary the other contracts were built with wasn't on this machine).
+
+`pnpm spike:standing`:
+
+- **Funded.** `alice.` created vault No. 0037, sealed. `bob.` paid 0.0002 Base Sepolia ETH into it
+  from his opened vault No. 0001 ([NEAR](https://testnet.nearblocks.io/txns/5pzt1wUNBQMRv86hEV6trJFido5deLratupu1QbraaBA),
+  [Base](https://sepolia.basescan.org/tx/0xbd5148a5b175c54e75f67881dd2b8301d3bbf26ddaa0679cab4d05c20b126265)).
+- **Planned.** `alice.` sent it to the contract: 0.00005 ETH every 120 s to vault No. 0001's
+  address, payee `bob.`, 3 payments, cancellable, fee at most 21,000 gas × 0.05 gwei; 9.403 Tgas
+  ([tx](https://testnet.nearblocks.io/txns/12svmfvGeVUCAfBEM5LkQikEyrhk5SVsNnV2tkS3WSkS)).
+- **Payment 1.** `bob.` collected: one NEAR transaction broke the seal, Bearer signed, the plan
+  counted it (events `vault_opened`, `withdrawal_requested`, `withdrawal_signed`, `paid`), 24.988 Tgas
+  ([NEAR](https://testnet.nearblocks.io/txns/4WpbZyGjXaxxwTs2HSb1RyMEDSAxA2ZyrfoRKz8uLgaq)). Broadcast and
+  confirmed ([Base](https://sepolia.basescan.org/tx/0x39297f516c04f6f73e6aed05aa7e708125aca17b5ba3753ad177e88bef813037));
+  the address received exactly 50,000,000,000,000 wei.
+- **Refusals** (2.2–2.3 Tgas each): `alice.` collecting `ERR_NOT_PAYEE`; a fee one wei per gas over
+  the cap `ERR_FEE_TOO_HIGH`; a second payment in the same period `ERR_NOT_DUE`; `alice.` taking the
+  opened vault back `ERR_VAULT_OPENED`; `alice.` moving it on Bearer `ERR_VAULT_OPENED`; `bob.`
+  stopping the plan `ERR_NOT_GIVER`.
+- **Payment 2**, once the next period began, 22.761 Tgas
+  ([NEAR](https://testnet.nearblocks.io/txns/FtmfgmqHdJn8hpYptZCA8fnadPfyneABuF3n63rbVT1U),
+  [Base](https://sepolia.basescan.org/tx/0x481ea868bb1080300326e20544b1d02f067ea9c9e7c0c19401d0193f89abb2bb)):
+  again exactly 50,000,000,000,000 wei.
+- Nobody collected the third within its period, so the plan ended after two payments, as the
+  contract's rule says.
+
+Reports: `contracts/tests/spike/reports/testnet-standing-{plan,collect,refusals}-2026-11-18T*.json`.
+
 ## 2026-11-12 · If I go quiet: the dead man's switch, on the locked contract
 
 `bearer-switch.testnet` (faucet-created) runs `contracts/res/switch.wasm`, the reproducible build of

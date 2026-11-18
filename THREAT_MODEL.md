@@ -2,7 +2,7 @@
 
 This page answers one question: once a Bearer vault has changed hands, can anyone who held it
 before still take what's inside? Each row is a way to try, why it fails, and the proof. The full
-threat model, with every test and the market, schedule, lending and switch rows, is
+threat model, with every test and the market, schedule, lending, switch and standing-payments rows, is
 [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
 ## The rule
@@ -27,10 +27,11 @@ logs it.
 | 5 | Sell while a withdrawal is being signed | A signature in flight means the vault is opened, which refuses transfers | Sandbox | [T5](docs/THREAT_MODEL.md#threats) |
 | 6 | Move the vault around the seal check (approvals, the transfer callback, another path) | One gate for every owner change; no approvals extension; a test fails if any other code changes the owner | Sandbox and unit, including a receiver that breaks the seal inside its transfer callback | [T6](docs/THREAT_MODEL.md#threats) |
 | 7 | Get the contract to sign something else (raw bytes, another vault's address) | It signs only the withdrawals it builds itself, for the vault's own paths, which are unique per vault and chain. There is no raw-signing method | Unit and sandbox. On testnet, `sign` on `bearer.testnet` failed with `MethodNotFound` | [T7](docs/THREAT_MODEL.md#threats), [T8](docs/THREAT_MODEL.md#threats) |
-| 8 | Keep admin power, or upgrade the contract later | No admin, owner, pause or upgrade methods; every key on all five contracts deleted; the deployed code matches the reproducible build | `/proof` reads it live; `pnpm verify` checks it; the Locked contracts workflow rebuilds it | [T11](docs/THREAT_MODEL.md#threats) |
+| 8 | Keep admin power, or upgrade the contract later | No admin, owner, pause or upgrade methods; every key on all five locked contracts deleted (standing payments, added on 18 Nov 2026, isn't locked yet: [P12](docs/THREAT_MODEL.md#standing-payments-threats)); the deployed code matches the reproducible build | `/proof` reads it live; `pnpm verify` checks it; the Locked contracts workflow rebuilds it | [T11](docs/THREAT_MODEL.md#threats) |
 | 9 | Keep a copy of a Bearer link and use it after giving it away | The recipient's first step moves the vault to a new link or their own account, which leaves every old copy empty. Until they do, the link is a bearer instrument like cash, and the page says so first | On testnet, vault No. 0010 went through three links; each earlier link then read "This link is empty" | [T13](docs/THREAT_MODEL.md#threats), [T18](docs/THREAT_MODEL.md#threats) |
 | 10 | Take the buyer's money and keep the vault (market) | The market holds the vault in escrow, still sealed; the buyer pays the exact price; the vault moves first, then the seller is paid; a vault that didn't move refunds the buyer | Sandbox and unit, including `a_deposit_during_a_pending_sale_belongs_to_the_buyer` (a payment made while it's listed can be spent only by the buyer) and `a_signature_in_flight_blocks_the_sale`; a testnet sale of vault No. 0004 | [M2, M3](docs/THREAT_MODEL.md#market-threats) |
 | 11 | Withdraw while the vault is held for a schedule, a loan or a switch | Those contracts accept only sealed vaults and never break seals, so nobody can open a vault they hold | Sandbox; on testnet a borrower's `break_seal` on a pledged vault was refused | [S6](docs/THREAT_MODEL.md#scheduled-handover-threats), [L2](docs/THREAT_MODEL.md#lending-threats), [D2](docs/THREAT_MODEL.md#dead-mans-switch-threats) |
+| 12 | Set a vault to pay yourself, then give it away | A vault in a standing-payments plan is held by that contract, so it can't be handed on while the plan runs; once its first payment opens it, it can never change hands at all. A sealed one comes out only to its giver, which ends the plan | Sandbox; on testnet, taking back and moving an opened planned vault were both refused (`ERR_VAULT_OPENED`) | [P6](docs/THREAT_MODEL.md#standing-payments-threats) |
 
 ## What is not covered
 

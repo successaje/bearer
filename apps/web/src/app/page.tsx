@@ -5,6 +5,7 @@ import { AttackPreview } from "@/components/landing/attack-preview";
 import { Chapters } from "@/components/landing/chapters";
 import { HeroArt } from "@/components/landing/hero-art";
 import { RevealObserver } from "@/components/landing/motion";
+import { StandingBand } from "@/components/landing/standing-band";
 import { UseCases } from "@/components/landing/use-cases";
 import { buttonVariants } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/primitives";
@@ -67,6 +68,8 @@ export default function HomePage() {
           </ul>
         </div>
       </section>
+
+      <StandingBand />
 
       <Chapters />
 

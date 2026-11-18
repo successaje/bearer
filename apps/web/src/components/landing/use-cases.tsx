@@ -15,6 +15,13 @@ const USES: { tag: string; name: string; finish: Finish; title: string; body: st
     body: "Add Bitcoin on every birthday, from any wallet, grandma's too. While it's sealed, anyone can check nothing has been taken out. When she's ready, hand her the vault.",
   },
   {
+    tag: "Pocket money",
+    name: "🧾 Theo's weekly allowance",
+    finish: "champagne",
+    title: "Pay his allowance from the vault itself.",
+    body: "Set it to pay a little every week to his own address. He collects each one when it's due; nobody can send more, sooner, or anywhere else, and you can stop it any time.",
+  },
+  {
     tag: "A small promise",
     name: "🎁 Kofi's first fishing rod",
     finish: "sage",

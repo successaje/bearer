@@ -48,6 +48,10 @@ jobs:
             account: bearer-standing.testnet
             commit: f4420f175f22dd05d77a0da5e5bb197107ffdc7d
             short: f4420f1
+          - contract: names
+            account: bearer-names.testnet
+            commit: adfc12a501a6b1b6fbd920b9eb9f46dd9df40382
+            short: adfc12a
     steps:
       - name: Check out this commit, for SHA256SUMS
         uses: actions/checkout@v4

@@ -1,0 +1,64 @@
+{
+  "measured_at": "2026-11-18T21:16:28.192Z",
+  "tla": "bearer-tla.testnet",
+  "tla_expires_at": "2127-10-25",
+  "rate_stale_at": "2126-10-25",
+  "powers": {
+    "admins": [
+      "council.bearer-tla.testnet"
+    ],
+    "council": "council.bearer-tla.testnet",
+    "price_oracle": "council.bearer-tla.testnet",
+    "recovery_authorities": [
+      "rec.bearer-tla.testnet"
+    ],
+    "payment_authorities": [],
+    "venues": [],
+    "approved_upgrade_hash": null,
+    "paused": false
+  },
+  "locked": [
+    {
+      "account": "bearer-tla.testnet",
+      "deleted_keys": [
+        "ed25519:CwM8CgoKkz5BGwSWydtEAYkbCSa58Zqp4VX5JFYAtncv"
+      ],
+      "tx": "https://testnet.nearblocks.io/txns/A4U59yad3fa35Bh17rLhCyie2BoxDXpkZdeMt55fgtue",
+      "keys_after": 0
+    },
+    {
+      "account": "registry.bearer-tla.testnet",
+      "deleted_keys": [
+        "ed25519:BmetHgQrwGWe4uqSWZj9yonTBrFs9ThzgY1dnURjeuVZ"
+      ],
+      "tx": "https://testnet.nearblocks.io/txns/9HmAcnvaqjftNTTZWs8CV7QZHpEVzhf96n6Wj3Vo4poA",
+      "keys_after": 0
+    },
+    {
+      "account": "ext.bearer-tla.testnet",
+      "deleted_keys": [
+        "ed25519:ArorqsxYHYY6oUhB7w8WCU17CBMSTESLhbyBhnZ62wLc"
+      ],
+      "tx": "https://testnet.nearblocks.io/txns/CwnQnti793ioNJMbztAxsRzH9HQsE49GCJ8cS1Z1x55X",
+      "keys_after": 0
+    },
+    {
+      "account": "rec.bearer-tla.testnet",
+      "deleted_keys": [
+        "ed25519:8hQb8Tad1yGRBTdKFr4wn9ZYePReJERxpSNfV4PCd2SQ"
+      ],
+      "tx": "https://testnet.nearblocks.io/txns/CrTZogQo5iZz5KZDufhURN4LRAPJgm8jRcQi6CRB7iqD",
+      "keys_after": 0
+    },
+    {
+      "account": "council.bearer-tla.testnet",
+      "deleted_keys": [
+        "ed25519:3or5ESDoLVkrNQs8w2xhQgBsqhsj32MDjCumD2EAajLM"
+      ],
+      "tx": "https://testnet.nearblocks.io/txns/6kRoSYoCihjdyUQfQTKR744q5j5Eag5FjF93ruTSDqYf",
+      "keys_after": 0
+    }
+  ],
+  "wallet_impl": "impl.hosdemo.testnet",
+  "not_ours": "impl.hosdemo.testnet is House of Stake's; its keys stay"
+}

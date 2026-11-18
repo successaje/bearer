@@ -5,6 +5,8 @@
  *
  *   node spike/tla-testnet.ts fleet     # deploy and wire the fleet (idempotent)
  *   node spike/tla-testnet.ts status    # what's deployed, and whether it rents
+ *   node spike/tla-testnet.ts renew     # the council renews the TLA past the last possible renewal
+ *   CONFIRM_LOCK=bearer-tla.testnet node spike/tla-testnet.ts lock   # delete every fleet key
  *
  * The code isn't built here: each contract is the exact bytes House of Stake runs on hosdemo.testnet,
  * fetched from the chain and checked against the code hash pinned below (registrar, registry and
@@ -16,7 +18,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { Account, KeyPair, actions } from "near-api-js";
+import { Account, KeyPair, PublicKey, actions } from "near-api-js";
 
 const RPC = process.env.NEAR_RPC ?? "https://test.rpc.fastnear.com";
 const ROOT = process.env.TLA_ROOT ?? "bearer-tla.testnet";
@@ -244,13 +246,137 @@ async function status() {
     const a = await viewAccount(id);
     console.log(`${id}: ${a.code_hash === CODE[name].hash ? `runs House of Stake's ${name} (${CODE[name].commit})` : `code ${a.code_hash}`}, ${(Number(BigInt(a.amount) / MILLI) / 1000).toFixed(3)} NEAR`);
   }
-  console.log("TLA:", JSON.stringify(await view(REGISTRY, "get_tla", { tla_id: ROOT })));
+  const tla = await view<{ expires_at: string }>(REGISTRY, "get_tla", { tla_id: ROOT });
+  console.log("TLA:", JSON.stringify(tla));
+  console.log(`TLA ends ${date(BigInt(tla.expires_at))}; the NEAR/USD rate goes stale ${date(await rateStaleAt())}`);
+  for (const id of [ROOT, REGISTRY, EXTENSION, RECOVERY, COUNCIL]) {
+    const { keys } = await rpc<{ keys: unknown[] }>("query", { request_type: "view_access_key_list", finality: "final", account_id: id });
+    console.log(`${id}: ${keys.length ? `${keys.length} key(s)` : "no keys"}`);
+  }
   console.log("readiness:", JSON.stringify(await view(REGISTRY, "deployment_readiness")));
   const price = await view<{ total_yocto: string }>(REGISTRY, "get_rent_price", { tla_id: ROOT, name: "vault-0001" }).catch((e) => ({ error: String(e).slice(0, 160) }));
   console.log("a name costs:", JSON.stringify(price));
 }
 
+/** House of Stake's ONE_YEAR_NS: each renewal adds 365 days to the current end. */
+const YEAR = 365n * DAY;
+const date = (ns: bigint) => new Date(Number(ns / 1_000_000n)).toISOString().slice(0, 10);
+
+/**
+ * When the registry's NEAR/USD rate goes stale. Only the price oracle (the council) can refresh it,
+ * and every renewal, of the TLA or of a name, prices rent with it; after this nothing renews.
+ */
+async function rateStaleAt() {
+  const meta = await view<{ updated_at: string }>(REGISTRY, "get_rate_meta");
+  const fees = await view<{ max_rate_age_ns: string }>(REGISTRY, "get_fee_config");
+  return BigInt(meta.updated_at) + BigInt(fees.max_rate_age_ns);
+}
+
+/**
+ * The council renews the TLA, a year per call, until it ends a year after the rate goes stale: a
+ * name renewed at the last possible moment then keeps its whole year. A name can be renewed past
+ * its TLA, but once the TLA lapses every name under it becomes reclaimable, so this is what lets
+ * the council's keys go (N8).
+ */
+async function renew() {
+  const tla = await view<{ expires_at: string; annual_rent: string; lifecycle: string }>(REGISTRY, "get_tla", { tla_id: ROOT });
+  if (tla.lifecycle !== "Active") throw new Error(`${ROOT} is ${tla.lifecycle}, not Active`);
+  const staleAt = await rateStaleAt();
+  const target = staleAt + YEAR;
+  const before = BigInt(tla.expires_at);
+  const years = before >= target ? 0n : (target - before + YEAR - 1n) / YEAR;
+  console.log(`${ROOT} ends ${date(before)}; the rate goes stale ${date(staleAt)}; renewing ${years} year(s), to ${date(before + years * YEAR)}`);
+  if (!years) return;
+
+  // renew_tla prices the year from the stored rate. Attach exactly that, so no refund is left at the registry.
+  const rate = BigInt(await view<string>(REGISTRY, "get_near_usd_rate"));
+  const rent = (BigInt(tla.annual_rent) * NEAR) / rate;
+  const council = account(COUNCIL);
+  const call = (gas: bigint) => actions.functionCall("renew_tla", { tla_id: ROOT }, gas, rent);
+
+  // One call first, to measure its gas; then the rest in batches that fit a transaction.
+  const send = async (n: number, gas: bigint) => {
+    const signed = await council.createSignedTransaction({ receiverId: REGISTRY, actions: Array.from({ length: n }, () => call(gas)) });
+    const r = await rpc<Outcome>("send_tx", { signed_tx_base64: Buffer.from(signed.encode()).toString("base64"), wait_until: "FINAL" });
+    const failures = [r.status.Failure, ...r.receipts_outcome.map((x) => x.outcome.status.Failure)].filter(Boolean);
+    const burnt = r.receipts_outcome.filter((x) => x.outcome.executor_id === REGISTRY).reduce((s, x) => s + BigInt(x.outcome.gas_burnt), 0n);
+    const step = { step: `renew_tla × ${n}`, by: COUNCIL, call: `${REGISTRY}.renew_tla`, paid_yocto: (rent * BigInt(n)).toString(), tx: explorer(r.transaction.hash), failed: failures.length ? JSON.stringify(failures).slice(0, 300) : null };
+    steps.push(step);
+    console.log(`${step.step}: ${step.failed ? `FAILED ${step.failed}` : "ok"} · ${step.tx}`);
+    if (step.failed) throw new Error("renewal failed");
+    return burnt;
+  };
+  const burnt = await send(1, 30n * TGAS);
+  const perCall = ((burnt * 3n) / 2n / TGAS + 1n) * TGAS;
+  const perTx = Number(290n * TGAS / perCall);
+  for (let left = Number(years) - 1; left > 0; left -= perTx) await send(Math.min(left, perTx), perCall);
+
+  const after = BigInt((await view<{ expires_at: string }>(REGISTRY, "get_tla", { tla_id: ROOT })).expires_at);
+  console.log(`${ROOT} now ends ${date(after)}`);
+  if (after < target) throw new Error(`${ROOT} ends ${date(after)}, before ${date(target)}`);
+  saveReport("testnet-tla-renew", { measured_at: new Date().toISOString(), tla: ROOT, registry: REGISTRY, by: COUNCIL, years: Number(years), rent_per_year_yocto: rent.toString(), expires_before_ns: before.toString(), expires_after_ns: after.toString(), expires_after: date(after), rate_stale_at_ns: staleAt.toString(), rate_stale_at: date(staleAt), gas_per_renewal: burnt.toString(), steps });
+}
+
+/**
+ * Deletes every key on the fleet: the TLA's registrar, the registry, the extension, recovery, and
+ * the council last. Every admin role on the fleet is the council, so afterwards nobody can change
+ * fees or the rate, suspend the TLA, add a recovery authority, approve an upgrade or renew the TLA
+ * again (N8). What stays is House of Stake's shared wallet code on impl.hosdemo.testnet (N10).
+ */
+async function lock() {
+  if (process.env.CONFIRM_LOCK !== ROOT) throw new Error(`Locking ${ROOT}'s fleet can't be undone. Run again with CONFIRM_LOCK=${ROOT}.`);
+
+  // Guards: the pinned code everywhere, the council the only power, and the TLA renewed for good.
+  for (const [id, name] of [[ROOT, "registrar"], [REGISTRY, "tla_registry"], [EXTENSION, "hos_extension"], [RECOVERY, "mpc_recovery"]] as const) {
+    const { code_hash } = await viewAccount(id);
+    if (code_hash !== CODE[name].hash) throw new Error(`${id} runs ${code_hash}, not House of Stake's ${name}; refusing to lock`);
+  }
+  const powers = {
+    admins: await view<string[]>(REGISTRY, "get_admins"),
+    council: await view<string>(REGISTRY, "get_council"),
+    price_oracle: await view<string>(REGISTRY, "get_price_oracle"),
+    recovery_authorities: await view<string[]>(REGISTRY, "get_recovery_authorities"),
+    payment_authorities: await view<string[]>(REGISTRY, "get_payment_authorities"),
+    venues: await view<string[]>(REGISTRY, "get_venues"),
+    approved_upgrade_hash: await view<string | null>(REGISTRY, "approved_upgrade_hash"),
+    paused: await view<boolean>(REGISTRY, "is_paused"),
+  };
+  const expected = { admins: [COUNCIL], council: COUNCIL, price_oracle: COUNCIL, recovery_authorities: [RECOVERY], payment_authorities: [], venues: [], approved_upgrade_hash: null, paused: false };
+  if (JSON.stringify(powers) !== JSON.stringify(expected)) throw new Error(`the registry's roles aren't as set up: ${JSON.stringify(powers)}`);
+  const tla = await view<{ expires_at: string; lifecycle: string }>(REGISTRY, "get_tla", { tla_id: ROOT });
+  const staleAt = await rateStaleAt();
+  if (tla.lifecycle !== "Active" || BigInt(tla.expires_at) < staleAt + YEAR) throw new Error(`${ROOT} ends ${date(BigInt(tla.expires_at))}; run renew first`);
+
+  type Keys = { keys: { public_key: string }[] };
+  const keyList = (id: string) => rpc<Keys>("query", { request_type: "view_access_key_list", finality: "final", account_id: id });
+  const locked: Record<string, unknown>[] = [];
+  for (const id of [ROOT, REGISTRY, EXTENSION, RECOVERY, COUNCIL]) {
+    const { keys } = await keyList(id);
+    if (!keys.length) {
+      console.log(`${id}: already locked`);
+      locked.push({ account: id, deleted_keys: [], tx: null, keys_after: 0 });
+      continue;
+    }
+    const own = (JSON.parse(readFileSync(join(CREDS, `${id}.json`), "utf8")) as { public_key: string }).public_key;
+    const ordered = [...keys.filter((k) => k.public_key !== own), ...keys.filter((k) => k.public_key === own)];
+    const r = (await account(id).signAndSendTransaction({
+      receiverId: id,
+      actions: ordered.map((k) => actions.deleteKey(PublicKey.fromString(k.public_key))),
+      waitUntil: "FINAL",
+    })) as unknown as Outcome;
+    const after = await keyList(id);
+    console.log(`${id}: deleted ${ordered.length} key(s), ${after.keys.length} left · ${explorer(r.transaction.hash)}`);
+    locked.push({ account: id, deleted_keys: ordered.map((k) => k.public_key), tx: explorer(r.transaction.hash), keys_after: after.keys.length });
+    if (after.keys.length) throw new Error(`${id} still has ${after.keys.length} key(s)`);
+  }
+  const report = { measured_at: new Date().toISOString(), tla: ROOT, tla_expires_at: date(BigInt(tla.expires_at)), rate_stale_at: date(staleAt), powers, locked, wallet_impl: WALLET_IMPL, not_ours: `${WALLET_IMPL} is House of Stake's; its keys stay` };
+  console.log(JSON.stringify(report, null, 2));
+  saveReport("testnet-tla-lock", report);
+}
+
 const [cmd] = process.argv.slice(2);
 if (cmd === "fleet") await fleet();
 else if (cmd === "status") await status();
-else console.log("usage: node spike/tla-testnet.ts fleet|status");
+else if (cmd === "renew") await renew();
+else if (cmd === "lock") await lock();
+else console.log("usage: node spike/tla-testnet.ts fleet|status|renew|lock");

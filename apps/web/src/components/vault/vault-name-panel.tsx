@@ -42,7 +42,7 @@ function useDebounced(value: string, ms: number) {
  * leased to Bearer's names contract. Anyone can pay NEAR into it; only the holder of the opened
  * vault can take it out, so it passes on with a sealed vault like everything else inside. Unlike
  * the vault's other addresses it also depends on the TLA's contracts: its lease has to be renewed,
- * and their council can move it (N8, N10).
+ * and it runs House of Stake's shared wallet code (N8, N10).
  */
 export function VaultNamePanel({ vault, viewer }: { vault: VaultView; viewer: string | null }) {
   const name = useVaultName(vault.token_id);
@@ -148,8 +148,8 @@ function Named({
       </p>
       <p className="text-fg-3 mt-2 text-[12.5px] leading-relaxed">
         Unlike the vault&apos;s other addresses, this one also depends on House of Stake&apos;s TLA contracts: the lease
-        lasts a year at a time and anyone can renew it, but the TLA&apos;s council can move a name, and the shared
-        wallet it runs can be changed by its deployer. Keep small amounts here.
+        lasts a year at a time and anyone can renew it, and the shared wallet it runs is House of Stake&apos;s, who
+        can change it. Keep small amounts here.
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-2.5">
         {isHolder && opened ? (

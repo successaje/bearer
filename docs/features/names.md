@@ -1,8 +1,8 @@
 # Feature: vault names
 
 **Branch:** `next` · **Where:** a vault's page ("Its NEAR account") · **Contracts:** `contracts/names`
-on `bearer-names.testnet` (not locked yet), renting from House of Stake's TLA contracts under
-`bearer-tla.testnet` · **Status:** built on 18 Nov 2026, after the code window closed and while
+on `bearer-names.testnet` (reproducibly built and locked), renting from House of Stake's TLA
+contracts under `bearer-tla.testnet` (locked too) · **Status:** built on 18 Nov 2026, after the code window closed and while
 judging ran; not on `main`
 
 **For:** whoever decides whether this ships, and anyone checking what it trusts. What it does, what
@@ -61,28 +61,32 @@ specific to this fleet: its registry and TLA are set once, at `new`.
 ## What a name depends on
 
 Bearer's other addresses depend only on NEAR, its MPC signing network and Bearer's locked contracts.
-A name also depends on House of Stake's contracts, and on whoever governs them:
+A name also depends on House of Stake's contracts:
 
 - **The lease runs out unless someone renews it.** Leases last a year. Once one has ended, anyone can
   sweep the name's NEAR into its payout account, which is the names contract, where it no longer
   belongs to any vault. A week later anyone can take the name back, and then anyone can rent it. The
   page warns 60 days before a lease ends, and checks the registry: a name whose lease is no longer
   the names contract's is shown as no longer the vault's.
-- **The TLA's own lease runs out too.** `bearer-tla.testnet` is leased until 18 Nov 2027. Once that
-  lease is past its grace period, every name under it can be taken back. Only the registry's admin,
-  `council.bearer-tla.testnet`, can renew it.
-- **The council can move any name.** It can add a recovery authority, and a recovery authority can
-  give any name a new owner (`recover_sub_account`). The council and admins can also upgrade the
-  registry and the extension. On testnet the council is Bearer's own key.
+- **Nothing renews after 2126.** Every renewal, of a name or of the TLA, prices its rent at the
+  registry's NEAR/USD rate. The rate was set on 18 Nov 2026 with a 100-year maximum age, and only the
+  council could refresh it, so it goes stale on 25 Oct 2126 and nothing can be renewed after that.
+- **The TLA outlasts every name.** Once the TLA's own lease is past its grace period, every name
+  under it can be taken back, and only the registry's admin, the council, can renew it. The council
+  renewed `bearer-tla.testnet` a hundred times, to 25 Oct 2127, a year after the last possible
+  renewal of any name, and then lost its keys.
+- **Nobody can move a name.** In House of Stake's design the council can add a recovery authority,
+  which can give any name a new owner (`recover_sub_account`), and the council and admins can
+  upgrade the registry and the extension. On Bearer's fleet every account's key is deleted, the
+  council's last. Before that, the script checked that the council was the registry's only admin and
+  its price oracle, that its only recovery authority was `rec.` (whose watchers' keys were thrown
+  away), and that no upgrade was approved. Rents, the rate and every other setting stay as they are.
 - **The shared wallet can change.** Every name runs the global contract published by
   `impl.hosdemo.testnet`, by account. That account has two full-access keys, House of Stake's, and
   whoever holds them can change what every name runs.
-- **Keys are still in place.** Every account in Bearer's fleet still has its key (the council, the
-  registry, the extension, recovery and `bearer-tla.testnet` itself), and so does the names
-  contract until it's locked.
 
-So a name is as safe as the TLA's governance. The page says so beside every name: keep small
-amounts in it.
+So a name needs renewing, and it runs code House of Stake can change. The page says so beside every
+name: keep small amounts in it.
 
 ## How it's built
 
@@ -145,18 +149,25 @@ Against the locked `bearer.testnet` (reports in `contracts/tests/spike/reports/t
   ([tx](https://testnet.nearblocks.io/txns/4t1uPcpZx4bX7K4HAF6xuRBwcwAY1wuRZF9vGppj15g2)).
 
 `pnpm verify` re-checks vault No. 0038's name (no keys, the lease the names contract's), Alice's
-refusal and Bob's withdrawal, and that the names contract isn't locked yet.
+refusal and Bob's withdrawal, that the names contract is locked and runs `contracts/res/names.wasm`,
+and that the fleet has no keys and the TLA lasts until 2127.
 
 Two fixes came out of these runs and were redeployed: `reclaim`, with refunds that never fail a
 callback, after finding the registry holding the padding; and reserved `vault-NNNN` labels.
 
-## Not locked yet
+## Locked
 
-`bearer-names.testnet` still has its key and runs a local build (code hash `A5Nd8YDJ…GUA3`), not a
-reproducible one. The vault page says so beside every name, as it does for the other contracts'
-locks. Locking it means a reproducible build with cargo-near 0.22.0, a redeploy, and
-`CONFIRM_LOCK=bearer-names.testnet pnpm spike:names lock`, which refuses unless the deployed code is
-that build.
+- **The names contract.** `bearer-names.testnet` runs `contracts/res/names.wasm`, cargo-near 0.22.0's
+  reproducible build of `adfc12a` in the pinned image (sha256 `6b25f674…f7d1`, code hash
+  `8DGCVLJV…zMxc`), built twice from plain clones with the same bytes. Its only key was deleted on
+  18 Nov 2026 ([tx](https://testnet.nearblocks.io/txns/7TBFWa5Wo8xCb3AFRPU56ERs5fWkKTjUyzJpNbYfzwT9)). The vault page reads the lock
+  live beside every name, as it does for the other contracts.
+- **The fleet.** The council renewed the TLA to 25 Oct 2127 (`spike:tla renew`, 0.02 NEAR), then
+  `CONFIRM_LOCK=bearer-tla.testnet pnpm spike:tla lock` deleted every key on `bearer-tla.testnet`,
+  `registry.`, `ext.`, `rec.` and the council, last
+  ([tx](https://testnet.nearblocks.io/txns/6kRoSYoCihjdyUQfQTKR744q5j5Eag5FjF93ruTSDqYf)). The links to each are in
+  [docs/SPIKES.md](../SPIKES.md).
+- **Not Bearer's to lock.** `impl.hosdemo.testnet`, House of Stake's shared wallet, still has its keys.
 
 ## Try it
 
@@ -164,7 +175,7 @@ that build.
   it's named `theos-birthday.tla.testnet` and sealed, so nobody can take its NEAR out. Name `/v/63`
   (sealed) or `/v/29` (opened, so you can take NEAR out).
 - **Testnet:** `pnpm dev` and open `/v/38` or `/v/1`. Scripts in `contracts/tests`:
-  `pnpm spike:tla fleet|status` and `pnpm spike:names setup|run|refusal|reclaim|lock`.
+  `pnpm spike:tla fleet|status|renew|lock` and `pnpm spike:names setup|run|refusal|reclaim|lock`.
 
 ## What it doesn't do
 
@@ -178,8 +189,9 @@ that build.
 
 - `contracts/names/src/lib.rs`, `tests.rs`: the contract and 23 unit tests. There are no sandbox
   tests: the sandbox has no House of Stake fleet, so the testnet runs above stand in for them.
-- `contracts/tests/spike/tla-testnet.ts` (the fleet) and `names-testnet.ts` (setup, run, refusal,
-  reclaim, lock).
+- `contracts/tests/spike/tla-testnet.ts` (the fleet, its renewal and lock) and `names-testnet.ts`
+  (setup, run, refusal, reclaim, lock).
+- `contracts/res/names.wasm`, the deployed build.
 - `packages/sdk/src/types.ts` (`VaultName`, `NamePrice`) and `testnet/client.ts` (`getVaultName`,
   `namePrice`, `nameVault`, `withdrawFromName`, `renewName`).
 - `apps/web/src/components/vault/vault-name-panel.tsx`.

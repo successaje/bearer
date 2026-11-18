@@ -176,7 +176,7 @@ const sats = (n) => `${Number(n).toLocaleString("en-US")} sats`;
 const checks = [];
 const claim = (group, text, source, run) => checks.push({ group, text, source, run });
 
-// 1. The six contracts are locked and run the builds committed in contracts/res.
+// 1. The seven contracts are locked and run the builds committed in contracts/res.
 
 const LOCKED = [
   { account: BEARER, wasm: "bearer.wasm", lockTx: "J87dPH7D1LG7PLwvyzqwFbBKMsQ7pAd7Nxfn1DrvsaVT" },
@@ -185,6 +185,7 @@ const LOCKED = [
   { account: "bearer-lend.testnet", wasm: "lend.wasm", lockTx: "Cia5mDdMobJJCPWUx6kgcAhuNDiYhBxBPukb1XW4ZFuX" },
   { account: "bearer-switch.testnet", wasm: "switch.wasm", lockTx: "GyLmqGMPoCNf83WzN7BWvsy9EtK3KLxsDeQpvdtUfbnZ" },
   { account: "bearer-standing.testnet", wasm: "standing.wasm", lockTx: "AomwgGxHemBz2St6vCoRooPnSje7ZnGr2cYsfUkrrviX" },
+  { account: "bearer-names.testnet", wasm: "names.wasm", lockTx: "7TBFWa5Wo8xCb3AFRPU56ERs5fWkKTjUyzJpNbYfzwT9" },
 ];
 const SUMS = readFileSync(join(ROOT, "contracts/res/SHA256SUMS"), "utf8");
 
@@ -560,10 +561,28 @@ claim("Vault names", "After handing vault No. 0038 on sealed, alice couldn't tak
   return `alice: withdrawal_refused, "${no.reason}"; bob: withdrawn 0.02 NEAR from ${NAME_38}`;
 });
 
-claim("Vault names", "The names contract isn't locked yet, as the README says", "NEAR RPC view_access_key_list", async () => {
-  const { keys } = await near("query", { request_type: "view_access_key_list", finality: "final", account_id: NAMES });
-  expect(keys.length > 0, `${NAMES} has no keys: it's locked, so the README is out of date`);
-  return `${NAMES}: ${keys.length} key(s)`;
+claim("Vault names", "Bearer's TLA fleet has no keys, and the TLA lasts a year past the last renewal its frozen price allows", `registry.${TLA} views, NEAR RPC`, async () => {
+  const fleet = [TLA, `registry.${TLA}`, `ext.${TLA}`, `rec.${TLA}`, `council.${TLA}`];
+  const keyed = [];
+  for (const id of fleet) {
+    const { keys } = await near("query", { request_type: "view_access_key_list", finality: "final", account_id: id });
+    if (keys.length) keyed.push(`${id} (${keys.length})`);
+  }
+  expect(!keyed.length, `still keyed: ${keyed.join(", ")}`);
+  const [admins, oracle, tla, meta, fees] = await Promise.all([
+    view(`registry.${TLA}`, "get_admins"),
+    view(`registry.${TLA}`, "get_price_oracle"),
+    view(`registry.${TLA}`, "get_tla", { tla_id: TLA }),
+    view(`registry.${TLA}`, "get_rate_meta"),
+    view(`registry.${TLA}`, "get_fee_config"),
+  ]);
+  expect(admins.length === 1 && admins[0] === `council.${TLA}` && oracle === `council.${TLA}`, `admins ${JSON.stringify(admins)}, price oracle ${oracle}`);
+  // Every renewal prices rent at the stored rate, which only the (keyless) council could refresh.
+  const staleAt = BigInt(meta.updated_at) + BigInt(fees.max_rate_age_ns);
+  const year = 365n * 86_400n * 10n ** 9n;
+  expect(tla.lifecycle === "Active" && BigInt(tla.expires_at) >= staleAt + year, `the TLA is ${tla.lifecycle} until ${tla.expires_at}`);
+  const day = (ns) => new Date(Number(BigInt(ns) / 1_000_000n)).toISOString().slice(0, 10);
+  return `0 keys on ${fleet.length} accounts; every admin role is council.${TLA}; ${TLA} ${tla.lifecycle} until ${day(tla.expires_at)}, the rate stale from ${day(staleAt)}`;
 });
 
 // 7. Bearer links: a vault sent as a link, then passed on (docs/features/bearer-links.md).

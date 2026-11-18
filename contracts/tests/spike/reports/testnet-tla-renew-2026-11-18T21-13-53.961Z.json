@@ -1,0 +1,40 @@
+{
+  "measured_at": "2026-11-18T21:13:53.959Z",
+  "tla": "bearer-tla.testnet",
+  "registry": "registry.bearer-tla.testnet",
+  "by": "council.bearer-tla.testnet",
+  "years": 100,
+  "rent_per_year_yocto": "200000000000000000000",
+  "expires_before_ns": "1826565195458244691",
+  "expires_after_ns": "4980165195458244691",
+  "expires_after": "2127-10-25",
+  "rate_stale_at_ns": "4948629182617134463",
+  "rate_stale_at": "2126-10-25",
+  "gas_per_renewal": "2257627053822",
+  "steps": [
+    {
+      "step": "renew_tla × 1",
+      "by": "council.bearer-tla.testnet",
+      "call": "registry.bearer-tla.testnet.renew_tla",
+      "paid_yocto": "200000000000000000000",
+      "tx": "https://testnet.nearblocks.io/txns/Fhn9AENXorLt98G5g5657jSTSxykm1ERMACTB4E2M1XZ",
+      "failed": null
+    },
+    {
+      "step": "renew_tla × 72",
+      "by": "council.bearer-tla.testnet",
+      "call": "registry.bearer-tla.testnet.renew_tla",
+      "paid_yocto": "14400000000000000000000",
+      "tx": "https://testnet.nearblocks.io/txns/9xdFqYUEAFtdrzaQMD1dE6sCvRXguhpq1JGgrWfiPiAW",
+      "failed": null
+    },
+    {
+      "step": "renew_tla × 27",
+      "by": "council.bearer-tla.testnet",
+      "call": "registry.bearer-tla.testnet.renew_tla",
+      "paid_yocto": "5400000000000000000000",
+      "tx": "https://testnet.nearblocks.io/txns/Bc6H6x9rgbSKuuSYtf5BG48n2iGHCAMh17SHydb2bY2Z",
+      "failed": null
+    }
+  ]
+}

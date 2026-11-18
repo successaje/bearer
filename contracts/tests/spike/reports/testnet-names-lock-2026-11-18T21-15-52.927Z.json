@@ -1,0 +1,11 @@
+{
+  "measured_at": "2026-11-18T21:15:52.923Z",
+  "contract": "bearer-names.testnet",
+  "code_hash": "8DGCVLJV76K5eke8k5LeZWvTutm6DmaKGiK6jfiPzMxc",
+  "wasm": "contracts/res/names.wasm",
+  "deleted_keys": [
+    "ed25519:EG7ubZC4ShSPnfaD1hd2v7wUKn7qqAM1yoPeg5kE1DZT"
+  ],
+  "tx": "https://testnet.nearblocks.io/txns/7TBFWa5Wo8xCb3AFRPU56ERs5fWkKTjUyzJpNbYfzwT9",
+  "keys_after": 0
+}

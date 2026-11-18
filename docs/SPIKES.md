@@ -3,6 +3,42 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-18 · Vault names locked, and Bearer's TLA fleet with them
+
+`pnpm spike:tla renew|lock` and `pnpm spike:names setup|refusal|lock` (reports in
+`contracts/tests/spike/reports/testnet-tla-renew-*`, `testnet-tla-lock-*` and `testnet-names-lock-*`):
+
+- **Reproducible build.** `contracts/names` at `adfc12a`, built twice from plain clones with the
+  official cargo-near 0.22.0 release (checksum `55bd219c…8c8a`) in the pinned image: sha256
+  `6b25f674…f7d1` both times, code hash `8DGCVLJV…zMxc`, now `contracts/res/names.wasm`. The contract's
+  source was unchanged since the local build it replaced, so the redeploy kept its state. The refusal
+  checks ran again on the new code: a naming by a non-holder refunded
+  ([tx](https://testnet.nearblocks.io/txns/FrKBq6nJF1bWD89tAv5JRSwPXqdjXSG83oQWZervZjoK)) and another vault's label refused
+  ([tx](https://testnet.nearblocks.io/txns/FBU9ghcCXsPSdj5F4TuroDGDLwNR2mieQxPCt34cWEUs)).
+- **The names contract locked**, its only key deleted
+  ([tx](https://testnet.nearblocks.io/txns/7TBFWa5Wo8xCb3AFRPU56ERs5fWkKTjUyzJpNbYfzwT9)).
+- **The TLA renewed for good.** The council called `renew_tla` 100 times, 0.0002 NEAR and 2.26 Tgas
+  each (0.02 NEAR in all), in three transactions
+  ([1](https://testnet.nearblocks.io/txns/Fhn9AENXorLt98G5g5657jSTSxykm1ERMACTB4E2M1XZ),
+  [72](https://testnet.nearblocks.io/txns/9xdFqYUEAFtdrzaQMD1dE6sCvRXguhpq1JGgrWfiPiAW),
+  [27](https://testnet.nearblocks.io/txns/Bc6H6x9rgbSKuuSYtf5BG48n2iGHCAMh17SHydb2bY2Z)). `bearer-tla.testnet` now ends on
+  25 Oct 2127, a year after the registry's NEAR/USD rate goes stale on 25 Oct 2126 (set on 18 Nov
+  2026, with a 100-year maximum age). Every renewal, of the TLA or of a name, prices its rent at that
+  rate, and only the council could refresh it, so 2126 is the last time anything can be renewed and
+  the TLA outlasts any name's last year. The registry held no refund for the council afterwards.
+- **The fleet locked.** Before deleting anything, `spike:tla lock` checked that every account runs
+  House of Stake's pinned code; that the registry's only admin and its price oracle are the council,
+  its only recovery authority is `rec.` (whose watchers' keys were thrown away), and no upgrade is
+  approved; that it isn't paused; and that the TLA had been renewed. Then it deleted every key:
+  `bearer-tla.testnet` ([tx](https://testnet.nearblocks.io/txns/A4U59yad3fa35Bh17rLhCyie2BoxDXpkZdeMt55fgtue)), `registry.`
+  ([tx](https://testnet.nearblocks.io/txns/9HmAcnvaqjftNTTZWs8CV7QZHpEVzhf96n6Wj3Vo4poA)), `ext.`
+  ([tx](https://testnet.nearblocks.io/txns/CwnQnti793ioNJMbztAxsRzH9HQsE49GCJ8cS1Z1x55X)), `rec.`
+  ([tx](https://testnet.nearblocks.io/txns/CrTZogQo5iZz5KZDufhURN4LRAPJgm8jRcQi6CRB7iqD)) and the council last
+  ([tx](https://testnet.nearblocks.io/txns/6kRoSYoCihjdyUQfQTKR744q5j5Eag5FjF93ruTSDqYf)). Afterwards a name still quotes
+  0.0103158 NEAR and vault No. 0038's lease is still the names contract's, Active until 18 Nov 2027.
+- **What's left.** Every name runs House of Stake's shared wallet, published by
+  `impl.hosdemo.testnet`, whose account still has two full-access keys. That's theirs, not Bearer's.
+
 ## 2026-11-18 · Vault names on a copy of House of Stake's TLA fleet
 
 `pnpm spike:tla fleet` and `pnpm spike:names setup|run|refusal|reclaim`, against the locked
@@ -18,12 +54,12 @@ measured numbers (N stated) and links you can check. Newest first.
   [extension](https://testnet.nearblocks.io/txns/J8fy6PEQPne9zDUyzryA9mw8ejkz9j7VTAhCYxYSYz7g),
   [recovery, with unusable watchers](https://testnet.nearblocks.io/txns/4JtVzeT7CLRvzQ6BP93Dn5LMbNzbZ5qbkXgmpqJ3CTJZ)),
   given a fixed rate ([tx](https://testnet.nearblocks.io/txns/ACATDaTvz4xiNtvWiDHQcFrpoEDsCmrtZfa11o8eZK1Z))
-  that never goes stale and testnet rents
+  that stays valid for 100 years and testnet rents
   ([tx](https://testnet.nearblocks.io/txns/5LSGBuo6cTaartLJJ46Cp7Z63CAu9ph35FLXCANeMTT8)), and the TLA
   registered and activated as an open TLA
   ([tx](https://testnet.nearblocks.io/txns/DAtbENaMhtaVaQgwphXUck29hvs5gpvKoNJ6gQ6M7rAT),
   [tx](https://testnet.nearblocks.io/txns/79t73KWNpyAXCsPHg5Aw4DEu6KUWGANiweQLapDiLPEV)), leased until
-  18 Nov 2027.
+  18 Nov 2027 (since renewed to 2127, above).
 - **A name costs 0.0103158 NEAR** quoted: 0.01 kept for the account's storage, and 0.000316 of rent,
   of which the registry charges 0.0003 and keeps the 5.27% padding for the payer to claim.
 - **Naming took 33.9 Tgas** in all (vault No. 0038,

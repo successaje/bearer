@@ -62,6 +62,25 @@ Events: NEP-297 `bearer_standing` (`planned`, `paid`, `payment_failed`, `payment
 `stopped`, `taken_back`). Threats P1–P12 in docs/THREAT_MODEL.md; the feature in
 docs/features/standing.md.
 
+## Vault names (`contracts/names`)
+
+Rents a name for a vault under a TLA through House of Stake's TLA contracts, with itself as the
+lease's owner, so the vault has a NEAR account of its own. It reads Bearer's `vault` view; it never
+holds the vault.
+
+| Method | Who | What |
+|---|---|---|
+| `name_vault` | the vault's holder, with the registry's quote | Checks the holder in a callback, rents `label.tla` with itself as owner, reads the lease back and counts it only if the registry records this contract as the owner; otherwise refunds |
+| `withdraw` | the holder of the opened vault, 1 yoctoNEAR | Checks the holder and the seal in a callback, then has the name's wallet send the NEAR (`w_execute_extension`) |
+| `reclaim` | anyone | Brings back the refunds House of Stake's registry holds for this contract (`claim_refund`) |
+| `claim` | anyone with a refund kept for them | Sends a refund that bounced, or that the contract couldn't cover at the time |
+| `name_of`, `vault_of`, `pending_of`, `claimable_of`, `get_config` | views | |
+
+Renewing is the registry's own `renew_sub_account`, open to anyone. Events: NEP-297 `bearer_names`
+(`named`, `naming_refused`, `withdrawn`, `withdrawal_refused`, `withdrawal_failed`, `payout_failed`,
+`refund_held`). Threats N1–N10 in docs/THREAT_MODEL.md; the feature, and what a name depends on
+beyond Bearer, in docs/features/names.md.
+
 ## Mock signer (`contracts/mock-signer`)
 
 Sandbox-only stand-in for `v1.signer-prod.testnet`. Same method names and JSON shapes (`sign`, `derived_public_key`, `public_key`), deterministic keys `sha256(seed ‖ predecessor ‖ path ‖ domain)`, and switches to return errors or wrong-key signatures so failure paths can be tested.

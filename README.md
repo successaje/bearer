@@ -77,7 +77,7 @@ find. Each item, where it is, and how far Bearer goes:
 | An NFT that does something on its own: pays from its own wallet on a schedule | A vault pays a fixed amount to a named payee every period, from its own coins (`contracts/standing`). The payee collects; the contract, holding the vault, asks Bearer to sign exactly that payment; the giver can make it unstoppable. Two payments on Base Sepolia from vault No. 0037, one period apart ([NEAR](https://testnet.nearblocks.io/txns/4WpbZyGjXaxxwTs2HSb1RyMEDSAxA2ZyrfoRKz8uLgaq), [Base](https://sepolia.basescan.org/tx/0x39297f516c04f6f73e6aed05aa7e708125aca17b5ba3753ad177e88bef813037); [docs/features/standing.md](docs/features/standing.md)). Added on 18 Nov 2026, after judging began; reproducibly built and locked | Met, on `next` |
 | Dynamic NFTs | NEP-177 metadata whose media is a live image of the vault's seal (`lib.rs`) | Met |
 | NEAR AI (Grand Prize) | On a loan request, an open model in NEAR AI Cloud's confidential enclaves writes a risk note on the loan's public facts. Bearer's server verifies every enclave first (Intel TDX quote with DCAP against Intel, NVIDIA's signed GPU verdict, the published compose, our nonce and the signing key in the quote) and shows the note only if the reply's signature recovers to that key over the exact bytes ([docs/features/risk-note.md](docs/features/risk-note.md); `pnpm --filter web check:nearai` runs the checks live). A real note on vault No. 0027's loan is saved with its evidence and re-checks offline (`-- --verify apps/web/scripts/reports/risk-note-27-2026-11-18.json`). Added on 18 Nov 2026, after judging began | Built on `next` |
-| Sub-accounts | Not used for vaults; a Bearer link is an implicit NEAR account made from a key | Not used |
+| Sub-accounts, Top Level Account names | A vault can rent a NEAR account of its own under a TLA, such as `vault-0038.bearer-tla.testnet`, through House of Stake's TLA contracts (`contracts/names`). The account has no keys and anyone can pay NEAR to it by name; only the holder of the opened vault can take it out, so it goes with a sealed vault. On testnet the names come from a copy of House of Stake's fleet deployed by Bearer from their own code, because their testnet deployment's price feed stopped ([docs/features/names.md](docs/features/names.md)). Added on 18 Nov 2026, after judging began. The names contract isn't locked yet, and a name also depends on the TLA's governance (N8, N10). A Bearer link is still an implicit account made from a key | Built on `next` |
 
 ## The problem
 
@@ -388,11 +388,17 @@ What people could use them for:
   and can't change hands ([docs/features/standing.md](docs/features/standing.md)). It runs on
   `bearer-standing.testnet`, reproducibly built and locked: two payments on Base Sepolia
   (docs/SPIKES.md).
+- **A vault you can pay by name.** Rent a vault a NEAR account of its own,
+  `vault-0038.bearer-tla.testnet`, and anyone can send it NEAR from any wallet. The NEAR stays in
+  while the vault is sealed and goes with it to the next holder, who takes it out once they open the
+  vault ([docs/features/names.md](docs/features/names.md)). The names come from House of Stake's TLA
+  contracts, so they need renewing once a year and depend on that system's governance as well as
+  on Bearer.
 - **Collectibles.** A named, finished vault with a printable certificate, holding native assets,
   that can be handed on again while sealed.
 
-These show what the model can do. Like the rest, the market, the schedule, lending, the switch and
-standing payments are testnet prototypes.
+These show what the model can do. Like the rest, the market, the schedule, lending, the switch,
+standing payments and vault names are testnet prototypes.
 
 ## The web app
 
@@ -436,7 +442,9 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
   chain's normal operation. Bearer's, the market's, the schedule's, the lending and the switch
   contracts are open source, reproducibly built and locked: none has a key, so nobody can change
   them. The standing-payments contract, added on 18 Nov 2026, is the sixth, built and locked the
-  same way.
+  same way. The vault-names contract, added the same day, isn't locked yet, and a vault's name also
+  depends on House of Stake's TLA contracts and whoever governs them
+  ([docs/features/names.md](docs/features/names.md)).
 - **Opened is final.** Once opened, a vault can't be transferred or sealed again.
 - **Balances.** The ones shown come from public data sources (Blockstream Esplora, Base Sepolia RPC,
   Solana devnet RPC), with their source, time and confirmation status. They can lag or be
@@ -475,6 +483,7 @@ contracts/schedule  the scheduled handover: holds a sealed vault until a date
 contracts/lend      lending: holds a pledged vault until the loan is repaid or the lender takes it
 contracts/switch    if I go quiet: holds a vault while its owner checks in, then hands it to their beneficiary
 contracts/standing  standing payments: pays a fixed amount from a vault to a named payee every period
+contracts/names     vault names: rents a vault a NEAR account under a TLA, through House of Stake's contracts
 contracts/mock-signer   an MPC signer stand-in for the sandbox
 contracts/mock-receiver an NFT receiver that breaks the seal in its transfer callback (T6, sandbox only)
 contracts/tests     sandbox tests (near-sandbox) and testnet scripts
@@ -489,7 +498,7 @@ inside the code window, which opened with the 2026-10-19 announcement (rule Q-00
 near-contract-standards, k256 and ed25519-dalek (mock signer), Next.js, React, TanStack Query,
 Radix, near-connect (@hot-labs), qrcode.react, viem, bitcoinjs-lib, @noble and @scure,
 @solana/web3.js. AI tools: Claude Code (Anthropic) was used throughout for code, tests and
-documentation. Work after 14 Nov 2026, such as standing payments, is on the `next` branch and
+documentation. Work after 14 Nov 2026, such as standing payments and vault names, is on the `next` branch and
 dated in docs/DECISIONS.md. The same team lead also submitted **Bakeoff**, an independent project. The two share
 no code.
 

@@ -188,11 +188,35 @@ with tamper tests).
 | A7 | Run up the NEAR AI bill | Only existing loans can be asked about; each note is kept ten minutes per loan state and an enclave check one minute; the key is a server-only variable | by construction | partly: a determined caller can still make one paid call per loan every ten minutes per server instance |
 | A8 | Treat the note as a guarantee | The page says it's advice, the rating is "risk to the lender", the model is told there's no NEAR price, and the lending contract alone decides | by design | documented |
 
+## Vault names threats
+
+Vault names (`contracts/names`, docs/features/names.md) rent a NEAR account for a vault under a TLA,
+through House of Stake's TLA contracts, with the names contract as the lease's owner. Anyone can pay
+NEAR into it; only the holder of the opened vault can take it out. Unlike the escrow contracts, a
+name also depends on contracts Bearer doesn't control (N8, N10). Tests: `cargo test -p names` (unit)
+and `spike:names` on testnet. There are no sandbox tests: the sandbox has no House of Stake fleet.
+
+| # | Attack | Defence | Test | Status |
+|---|---|---|---|---|
+| N1 | The name ends up with a person, to be sold or kept apart from the vault | The contract rents with itself as the owner (`owner_account: null`, so the payer owns the lease), counts a name only if the registry then records it as owner, and has no method that transfers or approves the lease | `the_holder_names_a_vault_for_good`, `a_name_someone_else_owns_isnt_taken_for_this_vault` (unit); on testnet both names' lease tokens are owned by `bearer-names.testnet`, and the accounts have 0 keys | ✅ |
+| N2 | Someone who doesn't hold the vault names it, or names a vault that doesn't exist | The callback re-reads Bearer's `vault` view; the caller must be its `owner_id`, otherwise the whole deposit goes back | `someone_who_doesnt_hold_the_vault_gets_their_deposit_back`, `a_vault_that_isnt_there_names_nothing` (unit); refused and refunded on testnet (vault No. 0002) | ✅ |
+| N3 | A former holder, or the holder of a sealed vault, takes the NEAR out, so the old owner keeps the money | `withdraw` re-reads the vault in its callback and sends only if the caller holds it and it's opened. An opened vault never changes hands (I2), so nothing can change between the check and the send | `only_the_holder_names_and_only_the_holder_of_an_opened_vault_withdraws`, `the_holder_of_an_opened_vault_withdraws`, `a_sealed_vault_keeps_its_near`, `a_former_holder_cant_withdraw` (unit); on testnet, refused for a non-holder, for the holder while sealed, and for the former holder after a hand-over | ✅ |
+| N4 | A naming counts that the registry didn't make, or a rent is paid with nothing to show | `on_rented` counts a name only if `get_sub_account` now records this contract as the owner of exactly `label.tla`; anything else, an unreadable answer included, refunds the caller | `a_rent_the_registry_refused_counts_nothing_and_refunds`, `an_unreadable_lease_counts_nothing` (unit) | ✅ |
+| N5 | Two namings race, or a vault is renamed and NEAR sent to its old name is lost | One naming per vault at a time (`ERR_IN_PROGRESS`); a vault is named once (`ERR_ALREADY_NAMED`); a name maps to one vault | `one_naming_at_a_time`, `a_vault_is_named_once` (unit); refused on testnet (`ERR_ALREADY_NAMED`) | ✅ |
+| N6 | A label that looks like another vault's (`vault-0042` on vault No. 0007), or breaks the account rules | Labels are 3–32 lower-case letters, digits or hyphens, with no hyphen at either end; `vault-NNNN` is reserved for vault NNNN (`ERR_LABEL_RESERVED`). The page shows a vault's name only from `name_of`, never from the label | `labels_are_lower_case_letters_digits_and_inner_hyphens`, `a_vaults_own_label_is_reserved_for_it`, `another_vaults_label_is_refused`, `a_bad_label_is_refused_before_anything_happens` (unit); refused on testnet (`ERR_LABEL_RESERVED`) | ✅ for Bearer's own labels; any other label can still look like something a payer trusts |
+| N7 | Refunds go missing: the registry keeps them, or the contract can't pay one and leaves a vault stuck mid-naming | The registry records refunds for `claim_refund` rather than sending them: the quote's 5.27% padding on every rent, and the whole price when an account can't be created. The contract refunds its caller at once from its own balance; `reclaim` (anyone) brings the registry's refunds back; a refund the balance can't cover is kept for `claim`, so the callback never fails | `a_refused_rent_is_refunded_now`, `a_refund_the_contract_cant_cover_yet_is_kept_for_claim`, `anyone_can_bring_back_what_the_registry_holds_for_the_contract` (unit); `spike:names reclaim` brought back 0.0000316 NEAR on testnet | ✅; the padding goes to the contract, not back to whoever named the vault (0.0000158 NEAR a name) |
+| N8 | The name's lease, or the TLA's, runs out: anyone sweeps the name's NEAR into the names contract, where it's no longer the vault's, and a week later takes the name, which anyone can then rent | Anyone can renew a name any number of years ahead (`renew_sub_account` adds a year to the current end, with no cap). The page warns 60 days before a lease ends and checks the registry's owner, showing a lost name as no longer the vault's. Only the registry's admin can renew the TLA, which is leased until 18 Nov 2027 | by design; the page's checks (simulated demo) | ⚠️ open: names have to be renewed, and the TLA renewed by its admin |
+| N9 | Admin or upgrade powers over the names contract | None: no owner, admin or upgrade methods, and its settings are fixed at `new`. `spike:names lock` deletes every key, and refuses unless the deployed code is the given build | not run | ❌ not locked yet: the account has its key and runs a local, not reproducible, build |
+| N10 | House of Stake's side moves or drains a name | Not defended by Bearer. The TLA's council can add a recovery authority, which can give any name a new owner (`recover_sub_account`); the registry and extension can be upgraded by their council and admins; every name runs the shared wallet published by `impl.hosdemo.testnet`, whose account has two full-access keys, so whoever holds them can change what every name runs. On testnet the council and the fleet's accounts are Bearer's and still have keys. The page says this beside every name: keep small amounts | documented | ⚠️ trusted: a name is as safe as the TLA's governance |
+
 ## What you are trusting
 
 - **NEAR's MPC network** to sign only what the Bearer contract requests, and to keep its key shares safe.
 - **The Bearer contract code**, which is open source, reproducibly built and locked (no full-access keys, no upgrade path).
 - **Each chain's normal operation** for deposits and withdrawals to confirm.
+- **For vault names only, House of Stake's TLA contracts and whoever governs them** (N8, N10): the
+  lease has to be renewed, the TLA's council can move a name, and the shared wallet can be changed
+  by its deployer.
 - **Display data sources** (mempool.space testnet4, Base Sepolia and Solana devnet RPCs) for the balances the UI shows. The contract never uses them.
 
 ## Out of scope

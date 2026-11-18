@@ -3,6 +3,52 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
+## 2026-11-18 · Vault names on a copy of House of Stake's TLA fleet
+
+`pnpm spike:tla fleet` and `pnpm spike:names setup|run|refusal|reclaim`, against the locked
+`bearer.testnet` (reports in `contracts/tests/spike/reports/testnet-tla-fleet-*` and
+`testnet-names-*`):
+
+- **House of Stake's own testnet fleet can't rent.** `hosdemo.testnet` runs the official code
+  (`d12a84b`), but its NEAR/USD rate comes from `partner.hostla.testnet`, which stopped updating on
+  27 Aug 2026, so `rent_sub_account` fails with `rate_stale`. `hostla.testnet` runs a prototype fork.
+- **The fleet:** `bearer-tla.testnet` with `council.`, `registry.`, `ext.` and `rec.` under it, each
+  running the bytes read from the matching hosdemo account, checked by hash before deploying.
+  Initialised ([registry](https://testnet.nearblocks.io/txns/3VLanMWDbyzUKuEQ2yWLBMS3gQ5XqdSMuEJr5mcXA129),
+  [extension](https://testnet.nearblocks.io/txns/J8fy6PEQPne9zDUyzryA9mw8ejkz9j7VTAhCYxYSYz7g),
+  [recovery, with unusable watchers](https://testnet.nearblocks.io/txns/4JtVzeT7CLRvzQ6BP93Dn5LMbNzbZ5qbkXgmpqJ3CTJZ)),
+  given a fixed rate ([tx](https://testnet.nearblocks.io/txns/ACATDaTvz4xiNtvWiDHQcFrpoEDsCmrtZfa11o8eZK1Z))
+  that never goes stale and testnet rents
+  ([tx](https://testnet.nearblocks.io/txns/5LSGBuo6cTaartLJJ46Cp7Z63CAu9ph35FLXCANeMTT8)), and the TLA
+  registered and activated as an open TLA
+  ([tx](https://testnet.nearblocks.io/txns/DAtbENaMhtaVaQgwphXUck29hvs5gpvKoNJ6gQ6M7rAT),
+  [tx](https://testnet.nearblocks.io/txns/79t73KWNpyAXCsPHg5Aw4DEu6KUWGANiweQLapDiLPEV)), leased until
+  18 Nov 2027.
+- **A name costs 0.0103158 NEAR** quoted: 0.01 kept for the account's storage, and 0.000316 of rent,
+  of which the registry charges 0.0003 and keeps the 5.27% padding for the payer to claim.
+- **Naming took 33.9 Tgas** in all (vault No. 0038,
+  [tx](https://testnet.nearblocks.io/txns/5tGASDYDFemcPVFzLkeMj9SPXsdYsYkrCFf6oHzy8ZGV)), with 240
+  Tgas attached: the vault check, the rent (which creates the account), the read-back and the
+  settlement. A transaction with 300 Tgas attached needs more NEAR up front than the test accounts
+  held, so each call attaches what it needs: naming 240, withdrawing 100, an early refusal 30.
+- **Taking NEAR out took 11.8 Tgas**, and a refused attempt 6.8 Tgas. Bob took 0.02 NEAR out of
+  each name: 0.11 → 0.09 (vault No. 0001, opened) and 0.04 → 0.02 (vault No. 0038, after Alice handed
+  it to him sealed and he broke the seal). Before that, five attempts were refused: a non-holder, the
+  holder while sealed, the former holder after the hand-over, the new holder while still sealed, and
+  a second naming (`ERR_ALREADY_NAMED`).
+- **The registry keeps refunds.** After the two namings it held 0.0000316 NEAR for
+  `bearer-names.testnet`: the padding, recorded for `claim_refund` rather than sent back. That led to
+  `reclaim`, which brought it back in 7.7 Tgas
+  ([tx](https://testnet.nearblocks.io/txns/4t1uPcpZx4bX7K4HAF6xuRBwcwAY1wuRZF9vGppj15g2)), and to
+  refunds that never fail a callback. A refused naming was then refunded in the same transaction, 9.8
+  Tgas ([tx](https://testnet.nearblocks.io/txns/EShAqq2Kvz8hYxKpdWZhEr2wEanXtvaE96ci2hcvB723)).
+- **What a name is:** 0 access keys, House of Stake's shared wallet (`impl.hosdemo.testnet`, a global
+  contract by account, whose account has two full-access keys), extensions `bearer-names.testnet` and
+  `ext.bearer-tla.testnet`, 383 bytes of storage. Once a lease ends, anyone can call the registry's
+  `reclaim_sweep_near` to send the name's NEAR to its payout account, the names contract; after the
+  7-day grace period, `reclaim_finalize` takes the name back (read from `reclaim.rs` at `d12a84b`, not
+  run).
+
 ## 2026-11-18 · NEAR AI Cloud's enclaves, verified on Bearer's server
 
 `pnpm --filter web check:nearai`, and **Check the enclaves now** on vault No. 0027 through the app,

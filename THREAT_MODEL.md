@@ -2,7 +2,8 @@
 
 This page answers one question: once a Bearer vault has changed hands, can anyone who held it
 before still take what's inside? Each row is a way to try, why it fails, and the proof. The full
-threat model, with every test and the market, schedule, lending, switch and standing-payments rows, is
+threat model, with every test and the market, schedule, lending, switch, standing-payments and
+vault-names rows, is
 [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
 ## The rule
@@ -32,6 +33,7 @@ logs it.
 | 10 | Take the buyer's money and keep the vault (market) | The market holds the vault in escrow, still sealed; the buyer pays the exact price; the vault moves first, then the seller is paid; a vault that didn't move refunds the buyer | Sandbox and unit, including `a_deposit_during_a_pending_sale_belongs_to_the_buyer` (a payment made while it's listed can be spent only by the buyer) and `a_signature_in_flight_blocks_the_sale`; a testnet sale of vault No. 0004 | [M2, M3](docs/THREAT_MODEL.md#market-threats) |
 | 11 | Withdraw while the vault is held for a schedule, a loan or a switch | Those contracts accept only sealed vaults and never break seals, so nobody can open a vault they hold | Sandbox; on testnet a borrower's `break_seal` on a pledged vault was refused | [S6](docs/THREAT_MODEL.md#scheduled-handover-threats), [L2](docs/THREAT_MODEL.md#lending-threats), [D2](docs/THREAT_MODEL.md#dead-mans-switch-threats) |
 | 12 | Set a vault to pay yourself, then give it away | A vault in a standing-payments plan is held by that contract, so it can't be handed on while the plan runs; once its first payment opens it, it can never change hands at all. A sealed one comes out only to its giver, which ends the plan | Sandbox; on testnet, taking back and moving an opened planned vault were both refused (`ERR_VAULT_OPENED`) | [P6](docs/THREAT_MODEL.md#standing-payments-threats) |
+| 13 | Sell a vault, then take the NEAR out of its name | The names contract holds the name's lease and has its wallet send only for whoever holds the vault now, and only once they've opened it; the name has no keys of its own | On testnet, Alice handed vault No. 0038 to Bob sealed; her withdrawal from `vault-0038.bearer-tla.testnet` was refused, and Bob's worked only after he broke the seal | [N3](docs/THREAT_MODEL.md#vault-names-threats) |
 
 ## What is not covered
 
@@ -40,6 +42,10 @@ logs it.
   Use the market, which settles both sides in one step ([T14](docs/THREAT_MODEL.md#threats)).
 - **NEAR's MPC network.** It is trusted to sign only what the contract requests, which needs a
   threshold of independent operators to agree, and to keep its key shares safe.
+- **House of Stake's TLA contracts, for vault names.** A vault's name also depends on them: its
+  lease has to be renewed, the TLA's council could move it, and the shared wallet's deployer could
+  change the code it runs ([N8, N10](docs/THREAT_MODEL.md#vault-names-threats)). Keep small amounts
+  in a name.
 - **Audit.** This is a testnet prototype and has not been audited.
 
 ## Check it yourself

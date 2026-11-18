@@ -525,6 +525,47 @@ for (const p of PAYMENTS) {
   });
 }
 
+// 6e. Vault names: vault No. 0038's NEAR account under bearer-tla.testnet, which its former holder
+// couldn't empty after handing the vault on (docs/features/names.md).
+
+const NAMES = "bearer-names.testnet";
+const TLA = "bearer-tla.testnet";
+const NAME_38 = `vault-0038.${TLA}`;
+
+claim("Vault names", "Vault No. 0038's name belongs to the vault: it has no access keys, and its lease is the names contract's", `${NAMES} and registry.${TLA} views, NEAR RPC`, async () => {
+  const [named, lease, token, { keys }, acct] = await Promise.all([
+    view(NAMES, "name_of", { token_id: "38" }),
+    view(`registry.${TLA}`, "get_sub_account", { tla_id: TLA, name: "vault-0038" }),
+    view(`registry.${TLA}`, "nft_token", { token_id: NAME_38 }),
+    near("query", { request_type: "view_access_key_list", finality: "final", account_id: NAME_38 }),
+    near("query", { request_type: "view_account", finality: "final", account_id: NAME_38 }),
+  ]);
+  expect(named === NAME_38, `name_of(38) is ${named}`);
+  expect(lease?.owner === NAMES && token?.owner_id === NAMES, `the lease is ${lease?.owner}'s, its token ${token?.owner_id}'s`);
+  expect(keys.length === 0, `${keys.length} access key(s)`);
+  return `${NAME_38}: 0 keys, runs ${acct.global_contract_account_id ?? acct.code_hash}, lease and token held by ${NAMES}, ${lease.lifecycle} until ${new Date(Number(BigInt(lease.expires_at) / 1_000_000n)).toISOString().slice(0, 10)}`;
+});
+
+claim("Vault names", "After handing vault No. 0038 on sealed, alice couldn't take NEAR out of its name; bob could, once he broke the seal", "NEAR archival RPC", async () => {
+  const [refused, taken] = await Promise.all([
+    nearTx("EaKXzkjhb5vjhCqs98a8DmDpZAi3MDsP6kSD1Ffn9zUr", ALICE),
+    nearTx("6dMNchZE1tbvuPfdRLpTUW3qGJyfrDG3RMZUDCFzKu3L", BOB),
+  ]);
+  expect(refused && taken, "transaction not found");
+  const ofNames = (tx, event) => eventsOf(tx).find((e) => e.standard === "bearer_names" && e.event === event)?.data[0];
+  const no = ofNames(refused, "withdrawal_refused");
+  expect(no?.token_id === "38" && no.by === ALICE && no.reason === "not the vault's holder", `alice's attempt logged ${JSON.stringify(no)}`);
+  const yes = ofNames(taken, "withdrawn");
+  expect(yes?.token_id === "38" && yes.by === BOB && yes.account_id === NAME_38 && BigInt(yes.amount) === 20n * 10n ** 21n, `bob's logged ${JSON.stringify(yes)}`);
+  return `alice: withdrawal_refused, "${no.reason}"; bob: withdrawn 0.02 NEAR from ${NAME_38}`;
+});
+
+claim("Vault names", "The names contract isn't locked yet, as the README says", "NEAR RPC view_access_key_list", async () => {
+  const { keys } = await near("query", { request_type: "view_access_key_list", finality: "final", account_id: NAMES });
+  expect(keys.length > 0, `${NAMES} has no keys: it's locked, so the README is out of date`);
+  return `${NAMES}: ${keys.length} key(s)`;
+});
+
 // 7. Bearer links: a vault sent as a link, then passed on (docs/features/bearer-links.md).
 
 claim("Bearer links", "Vault No. 0010 passed through three links and on to an account, still sealed", "bearer.testnet vault view", async () => {

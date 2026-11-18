@@ -21,6 +21,33 @@ export const ATTACK_TESTS: Record<AttackKind, string> = {
   sign_arbitrary_bytes: "no_privileged_methods (T11)",
 };
 
+/**
+ * Copy for the standing-payments contract's errors. Several codes (ERR_NOT_DUE, ERR_NOT_GIVER,
+ * ERR_INTERVAL, ERR_IN_PROGRESS) mean something else on the other escrows, so these come first.
+ */
+export function standingErrorCopy(error: unknown): string {
+  if (error instanceof VaultError) return error.detail;
+  const text = error instanceof Error ? error.message : String(error);
+  if (text.includes("ERR_NOT_PAYEE")) return "Only the payee named in the plan can collect.";
+  if (text.includes("ERR_NOT_DUE")) return "The next payment isn't due yet.";
+  if (text.includes("ERR_ENDED")) return "These payments have ended.";
+  if (text.includes("ERR_FEE_TOO_HIGH")) return "The network fee is above what the giver allowed. Try again when fees are lower.";
+  if (text.includes("ERR_NOT_GIVER")) return "Only the person who set up the payments can do that.";
+  if (text.includes("ERR_NOT_CANCELLABLE")) return "These payments were set up so that nobody can stop them.";
+  if (text.includes("ERR_PLAN_BINDING")) return "These payments can't be stopped, so this waits until they end.";
+  if (text.includes("ERR_VAULT_OPENED")) return "The first payment opened this vault, and opened vaults never change hands. Withdraw through the plan instead.";
+  if (text.includes("ERR_VAULT_SEALED")) return "It's still sealed: take the vault back instead.";
+  if (text.includes("ERR_IN_PROGRESS")) return "A payment or withdrawal is already settling. Try again in a moment.";
+  if (text.includes("ERR_REFUSED")) return "Bearer refused it, so nothing was signed and the deposit went back. Check the vault's balance and try again.";
+  if (text.includes("ERR_UNSETTLED")) return "Bearer's answer couldn't be read back yet. Nothing is lost; check again in a moment.";
+  if (text.includes("ERR_PAYEE")) return "Name someone else to collect the payments.";
+  if (text.includes("ERR_INTERVAL")) return "Choose a period between a minute and ten years.";
+  if (text.includes("ERR_IRREVOCABLE_NEEDS_AN_END")) return "A plan nobody can stop needs a number of payments.";
+  if (text.includes("ERR_NO_PLAN_DEPOSIT")) return "The plan deposit didn't arrive, so the vault came back. Try again.";
+  if (text.includes("ERR_INSUFFICIENT_FUNDS")) return "The vault doesn't hold enough confirmed coins for this payment and its fee.";
+  return errorCopy(error);
+}
+
 /** Plain-language copy for each contract error (brief 10.4). */
 export function errorCopy(error: unknown): string {
   if (error instanceof VaultError) return error.detail;

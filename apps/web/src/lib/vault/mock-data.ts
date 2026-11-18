@@ -1,4 +1,4 @@
-import type { ChainTag, EscrowEvent, Finish, HandoverSchedule, MarketListing, ObservedDeposit, VaultLoan, VaultSwitch, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
+import type { ChainTag, EscrowEvent, Finish, HandoverSchedule, MarketListing, ObservedDeposit, StandingPlan, VaultLoan, VaultSwitch, VaultView, Withdrawal, WithdrawalParams } from "@bearer/sdk";
 import { vaultPath } from "@bearer/sdk";
 
 /** Simulated chain state for one vault: what an explorer would show at its addresses. */
@@ -27,7 +27,7 @@ export interface MockVault {
 }
 
 export interface MockState {
-  version: 11;
+  version: 12;
   nextId: number;
   vaults: Record<string, MockVault>;
   accounts: string[];
@@ -39,6 +39,8 @@ export interface MockState {
   loans: Record<string, VaultLoan>;
   /** Dead man's switches, by token. Their vaults are held by MOCK_SWITCH. */
   switches: Record<string, VaultSwitch>;
+  /** Standing payment plans, by token. Their vaults are held by MOCK_STANDING. */
+  plans: Record<string, StandingPlan>;
   /** Market sales, for prices and payouts: on testnet these come from the index. */
   sales: MockSale[];
   /**
@@ -73,14 +75,19 @@ export const MOCK_SWITCH = "switch.testnet";
 /** 0.01 NEAR, as on the testnet switch. */
 export const MOCK_SWITCH_DEPOSIT = (10n ** 22n).toString();
 
+/** The simulated standing-payments contract (contracts/standing). */
+export const MOCK_STANDING = "standing.testnet";
+/** 0.01 NEAR, as on testnet. */
+export const MOCK_PLAN_DEPOSIT = (10n ** 22n).toString();
+
 /** The simulated market contract (MARKET_CONTRACT in mock mode). */
 export const MOCK_MARKET = "market.testnet";
 /** 0.01 NEAR, as on the testnet market. */
 export const MOCK_LISTING_DEPOSIT = (10n ** 22n).toString();
 
 export const DEMO_ACCOUNTS = [
-  { id: "ada.testnet", role: "Sender", note: "Holds 4 vaults" },
-  { id: "mira.testnet", role: "Recipient", note: "Received a vault from tunde" },
+  { id: "ada.testnet", role: "Sender", note: "Holds 4 vaults; one pays mira weekly" },
+  { id: "mira.testnet", role: "Recipient", note: "Received a vault from tunde; a payment is due to her" },
   { id: "tunde.testnet", role: "Former owner", note: "Handed a vault to mira" },
 ] as const;
 
@@ -573,15 +580,96 @@ export function seedState(now: number): MockState {
     };
   }
 
+  // Standing payments. 38: ada pays mira 50,000 sats a week from a Bitcoin vault, twelve weeks in
+  // all and cancellable. Three payments are signed; the fourth fell due a few minutes ago, so mira
+  // can collect it.
+  const plans: Record<string, StandingPlan> = {};
+  {
+    const id = "38";
+    const WEEK = 7 * DAY;
+    const planned = now - 3 * WEEK - 10 * MIN;
+    const created = planned - DAY;
+    const addresses = mockAddresses(id);
+    const view = mockView(id, MOCK_STANDING, created, addresses, { name: "🧾 Mira's weekly share", finish: "champagne" });
+    view.custody = [
+      { account_id: "ada.testnet", since_ns: ns(created) },
+      { account_id: MOCK_STANDING, since_ns: ns(planned) },
+    ];
+    // The first payment broke the seal, in the same receipt.
+    view.state = { kind: "opened", at_ns: ns(planned + 2 * HOUR), by: MOCK_STANDING };
+    const pay = 50_000n;
+    const to = mockAddresses("mira-wallet").btc;
+    const paid = [0, 1, 2].map((i): Withdrawal => {
+      const at = planned + i * WEEK + 2 * HOUR;
+      return {
+        index: i,
+        params: withdrawalParams("btc", to, pay, 0, `${id}-${i}`),
+        path: view.paths.btc,
+        payload_hashes: [mockHex(`${id}-${i}-h`)],
+        signed_raw_tx: mockHex(`${id}-${i}-raw`, 230),
+        status: "signed",
+        error: null,
+        requested_at_ns: ns(at),
+      };
+    });
+    view.withdrawal_count = paid.length;
+    view.signatures_requested = paid.length;
+    const funded = sats(0.006);
+    vaults[id] = {
+      view,
+      addresses,
+      ledger: {
+        btc: ledger([funded - 3n * (pay + FEES.btc), [deposit(`${id}b`, funded, created + HOUR)]]),
+        evm: ledger([0n, []]),
+        sol: ledger([0n, []]),
+      },
+      withdrawals: paid,
+      progress: Object.fromEntries(paid.map((w) => [w.index, { createdAt: Number(BigInt(w.requested_at_ns) / 1_000_000n), chainTxHash: mockHex(`${id}-${w.index}-tx`), settled: true }])),
+      keysAt: created,
+    };
+    plans[id] = {
+      token_id: id,
+      giver: "ada.testnet",
+      payee: "mira.testnet",
+      chain: "btc",
+      to,
+      chain_id: null,
+      amount: pay.toString(),
+      max_fee: "1000",
+      interval_ns: ns(WEEK),
+      first_due_ns: ns(planned),
+      max_payments: 12,
+      cancellable: true,
+      payments: 3,
+      withdrawals: 3,
+      opened: true,
+      stopped_at_ns: null,
+      planned_at_ns: ns(planned),
+      deposit: MOCK_PLAN_DEPOSIT,
+      state: { kind: "waiting" },
+    };
+    events[id] = [
+      {
+        escrow: "standing",
+        event: "planned",
+        data: { token_id: id, giver: "ada.testnet", payee: "mira.testnet", chain: "btc", to, amount: pay.toString(), interval_ns: ns(WEEK), first_due_ns: ns(planned), max_payments: 12, cancellable: true },
+        at_ns: ns(planned),
+        from: "log",
+        tx: null,
+      },
+    ];
+  }
+
   return {
-    version: 11,
+    version: 12,
     nextId: 64,
     vaults,
-    accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", "zara.testnet", ATTACKER, "near.testnet", MOCK_MARKET, MOCK_SCHEDULE, MOCK_LEND, MOCK_SWITCH],
+    accounts: ["ada.testnet", "mira.testnet", "tunde.testnet", "theo.testnet", "bob.testnet", "zara.testnet", ATTACKER, "near.testnet", MOCK_MARKET, MOCK_SCHEDULE, MOCK_LEND, MOCK_SWITCH, MOCK_STANDING],
     listings,
     schedules,
     loans,
     switches,
+    plans,
     sales,
     events,
   };

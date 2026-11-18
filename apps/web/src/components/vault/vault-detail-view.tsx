@@ -2,7 +2,7 @@
 
 import type { MarketListing, VaultLoan } from "@bearer/sdk";
 import { mergeHistory, recordEvents } from "@bearer/sdk";
-import { ArrowDownLeft, ArrowUpRight, CalendarClock, Code, Coins, Eye, HandCoins, History, Hourglass, Link2, LockKeyhole, PackageOpen, Presentation, ReceiptText, ScrollText, Send, ShieldCheck, Store, Swords } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, CalendarClock, Code, Coins, Eye, HandCoins, History, Hourglass, Link2, LockKeyhole, PackageOpen, Presentation, ReceiptText, Repeat, ScrollText, Send, ShieldCheck, Store, Swords } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Tabs } from "radix-ui";
@@ -16,6 +16,8 @@ import { lenderOf } from "@/components/lend/lend-bits";
 import { LoanPanel } from "@/components/lend/loan-panel";
 import { SwitchPanel } from "@/components/switch/switch-panel";
 import { SwitchSheet } from "@/components/switch/switch-sheet";
+import { StandingPanel } from "@/components/standing/standing-panel";
+import { StandingSheet } from "@/components/standing/standing-sheet";
 import { BuySheet } from "@/components/market/buy-sheet";
 import { ListSheet } from "@/components/market/list-sheet";
 import { ListingPanel } from "@/components/market/listing-panel";
@@ -25,9 +27,9 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Callout, Skeleton } from "@/components/ui/primitives";
 import { useWallet } from "@/components/wallet/wallet-provider";
-import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
-import { useContractFacts, useListing, useLoan, useNow, useObservation, useSchedule, useSwitch, useVault, useVaultHistory, useWithdrawals } from "@/lib/vault/hooks";
-import { formatDate, formatUsd, nsToMs, shortAccount, vaultNumber } from "@/lib/vault/format";
+import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT, STANDING_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
+import { useContractFacts, useListing, useLoan, useNow, useObservation, useSchedule, useStandingPlan, useSwitch, useVault, useVaultHistory, useWithdrawals } from "@/lib/vault/hooks";
+import { CHAIN_META, formatAmount, formatDate, formatUsd, nsToMs, shortAccount, truncateMiddle, vaultNumber } from "@/lib/vault/format";
 import { fiveQuestions, isSealed, observedUsd, vaultReport, vaultStatus } from "@/lib/vault/report";
 import { Activity } from "./activity";
 import { AttackLab } from "./attack-lab";
@@ -46,7 +48,7 @@ import { VaultStatusBadge } from "./vault-status-badge";
 import { WithdrawSheet } from "./withdraw-sheet";
 import { WithdrawalsList } from "./withdrawals-list";
 
-type SheetName = "transfer" | "break" | "withdraw" | "fund" | "list" | "buy" | "schedule" | "borrow" | "lend" | "switch";
+type SheetName = "transfer" | "break" | "withdraw" | "fund" | "list" | "buy" | "schedule" | "borrow" | "lend" | "switch" | "standing";
 
 /** The page below the card, one tab at a time. Each tab has a link: /v/1#attack-lab opens that tab. */
 const TABS = [
@@ -124,6 +126,7 @@ export function VaultDetailView() {
   const scheduleQuery = useSchedule(id);
   const loanQuery = useLoan(id);
   const switchQuery = useSwitch(id);
+  const planQuery = useStandingPlan(id);
   const facts = useContractFacts();
   const now = useNow(1000);
   const { accountId, ready, openConnect } = useWallet();
@@ -166,11 +169,13 @@ export function VaultDetailView() {
   const pledged = !!loan && vault.owner_id === LEND_CONTRACT;
   const sw = switchQuery.data ?? null;
   const inSwitch = !!sw && vault.owner_id === SWITCH_CONTRACT;
-  const escrowed = inEscrow || inSchedule || pledged || inSwitch;
+  const plan = planQuery.data ?? null;
+  const inPlan = !!plan && vault.owner_id === STANDING_CONTRACT;
+  const escrowed = inEscrow || inSchedule || pledged || inSwitch || inPlan;
 
   return (
     <Shell>
-      {wasOwner && handedAt && !(inEscrow && listing.seller === accountId) && !(inSchedule && scheduled.giver === accountId) && !(pledged && loan.borrower === accountId) && !(inSwitch && sw.owner === accountId) ? (
+      {wasOwner && handedAt && !(inEscrow && listing.seller === accountId) && !(inSchedule && scheduled.giver === accountId) && !(pledged && loan.borrower === accountId) && !(inSwitch && sw.owner === accountId) && !(inPlan && plan.giver === accountId) ? (
         <Callout tone="warn" icon={<History />} className="mb-8">
           <p className="font-medium text-fg">
             You handed this vault to {shortAccount(vault.owner_id)} on {formatDate(nsToMs(handedAt.since_ns))}. You can&apos;t withdraw from it.
@@ -245,6 +250,10 @@ export function VaultDetailView() {
               <span className="inline-flex items-center gap-1.5">
                 In a switch set by <span className="font-mono text-fg">{sw.owner}</span>
               </span>
+            ) : inPlan ? (
+              <span className="inline-flex items-center gap-1.5">
+                Paying <span className="font-mono text-fg">{plan.payee}</span> for <span className="font-mono text-fg">{plan.giver}</span>
+              </span>
             ) : (
               <span className="inline-flex items-center gap-1.5">
                 Owner <span className="font-mono text-fg" title={vault.owner_id}>{shortAccount(vault.owner_id)}</span>
@@ -304,6 +313,12 @@ export function VaultDetailView() {
                       If I go quiet
                     </Button>
                   ) : null}
+                  {STANDING_CONTRACT ? (
+                    <Button onClick={() => setSheet("standing")} disabled={!vault.keys}>
+                      <Repeat className="size-4" />
+                      Pay someone regularly
+                    </Button>
+                  ) : null}
                   <Button onClick={() => setSheet("fund")}>
                     <ArrowDownLeft className="size-4" />
                     Deposit
@@ -343,6 +358,7 @@ export function VaultDetailView() {
             />
           ) : null}
           {inSwitch ? <SwitchPanel sw={sw} viewer={ready ? accountId : null} now={now} onConnect={() => openConnect()} /> : null}
+          {inPlan ? <StandingPanel plan={plan} observations={observations} viewer={ready ? accountId : null} now={now} onConnect={() => openConnect()} /> : null}
           {inEscrow ? (
             <ListingPanel
               listing={listing}
@@ -444,7 +460,9 @@ export function VaultDetailView() {
                         ? { kind: "loan", borrower: loan.borrower, lender: lenderOf(loan) }
                         : inSwitch
                           ? { kind: "switch", owner: sw.owner, beneficiary: sw.beneficiary }
-                          : null,
+                          : inPlan
+                            ? { kind: "standing", giver: plan.giver, payee: plan.payee, to: truncateMiddle(plan.to, 10, 6), each: `${formatAmount(plan.chain, plan.amount)} ${CHAIN_META[plan.chain].unit}`, cancellable: plan.cancellable }
+                            : null,
                 )}
               />
             </div>
@@ -486,7 +504,7 @@ export function VaultDetailView() {
                 // so a check-in or a loan's funding shows without asking the index again.
                 events: mergeHistory(
                   (historyQuery.data?.events ?? []).filter((e) => e.from === "log"),
-                  recordEvents({ listing, schedule: scheduled, loan, switch: sw }),
+                  recordEvents({ listing, schedule: scheduled, loan, switch: sw, plan }),
                 ),
                 state: historyQuery.isPending ? "loading" : historyQuery.isError ? "error" : historyQuery.data?.complete ? "complete" : "partial",
               }}
@@ -577,6 +595,10 @@ export function VaultDetailView() {
       {accountId && (isOwner || sheet === "borrow") ? (
         // Stays mounted after pledging so its success screen survives the move to the lending contract.
         <BorrowSheet open={sheet === "borrow"} onOpenChange={(o) => setSheet(o ? "borrow" : null)} vault={vault} signer={accountId} />
+      ) : null}
+      {accountId && (isOwner || sheet === "standing") ? (
+        // Stays mounted after planning so its success screen survives the move to the contract.
+        <StandingSheet open={sheet === "standing"} onOpenChange={(o) => setSheet(o ? "standing" : null)} vault={vault} observations={observations} signer={accountId} />
       ) : null}
       {accountId && (isOwner || sheet === "switch") ? (
         // Stays mounted after arming so its success screen survives the move to the switch.

@@ -1,4 +1,4 @@
-import type { AccountEvent, EscrowEvent, EscrowName, HandoverSchedule, MarketListing, VaultLoan, VaultSwitch, VaultView } from "./types";
+import type { AccountEvent, EscrowEvent, EscrowName, HandoverSchedule, MarketListing, StandingPlan, VaultLoan, VaultSwitch, VaultView } from "./types";
 
 const nsToMs = (ns: string) => Number(BigInt(ns) / 1_000_000n);
 
@@ -6,8 +6,9 @@ const nsToMs = (ns: string) => Number(BigInt(ns) / 1_000_000n);
  * Reads one vault's custody log as the events that concern `me`. The log is on-chain and lists
  * every holder in order (up to its cap), so a sale shows as seller → market → buyer, a
  * scheduled handover as giver → schedule → recipient, a loan as borrower → lend → borrower
- * (repaid) or lender (foreclosed), and a switch as owner → switch → owner (taken back) or
- * beneficiary (released). Prices and payouts aren't in the log.
+ * (repaid) or lender (foreclosed), a switch as owner → switch → owner (taken back) or
+ * beneficiary (released), and standing payments as giver → standing (and back, if taken back
+ * before the first payment). Prices and payouts aren't in the log.
  */
 export function custodyEvents(
   vault: VaultView,
@@ -16,6 +17,7 @@ export function custodyEvents(
   scheduleId: string | null,
   lendId: string | null = null,
   switchId: string | null = null,
+  standingId: string | null = null,
 ): AccountEvent[] {
   const c = vault.custody;
   const out: AccountEvent[] = [];
@@ -25,7 +27,7 @@ export function custodyEvents(
     const from = c[i - 1].account_id;
     const to = c[i].account_id;
     const before = c[i - 2]?.account_id ?? null;
-    const escrow = from === marketId || from === scheduleId || (!!lendId && from === lendId) || (!!switchId && from === switchId);
+    const escrow = from === marketId || from === scheduleId || (!!lendId && from === lendId) || (!!switchId && from === switchId) || (!!standingId && from === standingId);
     if (to === me && escrow && before === me) push("returned", i, null, false);
     else if (to === me && from === marketId) push("bought", i, before, false);
     else if (to === me && from === scheduleId) push("delivered", i, before, true);
@@ -39,6 +41,7 @@ export function custodyEvents(
     else if (from === me && to === scheduleId) push("scheduled", i, null, false);
     else if (lendId && from === me && to === lendId) push("pledged", i, null, false);
     else if (switchId && from === me && to === switchId) push("armed", i, null, false);
+    else if (standingId && from === me && to === standingId) push("planned", i, null, false);
     else if (from === me && to !== me) push("sent", i, to, false);
   }
   return out;
@@ -107,10 +110,11 @@ export function recordEvents(r: {
   schedule?: HandoverSchedule | null;
   loan?: VaultLoan | null;
   switch?: VaultSwitch | null;
+  plan?: StandingPlan | null;
 }): EscrowEvent[] {
   const out: EscrowEvent[] = [];
   const add = (escrow: EscrowName, event: string, at_ns: string, data: Record<string, unknown>) => out.push({ escrow, event, data, at_ns, from: "record", tx: null });
-  const { listing: l, schedule: s, loan, switch: w } = r;
+  const { listing: l, schedule: s, loan, switch: w, plan: p } = r;
   if (l) add("market", "listed", l.listed_at_ns, { token_id: l.token_id, seller: l.seller, price: l.price });
   if (s) {
     add("schedule", "scheduled", s.scheduled_at_ns, {
@@ -148,6 +152,21 @@ export function recordEvents(r: {
       const next = (BigInt(w.last_check_in_ns) + BigInt(w.interval_ns)).toString();
       add("switch", "checked_in", w.last_check_in_ns, { token_id: w.token_id, owner: w.owner, due_at_ns: next });
     }
+  }
+  if (p) {
+    add("standing", "planned", p.planned_at_ns, {
+      token_id: p.token_id,
+      giver: p.giver,
+      payee: p.payee,
+      chain: p.chain,
+      to: p.to,
+      amount: p.amount,
+      interval_ns: p.interval_ns,
+      first_due_ns: p.first_due_ns,
+      max_payments: p.max_payments,
+      cancellable: p.cancellable,
+    });
+    if (p.stopped_at_ns) add("standing", "stopped", p.stopped_at_ns, { token_id: p.token_id, giver: p.giver, payments: p.payments });
   }
   return out;
 }

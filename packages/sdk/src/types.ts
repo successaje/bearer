@@ -322,6 +322,106 @@ export function switchDueMs(s: Pick<VaultSwitch, "last_check_in_ns" | "interval_
   return Number((BigInt(s.last_check_in_ns) + BigInt(s.interval_ns)) / 1_000_000n);
 }
 
+/* ---------- standing payments (contracts/standing) ---------- */
+
+export type StandingState =
+  | { kind: "waiting" | "returning" }
+  | { kind: "paying" | "withdrawing"; caller: string; attached: string }
+  | { kind: "unsettled"; caller: string; attached: string; paying: boolean };
+
+/**
+ * A vault that pays `amount` to `to` every `interval_ns`, from `first_due_ns`, for as long as the
+ * plan runs. The payee collects each payment; the contract, holding the vault, asks Bearer to sign
+ * exactly that transfer. The first payment breaks the seal, and an opened vault never leaves, so
+ * from then on the giver acts through the plan: stop it (if cancellable) and withdraw the rest.
+ * Amounts are in the chain's base unit: sats, wei or lamports.
+ */
+export interface StandingPlan {
+  token_id: string;
+  giver: string;
+  payee: string;
+  chain: ChainTag;
+  /** Where every payment goes. EVM addresses are lower case. */
+  to: string;
+  /** EVM only. */
+  chain_id: string | null;
+  amount: string;
+  /** The highest fee one payment may carry, same unit. Always "0" on Solana (its fee is fixed). */
+  max_fee: string;
+  interval_ns: string;
+  first_due_ns: string;
+  /** null: until the giver stops it. */
+  max_payments: number | null;
+  /** Whether the giver may stop it, take the vault back or withdraw before it ends. */
+  cancellable: boolean;
+  /** Payments Bearer has signed. */
+  payments: number;
+  /** Requests made of Bearer for this vault: the next one's index in its withdrawal log. */
+  withdrawals: number;
+  opened: boolean;
+  stopped_at_ns: string | null;
+  planned_at_ns: string;
+  deposit: string;
+  state: StandingState;
+}
+
+export interface StandingConfig {
+  nft_contract: string;
+  plan_deposit: string;
+  min_interval_ns: string;
+  max_btc_inputs: number;
+}
+
+/** What the giver chooses when planning. `amount` and `maxFee` are base units. */
+export interface StandingTerms {
+  payee: string;
+  chain: ChainTag;
+  to: string;
+  amount: string;
+  maxFee: string;
+  intervalMs: number;
+  /** When the first payment falls due; now or earlier means straight away. */
+  firstDueMs: number;
+  maxPayments: number | null;
+  cancellable: boolean;
+}
+
+const nsMs = (ns: string | bigint) => Number(BigInt(ns) / 1_000_000n);
+
+/** The contract's own rules (contracts/standing/src/lib.rs), so pages say what it will do. */
+export const standing = {
+  /** Payments that have fallen due by `nowMs`, counting the ones collected. */
+  fallenDue(p: StandingPlan, nowMs: number): number {
+    const now = BigInt(Math.floor(nowMs)) * 1_000_000n;
+    const first = BigInt(p.first_due_ns);
+    if (now < first) return 0;
+    const n = Number((now - first) / BigInt(p.interval_ns)) + 1;
+    return p.max_payments === null ? n : Math.min(n, p.max_payments);
+  },
+  /** Stopped, paid in full, or a whole period past the last payment's due date. */
+  ended(p: StandingPlan, nowMs: number): boolean {
+    if (p.stopped_at_ns) return true;
+    if (p.max_payments === null) return false;
+    const end = BigInt(p.first_due_ns) + BigInt(p.interval_ns) * BigInt(p.max_payments);
+    return p.payments >= p.max_payments || BigInt(Math.floor(nowMs)) * 1_000_000n >= end;
+  },
+  owed(p: StandingPlan, nowMs: number): number {
+    return standing.ended(p, nowMs) ? 0 : Math.max(0, standing.fallenDue(p, nowMs) - p.payments);
+  },
+  /** When the next payment falls due (it may already have), or null once the plan is over. */
+  nextDueMs(p: StandingPlan, nowMs: number): number | null {
+    if (standing.ended(p, nowMs)) return null;
+    return nsMs(BigInt(p.first_due_ns) + BigInt(p.interval_ns) * BigInt(p.payments));
+  },
+  /** When an irrevocable plan stops binding the giver even if payments go uncollected. */
+  endsAtMs(p: StandingPlan): number | null {
+    return p.max_payments === null ? null : nsMs(BigInt(p.first_due_ns) + BigInt(p.interval_ns) * BigInt(p.max_payments));
+  },
+  giverFree(p: StandingPlan, nowMs: number): boolean {
+    return p.cancellable || standing.ended(p, nowMs);
+  },
+};
+
 /* ---------- an account's activity: what happened to the vaults it held, sold or was sent ---------- */
 
 /**
@@ -333,7 +433,8 @@ export function switchDueMs(s: Pick<VaultSwitch, "last_check_in_ns" | "interval_
  *   switch handed your vault to your beneficiary. Both are triggered by someone else.
  * - `bought`, `returned` (delisted, a schedule cancelled, a loan repaid or its request cancelled,
  *   a switch taken back), `listed`, `scheduled`, `pledged`, `collected` (you took a vault you lent
- *   against), `armed` (you put a vault in a switch), `sent`: your own.
+ *   against), `armed` (you put a vault in a switch), `planned` (you set a vault paying someone),
+ *   `sent`: your own.
  */
 export type AccountEventKind =
   | "sold"
@@ -350,6 +451,7 @@ export type AccountEventKind =
   | "pledged"
   | "collected"
   | "armed"
+  | "planned"
   | "sent";
 
 export interface AccountEvent {
@@ -381,7 +483,7 @@ export interface AccountActivity {
 
 /* ---------- one vault's history: what the escrow contracts logged about it ---------- */
 
-export type EscrowName = "market" | "schedule" | "lend" | "switch";
+export type EscrowName = "market" | "schedule" | "lend" | "switch" | "standing";
 
 /**
  * Something an escrow contract logged about a vault, as a NEP-297 event: a listing and its price,
@@ -394,6 +496,9 @@ export type EscrowName = "market" | "schedule" | "lend" | "switch";
  * `repaid` (lender, repayment), `foreclosed` (lender), `cancelled`.
  * Switch: `armed` (owner, beneficiary, interval_ns, due_at_ns), `checked_in`, `updated`,
  * `released` (beneficiary), `taken_back`.
+ * Standing payments: `planned` (giver, payee, chain, to, amount, interval_ns, first_due_ns,
+ * max_payments, cancellable), `taken_back` (giver). Its payments and the giver's withdrawals don't
+ * move the vault; they're in Bearer's withdrawal log.
  * Any of them: `returned` (sent in without a valid message, so sent back) and `payout_failed`
  * (account_id, amount: a payment that bounced and waits to be claimed).
  */
@@ -521,6 +626,26 @@ export interface BearerClient {
   /** Anyone may, once a whole interval has passed without a check-in; resolves once the beneficiary has it. */
   releaseSwitch(tokenId: string, signer: string): Promise<VaultView>;
 
+  /** The standing-payments contract's account, or null where this deployment has none. */
+  readonly standingId: string | null;
+  standingPlans(): Promise<StandingPlan[]>;
+  getStandingPlan(tokenId: string): Promise<StandingPlan | null>;
+  standingConfig(): Promise<StandingConfig>;
+  /** Sends a sealed vault to the standing-payments contract on these terms, paying the plan deposit first if needed. */
+  planPayments(tokenId: string, terms: StandingTerms, signer: string): Promise<StandingPlan>;
+  /**
+   * The payee collects one payment that has fallen due: one NEAR transaction (it breaks the seal
+   * first, the first time). Resolves with Bearer's record of it, signed and ready to broadcast, or
+   * failed with its reason; throws if Bearer refused it outright.
+   */
+  collectPayment(tokenId: string, signer: string): Promise<Withdrawal>;
+  /** The giver stops a cancellable plan; nothing more falls due. */
+  stopPayments(tokenId: string, signer: string): Promise<StandingPlan>;
+  /** The giver takes a still-sealed vault back, with the plan deposit; resolves once it's back. */
+  takeBackPlanned(tokenId: string, signer: string): Promise<VaultView>;
+  /** The giver withdraws through the plan, once it's opened and doesn't bind them. */
+  withdrawThroughPlan(tokenId: string, request: WithdrawRequest, signer: string): Promise<Withdrawal>;
+
   /** The market contract's account, or null where this deployment has none. */
   readonly marketId: string | null;
   listings(): Promise<MarketListing[]>;
@@ -542,7 +667,7 @@ export interface BearerClient {
   accountActivity(accountId: string): Promise<AccountActivity>;
   /**
    * What the escrow contracts logged about one vault, oldest first: every listing, sale, loan,
-   * schedule and switch it has been through, with prices, terms and dates, plus what the escrow
+   * schedule, switch and standing payment plan it has been through, with prices, terms and dates, plus what the escrow
    * holding it now records.
    */
   vaultHistory(tokenId: string): Promise<VaultHistory>;

@@ -5,7 +5,7 @@ import { Dialog } from "radix-ui";
 import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
+import { LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT, STANDING_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
 import { formatDate, formatUsd, nsToMs, vaultNumber } from "@/lib/vault/format";
 import { isSealed, observedUsd } from "@/lib/vault/report";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ export function useJustReceived(vault: VaultView | null | undefined, viewer: str
   // A vault coming back out of an escrow to whoever put it there isn't a hand-over: delisted,
   // a schedule cancelled, a loan repaid or its request taken back, a switch taken back.
   const back = vault?.custody.at(-2)?.account_id;
-  const escrows = [MARKET_CONTRACT, SCHEDULE_CONTRACT, LEND_CONTRACT, SWITCH_CONTRACT];
+  const escrows = [MARKET_CONTRACT, SCHEDULE_CONTRACT, LEND_CONTRACT, SWITCH_CONTRACT, STANDING_CONTRACT];
   const home = !!back && escrows.includes(back) && vault?.custody.at(-3)?.account_id === viewer;
   const fresh = !!vault && !!viewer && vault.owner_id === viewer && vault.custody.length > 1 && latest?.account_id === viewer && !home;
   const key = vault && fresh ? seenKey(vault) : null;

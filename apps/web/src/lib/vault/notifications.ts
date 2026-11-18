@@ -32,7 +32,7 @@ export function eventCopy(e: AccountEvent): { title: string; body: string } {
     case "bought":
       return { title: `You bought ${own}`, body: `From ${e.counterparty ?? "its seller"}, on the market.` };
     case "returned":
-      return { title: `${no} is back with you`, body: "Delisted, its schedule cancelled, its loan repaid or taken back, or out of its switch. Still sealed." };
+      return { title: `${no} is back with you`, body: "Delisted, its schedule cancelled, its loan repaid or taken back, out of its switch, or taken back before its first payment. Still sealed." };
     case "listed":
       return { title: `You listed ${own}`, body: "The market holds it, sealed, until it sells or you delist it." };
     case "scheduled":
@@ -47,6 +47,8 @@ export function eventCopy(e: AccountEvent): { title: string; body: string } {
       return { title: `${no} went to ${e.counterparty}`, body: "You didn't check in for a whole interval, so your switch handed it to them, still sealed." };
     case "armed":
       return { title: `You put ${own} in a switch`, body: "It stays sealed while you check in, and goes to the person you named if you go quiet." };
+    case "planned":
+      return { title: `You set ${own} to pay`, body: "The standing-payments contract holds it and pays your payee each period, until the plan ends or you stop it." };
     case "sent":
       return { title: `You handed ${own} to ${e.counterparty}`, body: "Nothing moved on Bitcoin, Base or Solana." };
   }

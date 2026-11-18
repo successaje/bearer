@@ -155,12 +155,13 @@ export interface Answer {
   a: string;
 }
 
-/** Who holds a vault in escrow, when the owner on record is the market, the schedule, the lending contract or the switch. */
+/** Who holds a vault in escrow, when the owner on record is the market, the schedule, the lending contract, the switch or standing payments. */
 export type Escrow =
   | { kind: "market"; seller: string }
   | { kind: "schedule"; giver: string; recipient: string }
   | { kind: "loan"; borrower: string; lender: string | null }
-  | { kind: "switch"; owner: string; beneficiary: string };
+  | { kind: "switch"; owner: string; beneficiary: string }
+  | { kind: "standing"; giver: string; payee: string; to: string; each: string; cancellable: boolean };
 
 /** Brief 3.7: every vault page answers these, in plain words. */
 export function fiveQuestions(v: VaultView, obs: ChainObservation[] | undefined, viewer: string | null, escrow: Escrow | null = null): Answer[] {
@@ -191,6 +192,8 @@ export function fiveQuestions(v: VaultView, obs: ChainObservation[] | undefined,
               ? `Nobody while it's pledged: the lending contract holds it and never breaks seals. Repaid in time, it goes back to ${escrow.borrower}${escrow.lender ? `; if not, to ${escrow.lender}` : ""}.`
               : escrow?.kind === "switch"
                 ? `Nobody while it's in the switch: the switch holds it and never breaks seals. ${escrow.owner} can take it back; if they go quiet, it goes to ${escrow.beneficiary}.`
+              : escrow?.kind === "standing"
+                ? `${escrow.payee} can collect ${escrow.each} each period, sent only to ${escrow.to}. ${escrow.cancellable ? `${escrow.giver} can stop that and withdraw the rest` : `${escrow.giver} can withdraw the rest once the payments end`}, through the standing-payments contract that holds it. Nobody else can.`
               : sealed
               ? `Only the current owner (${shortAccount(v.owner_id)}), and only after breaking the seal. Right now nobody has.`
               : `Only ${shortAccount(v.owner_id)}. The vault is opened and can't change hands.`,

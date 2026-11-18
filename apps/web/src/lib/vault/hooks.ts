@@ -1,9 +1,9 @@
 "use client";
 
-import type { AttackKind, ChainTag, Finish, LoanTerms, VaultLoan, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
+import type { AttackKind, ChainTag, Finish, LoanTerms, StandingTerms, VaultLoan, VaultView, WithdrawalStage, WithdrawRequest } from "@bearer/sdk";
 import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
+import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT, STANDING_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
 import { getVaultClient } from "./client";
 import { fetchContractFacts } from "./contract-facts";
 
@@ -22,6 +22,8 @@ export const keys = {
   loan: (id: string) => ["loan", id] as const,
   switches: ["switches"] as const,
   switchFor: (id: string) => ["switch", id] as const,
+  plans: ["plans"] as const,
+  plan: (id: string) => ["plan", id] as const,
 };
 
 /** Brief 3.4: deposits appear automatically, polled every 10 s. */
@@ -137,6 +139,9 @@ function useRefresh() {
     void qc.invalidateQueries({ queryKey: keys.loan(id) });
     void qc.invalidateQueries({ queryKey: keys.switches });
     void qc.invalidateQueries({ queryKey: keys.switchFor(id) });
+    void qc.invalidateQueries({ queryKey: keys.plans });
+    void qc.invalidateQueries({ queryKey: keys.plan(id) });
+    void qc.invalidateQueries({ queryKey: ["history", id] });
   };
 }
 
@@ -417,6 +422,80 @@ export function useReleaseSwitch() {
   return useMutation({
     mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).releaseSwitch(v.id, v.signer),
     onSettled: (_r, _e, v) => refresh(v.id),
+  });
+}
+
+/* ---------- standing payments ---------- */
+
+export function useStandingPlans() {
+  return useQuery({ queryKey: keys.plans, queryFn: async () => (await getVaultClient()).standingPlans(), refetchInterval: POLL_MS, enabled: Boolean(STANDING_CONTRACT) });
+}
+
+export function useStandingPlan(id: string) {
+  return useQuery({
+    queryKey: keys.plan(id),
+    queryFn: async () => (await getVaultClient()).getStandingPlan(id),
+    refetchInterval: POLL_MS,
+    enabled: Boolean(STANDING_CONTRACT),
+  });
+}
+
+/** The standing-payments account's lock state: until it has no full-access keys, its key holder could act as the owner of every vault in it. */
+export function useStandingFacts() {
+  return useQuery({
+    queryKey: ["standing-facts", STANDING_CONTRACT],
+    queryFn: () => fetchContractFacts(STANDING_CONTRACT as string),
+    enabled: Boolean(STANDING_CONTRACT),
+    staleTime: 60_000,
+  });
+}
+
+export function useStandingConfig() {
+  return useQuery({
+    queryKey: ["standing-config"],
+    queryFn: async () => (await getVaultClient()).standingConfig(),
+    enabled: Boolean(STANDING_CONTRACT),
+    staleTime: Infinity,
+  });
+}
+
+export function usePlanPayments() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; terms: StandingTerms; signer: string }) => (await getVaultClient()).planPayments(v.id, v.terms, v.signer),
+    onSuccess: (_p, v) => refresh(v.id),
+  });
+}
+
+export function useCollectPayment() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).collectPayment(v.id, v.signer),
+    onSettled: (_w, _e, v) => refresh(v.id),
+  });
+}
+
+export function useStopPayments() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).stopPayments(v.id, v.signer),
+    onSettled: (_p, _e, v) => refresh(v.id),
+  });
+}
+
+export function useTakeBackPlanned() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; signer: string }) => (await getVaultClient()).takeBackPlanned(v.id, v.signer),
+    onSettled: (_r, _e, v) => refresh(v.id),
+  });
+}
+
+export function useWithdrawThroughPlan() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: async (v: { id: string; request: WithdrawRequest; signer: string }) => (await getVaultClient()).withdrawThroughPlan(v.id, v.request, v.signer),
+    onSettled: (_w, _e, v) => refresh(v.id),
   });
 }
 

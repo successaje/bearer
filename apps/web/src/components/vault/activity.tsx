@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChainObservation, EscrowEvent, EscrowName, VaultView, Withdrawal } from "@bearer/sdk";
+import type { ChainObservation, ChainTag, EscrowEvent, EscrowName, VaultView, Withdrawal } from "@bearer/sdk";
 import {
   ArrowDownLeft,
   CalendarClock,
@@ -10,8 +10,10 @@ import {
   HeartPulse,
   Hourglass,
   PackageOpen,
+  Pause,
   PenLine,
   Plus,
+  Repeat,
   Send,
   Store,
   TriangleAlert,
@@ -25,11 +27,12 @@ import {
   LEND_CONTRACT,
   MARKET_CONTRACT,
   SCHEDULE_CONTRACT,
+  STANDING_CONTRACT,
   SWITCH_CONTRACT,
   explorer,
 } from "@/lib/config";
 import { withdrawalAmount } from "@/lib/vault/report";
-import { CHAIN_META, formatAmount, formatNear, nsToMs, relativeTime, shortAccount } from "@/lib/vault/format";
+import { CHAIN_META, formatAmount, formatNear, nsToMs, relativeTime, shortAccount, truncateMiddle } from "@/lib/vault/format";
 import { cn } from "@/lib/utils";
 
 interface Item {
@@ -55,13 +58,14 @@ const ESCROWS: { name: EscrowName; account: string | null; label: string; icon: 
   { name: "schedule", account: SCHEDULE_CONTRACT, label: "schedule contract", icon: CalendarClock },
   { name: "lend", account: LEND_CONTRACT, label: "lending contract", icon: HandCoins },
   { name: "switch", account: SWITCH_CONTRACT, label: "switch", icon: Hourglass },
+  { name: "standing", account: STANDING_CONTRACT, label: "standing-payments contract", icon: Repeat },
 ];
 const escrowOf = (account: string | undefined) => ESCROWS.find((e) => e.account && e.account === account);
 
 /** Events that move the vault into its escrow; the rest that move it, move it out. */
-const INTO = new Set(["listed", "scheduled", "requested", "armed"]);
+const INTO = new Set(["listed", "scheduled", "requested", "armed", "planned"]);
 /** These don't move the vault, so they tell no step in the custody log. */
-const STILL = new Set(["funded", "checked_in", "updated", "payout_failed"]);
+const STILL = new Set(["funded", "checked_in", "updated", "payout_failed", "stopped"]);
 /** A record's time is the escrow's own, a block or so after the move it records. */
 const RECORD_SLACK_NS = 60n * 1_000_000_000n;
 
@@ -138,18 +142,25 @@ export function Activity({
       detail: `By ${shortAccount(vault.state.by)}. The vault can't change hands from here on.`,
     });
   }
+  // A standing payment is a withdrawal of exactly the plan's amount to exactly its address.
+  const plan = history.events.findLast((e) => e.escrow === "standing" && e.event === "planned")?.data;
+  const isPayment = (to: string, amount: string) =>
+    !!plan && typeof plan.to === "string" && plan.to.toLowerCase() === to.toLowerCase() && plan.amount === amount;
   for (const w of withdrawals) {
-    const { chain, amount } = withdrawalAmount(w);
+    const { chain, amount, to } = withdrawalAmount(w);
+    const payment = isPayment(to, amount);
     items.push({
       key: `w-${w.index}`,
       at: nsToMs(w.requested_at_ns),
-      icon: PenLine,
+      icon: payment ? Repeat : PenLine,
       tone: w.status === "failed" ? "bg-danger/10 text-danger" : MOVE,
-      title: `Withdrawal of ${formatAmount(chain, amount)} ${CHAIN_META[chain].unit}`,
+      title: `${payment ? "Standing payment" : "Withdrawal"} of ${formatAmount(chain, amount)} ${CHAIN_META[chain].unit}`,
       detail:
         w.status === "failed"
           ? "The signature failed. Nothing was sent."
-          : `Signed by NEAR's MPC network on ${CHAIN_META[chain].name}.`,
+          : payment
+            ? `To ${truncateMiddle(to, 8, 6)}, collected by ${shortAccount(String(plan?.payee ?? "the payee"))}. Signed by NEAR's MPC network on ${CHAIN_META[chain].name}.`
+            : `Signed by NEAR's MPC network on ${CHAIN_META[chain].name}.`,
     });
   }
   for (const o of observations ?? []) {
@@ -254,6 +265,7 @@ function custodyStep(vault: VaultView, i: number): { title: string; detail: stri
       schedule: "Scheduled for a handover",
       lend: "Pledged for a loan",
       switch: "Put in a switch",
+      standing: "Set to pay regularly",
     }[into.name];
     return { title, detail: `By ${from ?? "its holder"}. The ${into.label} holds it, sealed.` };
   }
@@ -264,6 +276,7 @@ function custodyStep(vault: VaultView, i: number): { title: string; detail: stri
         schedule: "The schedule was cancelled, or refused.",
         lend: "The loan was repaid, or its request taken back.",
         switch: "Taken out of the switch.",
+        standing: "Taken back before its first payment.",
       }[out.name];
       return { title: `Back with ${to}`, detail: `${why} Still sealed.` };
     }
@@ -432,6 +445,27 @@ function escrowItem(e: EscrowEvent): Pick<Item, "icon" | "tone" | "title" | "det
       };
     case "switch:taken_back":
       return { icon, tone: MOVE, title: `Back with ${who("owner")}`, detail: "Taken out of the switch. Still sealed." };
+
+    case "standing:planned": {
+      const chain = (["btc", "evm", "sol"] as const).find((c) => c === s("chain")) as ChainTag | undefined;
+      const each = chain && s("amount") && /^\d+$/.test(s("amount") as string) ? `${formatAmount(chain, s("amount") as string)} ${CHAIN_META[chain].unit}` : "an amount";
+      const count = typeof e.data.max_payments === "number" ? `, ${e.data.max_payments} payments in all` : ", until stopped";
+      return {
+        icon,
+        tone: MOVE,
+        title: `Set to pay ${who("payee")}`,
+        detail: `By ${who("giver")}: ${each} to ${truncateMiddle(s("to") ?? "an address", 8, 6)} every ${span("interval_ns")}, from ${when("first_due_ns")}${count}. ${e.data.cancellable === true ? `${who("giver")} can stop it.` : "Set so nobody can stop it."} The first payment breaks the seal, and the vault stays with the contract from then on.`,
+      };
+    }
+    case "standing:stopped":
+      return {
+        icon: Pause,
+        tone: QUIET,
+        title: `${who("giver")} stopped the payments`,
+        detail: `Nothing more falls due. The vault stays with the contract, and ${who("giver")} can withdraw through it.`,
+      };
+    case "standing:taken_back":
+      return { icon, tone: MOVE, title: `Back with ${who("giver")}`, detail: "Taken back before its first payment. Still sealed." };
   }
   return null;
 }

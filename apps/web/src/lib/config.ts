@@ -8,7 +8,7 @@ export const NETWORK: Network = process.env.NEXT_PUBLIC_NETWORK === "mock" ? "mo
 /** Mock mode runs entirely in the browser. Everything it shows is labelled SIMULATED. */
 export const IS_SIMULATED = NETWORK === "mock";
 
-/** The locked contract the live site runs on; its market, schedule, lending and switch contracts come with it. */
+/** The locked contract the live site runs on; its market, schedule, lending, switch and standing-payments contracts come with it. */
 export const BEARER_CONTRACT = process.env.NEXT_PUBLIC_BEARER_CONTRACT || "bearer.testnet";
 
 /**
@@ -39,6 +39,14 @@ export const LEND_CONTRACT: string | null =
 export const SWITCH_CONTRACT: string | null =
   process.env.NEXT_PUBLIC_SWITCH_CONTRACT ||
   (NETWORK === "mock" ? "switch.testnet" : BEARER_CONTRACT === "bearer.testnet" ? "bearer-switch.testnet" : null);
+
+/**
+ * The standing-payments contract (contracts/standing): holds a vault and pays a fixed amount from
+ * it to a named payee every period. On testnet it exists only for bearer.testnet.
+ */
+export const STANDING_CONTRACT: string | null =
+  process.env.NEXT_PUBLIC_STANDING_CONTRACT ||
+  (NETWORK === "mock" ? "standing.testnet" : BEARER_CONTRACT === "bearer.testnet" ? "bearer-standing.testnet" : null);
 
 /** Code hash of the market's reproducible build (contracts/res/market.wasm), deployed and locked on bearer-market.testnet. */
 export const MARKET_CODE_HASH = process.env.NEXT_PUBLIC_MARKET_CODE_HASH || "7joKh4WSVFGb6EEsUpS6BeC1wtp3pepG2FQwBuAJqt7P";

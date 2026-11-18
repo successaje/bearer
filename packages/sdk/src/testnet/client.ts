@@ -16,6 +16,9 @@ import type {
   MarketConfig,
   MarketListing,
   RecordedAttack,
+  StandingConfig,
+  StandingPlan,
+  StandingTerms,
   SwitchConfig,
   VaultLoan,
   VaultHistory,
@@ -28,7 +31,7 @@ import type {
 } from "../types";
 
 import { broadcastRaw, btcParams, chainStatus, chainTxId, evmParams, solParams, txExplorer } from "./chains";
-import { TESTNET_ENDPOINTS, type TestnetEndpoints } from "./config";
+import { BASE_SEPOLIA_CHAIN_ID, TESTNET_ENDPOINTS, type TestnetEndpoints } from "./config";
 import { observeBtc, observeEvm, observeSol } from "./observe";
 import { NearRpc, getJson, jsonRpc } from "./rpc";
 import { custodyEvents, escrowEventsInLogs, mergeHistory, recordEvents, type LoggedOutcome } from "../activity";
@@ -62,6 +65,8 @@ export interface TestnetClientOptions {
   lendId?: string | null;
   /** The switch contract (contracts/switch) that hands this contract's vaults on if their owner goes quiet, if any. */
   switchId?: string | null;
+  /** The standing-payments contract (contracts/standing) that pays from this contract's vaults every period, if any. */
+  standingId?: string | null;
   /** Attacks sent to this contract as real transactions; `runAttack` re-reads their outcome. */
   recordedAttacks?: RecordedAttack[];
   wallet: WalletAdapter;
@@ -98,6 +103,7 @@ export class TestnetBearerClient implements BearerClient {
   private scheduleDeposit: Promise<string> | null = null;
   private lendCfg: Promise<LendConfig> | null = null;
   private switchCfg: Promise<SwitchConfig> | null = null;
+  private standingCfg: Promise<StandingConfig> | null = null;
 
   constructor(private readonly opts: TestnetClientOptions) {
     this.ep = { ...TESTNET_ENDPOINTS, ...opts.endpoints };
@@ -526,6 +532,142 @@ export class TestnetBearerClient implements BearerClient {
     throw new Error("The hand-over went through, but the vault hasn't arrived yet. Check the vault page in a moment.");
   }
 
+  /* ---------- standing payments: a vault that pays every period (contracts/standing) ---------- */
+
+  get standingId() {
+    return this.opts.standingId ?? null;
+  }
+
+  private stander() {
+    if (!this.opts.standingId) throw new Error("This deployment has no standing payments.");
+    return this.opts.standingId;
+  }
+
+  async standingPlans() {
+    if (!this.opts.standingId) return [];
+    return this.near.view<StandingPlan[]>(this.opts.standingId, "plans", { from_index: 0, limit: 100 });
+  }
+
+  async getStandingPlan(tokenId: string) {
+    if (!this.opts.standingId) return null;
+    return this.near.view<StandingPlan | null>(this.opts.standingId, "plan", { token_id: tokenId });
+  }
+
+  standingConfig() {
+    this.standingCfg ??= this.near.view<StandingConfig>(this.stander(), "get_config");
+    return this.standingCfg;
+  }
+
+  async planPayments(tokenId: string, terms: StandingTerms, signer: string) {
+    this.signerFor(signer);
+    const sp = this.stander();
+    const [{ plan_deposit }, balance] = await Promise.all([this.standingConfig(), this.near.view<string>(sp, "deposit_of", { account_id: signer })]);
+    const msg = {
+      payee: terms.payee,
+      chain: terms.chain,
+      to: terms.to,
+      chain_id: terms.chain === "evm" ? String(BASE_SEPOLIA_CHAIN_ID) : null,
+      amount: terms.amount,
+      max_fee: terms.chain === "sol" ? "0" : terms.maxFee,
+      interval_ns: (BigInt(Math.floor(terms.intervalMs)) * 1_000_000n).toString(),
+      first_due_ns: (BigInt(Math.floor(terms.firstDueMs)) * 1_000_000n).toString(),
+      max_payments: terms.maxPayments,
+      cancellable: terms.cancellable,
+    };
+    // nft_transfer_call forwards only 1 yoctoNEAR, so the plan deposit is paid first.
+    const send = {
+      receiverId: this.opts.contractId,
+      calls: [{ methodName: "nft_transfer_call", args: { receiver_id: sp, token_id: tokenId, msg: JSON.stringify(msg) }, gas: 100n * TGAS, deposit: ONE_YOCTO }],
+    };
+    const pay = { receiverId: sp, calls: [{ methodName: "deposit_for_plan", args: {}, gas: 30n * TGAS, deposit: BigInt(plan_deposit) }] };
+    const results = await this.sendAll(BigInt(balance) >= BigInt(plan_deposit) ? [send] : [pay, send]);
+    if (results.at(-1)?.returnValue === false) {
+      throw new Error("The plan sent the vault back: check the payee, the address and the amounts, and that the vault is still sealed.");
+    }
+    for (let i = 0; i < 20; i++) {
+      const p = await this.getStandingPlan(tokenId);
+      if (p) return p;
+      await sleep(1000);
+    }
+    throw new Error("The vault was sent, but its plan hasn't appeared yet. Check the vault page in a moment.");
+  }
+
+  /** Waits for the request in flight to settle, then returns Bearer's record at `index`. */
+  private async settledRequest(tokenId: string, index: number) {
+    for (let i = 0; i < 30; i++) {
+      const p = await this.getStandingPlan(tokenId);
+      if (p?.state.kind === "unsettled") {
+        throw new Error("ERR_UNSETTLED: Bearer's answer couldn't be read back yet. Anyone can ask the plan to check again (recheck); nothing is lost meanwhile.");
+      }
+      if (!p || p.state.kind === "waiting") {
+        if (p && p.withdrawals <= index) {
+          throw new Error("ERR_REFUSED: Bearer refused this request, so nothing was signed and the deposit went back. Try again in a moment.");
+        }
+        return this.requested(tokenId, index);
+      }
+      await sleep(1000);
+    }
+    throw new Error("The request was sent, but it hasn't settled yet. Check the vault page in a moment.");
+  }
+
+  async collectPayment(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    const sp = this.stander();
+    const [plan, vault, config, cfg] = await Promise.all([this.getStandingPlan(tokenId), this.getVault(tokenId), this.getConfig(), this.standingConfig()]);
+    if (!plan || !vault) throw new Error("This vault has no standing payments.");
+    const each = BigInt(config.withdraw_deposit) + BigInt(config.mpc_sign_deposit);
+    const cap = BigInt(plan.max_fee);
+    let params: Record<string, unknown>;
+    let signatures = 1n;
+    if (plan.chain === "btc") {
+      const p = await btcParams(addressOf(vault, "btc"), plan.to, plan.amount, Math.min(config.max_btc_inputs, cfg.max_btc_inputs), this.ep);
+      // A fee over the giver's cap is cut to the cap: slower to confirm, never refused.
+      const fee = BigInt(p.fee_sat) > cap ? cap : BigInt(p.fee_sat);
+      params = { chain: "btc", inputs: p.inputs, fee_sat: fee.toString() };
+      signatures = BigInt(p.inputs.length);
+    } else if (plan.chain === "evm") {
+      const p = await evmParams(addressOf(vault, "evm"), plan.to, plan.amount, this.ep);
+      const gas = BigInt(p.gas_limit);
+      let maxFee = BigInt(p.max_fee_per_gas);
+      if (gas * maxFee > cap) maxFee = cap / gas;
+      const priority = BigInt(p.max_priority_fee_per_gas) > maxFee ? maxFee : BigInt(p.max_priority_fee_per_gas);
+      params = { chain: "evm", nonce: p.nonce, gas_limit: p.gas_limit, max_fee_per_gas: maxFee.toString(), max_priority_fee_per_gas: priority.toString() };
+    } else {
+      const p = await solParams(plan.to, plan.amount, this.ep);
+      params = { chain: "sol", recent_blockhash: p.recent_blockhash };
+    }
+    // One yoctoNEAR more breaks the seal before the first payment, in the same receipt.
+    const deposit = each * signatures + (plan.opened ? 0n : ONE_YOCTO);
+    await this.opts.wallet.send(sp, [{ methodName: "collect", args: { token_id: tokenId, params }, gas: 300n * TGAS, deposit }]);
+    return this.settledRequest(tokenId, plan.withdrawals);
+  }
+
+  async stopPayments(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.stander(), [{ methodName: "stop", args: { token_id: tokenId }, gas: 30n * TGAS, deposit: ONE_YOCTO }]);
+    const p = await this.getStandingPlan(tokenId);
+    if (!p) throw new Error("This vault has no standing payments any more.");
+    return p;
+  }
+
+  async takeBackPlanned(tokenId: string, signer: string) {
+    this.signerFor(signer);
+    await this.opts.wallet.send(this.stander(), [{ methodName: "take_back", args: { token_id: tokenId }, gas: 100n * TGAS, deposit: ONE_YOCTO }]);
+    return this.vaultReaches(tokenId, signer, "The vault hasn't come back yet. Check the vault page in a moment.");
+  }
+
+  async withdrawThroughPlan(tokenId: string, request: WithdrawRequest, signer: string) {
+    this.signerFor(signer);
+    const [plan, vault] = await Promise.all([this.getStandingPlan(tokenId), this.getVault(tokenId)]);
+    if (!plan || !vault) throw new Error("This vault has no standing payments.");
+    const call = await this.withdrawCall(vault, request);
+    const { params } = call.args as { params: Record<string, unknown> };
+    await this.opts.wallet.send(this.stander(), [
+      { methodName: "withdraw", args: { token_id: tokenId, params: { chain: request.chain, ...params } }, gas: 300n * TGAS, deposit: call.deposit },
+    ]);
+    return this.settledRequest(tokenId, plan.withdrawals);
+  }
+
   /* ---------- the market: escrow by transfer (docs/features/market.md) ---------- */
 
   get marketId() {
@@ -727,7 +869,7 @@ export class TestnetBearerClient implements BearerClient {
     this.activityIndex.set(accountId, index);
 
     const vaults = await Promise.all([...index.ids].map((id) => this.getVault(id)));
-    const events = vaults.flatMap((v) => (v ? custodyEvents(v, accountId, market, this.opts.scheduleId ?? null, this.opts.lendId ?? null, this.opts.switchId ?? null) : []));
+    const events = vaults.flatMap((v) => (v ? custodyEvents(v, accountId, market, this.opts.scheduleId ?? null, this.opts.lendId ?? null, this.opts.switchId ?? null, this.opts.standingId ?? null) : []));
 
     // Match each sale to the market's payment to the seller, made in the same transaction a moment after the vault moved.
     const payoutFor = (e: AccountEvent) => [...index.payouts.values()].find((x) => x.atMs >= e.atMs - 5_000 && x.atMs <= e.atMs + 60_000);
@@ -808,13 +950,14 @@ export class TestnetBearerClient implements BearerClient {
    * If the index can't be read, the current record is all there is, and `complete` is false.
    */
   async vaultHistory(tokenId: string): Promise<VaultHistory> {
-    const escrows = { market: this.opts.marketId, schedule: this.opts.scheduleId, lend: this.opts.lendId, switch: this.opts.switchId };
-    const [moves, listing, schedule, loan, sw] = await Promise.all([
+    const escrows = { market: this.opts.marketId, schedule: this.opts.scheduleId, lend: this.opts.lendId, switch: this.opts.switchId, standing: this.opts.standingId };
+    const [moves, listing, schedule, loan, sw, plan] = await Promise.all([
       this.vaultMoves(tokenId),
       this.getListing(tokenId),
       this.getSchedule(tokenId),
       this.getLoan(tokenId),
       this.getSwitch(tokenId),
+      this.getStandingPlan(tokenId),
     ]);
     let complete = moves.complete;
     const logged: EscrowEvent[] = [];
@@ -834,7 +977,7 @@ export class TestnetBearerClient implements BearerClient {
       logged.push(...batch.flat());
     }
     return {
-      events: mergeHistory(logged, recordEvents({ listing, schedule, loan, switch: sw })),
+      events: mergeHistory(logged, recordEvents({ listing, schedule, loan, switch: sw, plan })),
       source: "NearBlocks index, NEAR archival RPC and the contracts' own records",
       complete,
     };

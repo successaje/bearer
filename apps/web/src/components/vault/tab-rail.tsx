@@ -12,6 +12,7 @@ import {
   BUILD_COMMIT,
   IS_SIMULATED,
   LEND_CONTRACT,
+  STANDING_CONTRACT,
   SWITCH_CONTRACT,
   MARKET_CONTRACT,
   SCHEDULE_CONTRACT,
@@ -92,6 +93,7 @@ function holderName(account: string) {
   if (account === SCHEDULE_CONTRACT) return { name: "The schedule", detail: account, escrow: true };
   if (account === LEND_CONTRACT) return { name: "The lending contract", detail: account, escrow: true };
   if (account === SWITCH_CONTRACT) return { name: "The switch", detail: account, escrow: true };
+  if (account === STANDING_CONTRACT) return { name: "Standing payments", detail: account, escrow: true };
   return { name: shortAccount(account), detail: null, escrow: false };
 }
 

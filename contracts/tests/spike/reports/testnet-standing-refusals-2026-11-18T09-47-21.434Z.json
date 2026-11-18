@@ -1,0 +1,61 @@
+{
+  "measured_at": "2026-11-18T09:47:21.431Z",
+  "contract": "bearer-standing.testnet",
+  "token_id": "37",
+  "steps": [
+    {
+      "step": "alice collects (not the payee)",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-standing.testnet.collect",
+      "tx": "https://testnet.nearblocks.io/txns/BRDjM3cAZDAQkZgKqtps41wyLoCZeKgguYCbcq77VEVE",
+      "tgas": 2.288,
+      "refused": "ERR_NOT_PAYEE",
+      "events": []
+    },
+    {
+      "step": "bob collects with a fee over the cap",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-standing.testnet.collect",
+      "tx": "https://testnet.nearblocks.io/txns/9rSqqk6gJKdXTkbujnoZvu3QdSgrnx972EzPmx4zjw9c",
+      "tgas": 2.289,
+      "refused": "ERR_FEE_TOO_HIGH",
+      "events": []
+    },
+    {
+      "step": "bob collects before the next period",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-standing.testnet.collect",
+      "tx": "https://testnet.nearblocks.io/txns/94nWqpnECaYHkXYWfdCudofPh9PLPZGAvhfVg3tsb2re",
+      "tgas": 2.289,
+      "refused": "ERR_NOT_DUE",
+      "events": []
+    },
+    {
+      "step": "alice takes an opened vault back",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-standing.testnet.take_back",
+      "tx": "https://testnet.nearblocks.io/txns/7uqAWpboADx6YWc6U4deyMUrz381KsL5LzfNKvUfiaNb",
+      "tgas": 2.268,
+      "refused": "ERR_VAULT_OPENED",
+      "events": []
+    },
+    {
+      "step": "alice moves the opened vault on Bearer",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.nft_transfer",
+      "tx": "https://testnet.nearblocks.io/txns/JCEWqRnhCSFafXCPtGd9SkKc1S2BvtEc5fStcq6GFfgW",
+      "tgas": 2.226,
+      "refused": "ERR_VAULT_OPENED",
+      "events": []
+    },
+    {
+      "step": "bob stops the plan (not the giver)",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-standing.testnet.stop",
+      "tx": "https://testnet.nearblocks.io/txns/7QSgMpMdMHYS8Csa5qQvsEGFT2i7YCZRhGetipRJHVox",
+      "tgas": 2.266,
+      "refused": "ERR_NOT_GIVER",
+      "events": []
+    }
+  ]
+}

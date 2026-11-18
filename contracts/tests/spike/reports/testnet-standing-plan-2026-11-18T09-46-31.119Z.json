@@ -1,0 +1,40 @@
+{
+  "measured_at": "2026-11-18T09:46:31.109Z",
+  "contract": "bearer-standing.testnet",
+  "token_id": "37",
+  "terms": {
+    "payee": "bob.bearer-1108-ffb3.testnet",
+    "chain": "evm",
+    "to": "0x02f7ad77c02397a941ba832a866a24bec64b81e8",
+    "chain_id": "84532",
+    "amount": "50000000000000",
+    "max_fee": "1050000000000",
+    "interval_ns": "120000000000",
+    "first_due_ns": "0",
+    "max_payments": 3,
+    "cancellable": true
+  },
+  "steps": [
+    {
+      "step": "alice pays the plan deposit",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-standing.testnet.deposit_for_plan",
+      "tx": "https://testnet.nearblocks.io/txns/4QKX5FpVv6Dqx4gjHzKFv5JiSZXJgLWhuA9qxoFF883Q",
+      "tgas": 2.182,
+      "refused": null,
+      "events": []
+    },
+    {
+      "step": "alice plans vault 37: 50000000000000 wei every 120 s to 0x02f7ad77c02397a941ba832a866a24bec64b81e8, payee bob.bearer-1108-ffb3.testnet",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.nft_transfer_call",
+      "tx": "https://testnet.nearblocks.io/txns/12svmfvGeVUCAfBEM5LkQikEyrhk5SVsNnV2tkS3WSkS",
+      "tgas": 9.403,
+      "refused": null,
+      "events": [
+        "nep171:nft_transfer",
+        "bearer_standing:planned"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "measured_at": "2026-11-18T09:46:49.812Z",
+  "contract": "bearer-standing.testnet",
+  "token_id": "37",
+  "vault_state": {
+    "kind": "opened",
+    "at_ns": "1794995199377993701",
+    "by": "bearer-standing.testnet"
+  },
+  "vault_owner": "bearer-standing.testnet",
+  "payment": 1,
+  "bearer_record": 0,
+  "amount_wei": "50000000000000",
+  "received_wei": "50000000000000",
+  "to": "0x02f7ad77c02397a941ba832a866a24bec64b81e8",
+  "base_sepolia_tx": "https://sepolia.basescan.org/tx/0x39297f516c04f6f73e6aed05aa7e708125aca17b5ba3753ad177e88bef813037",
+  "steps": [
+    {
+      "step": "bob collects payment 1 from vault 37 (nonce 0, max fee 11000000 wei/gas)",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-standing.testnet.collect",
+      "tx": "https://testnet.nearblocks.io/txns/4WpbZyGjXaxxwTs2HSb1RyMEDSAxA2ZyrfoRKz8uLgaq",
+      "tgas": 24.988,
+      "refused": null,
+      "events": [
+        "bearer:vault_opened",
+        "bearer:withdrawal_requested",
+        "bearer:withdrawal_signed",
+        "bearer_standing:paid"
+      ]
+    }
+  ]
+}

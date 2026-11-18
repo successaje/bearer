@@ -37,6 +37,8 @@ const GAS_FOR_ON_WITHDRAWN: Gas = Gas::from_tgas(10);
 const GAS_FOR_ON_VAULT_FOR_WITHDRAWAL: Gas = Gas::from_tgas(55);
 const GAS_FOR_WITHDRAWAL: Gas = Gas::from_tgas(85);
 const GAS_FOR_ON_PAYOUT: Gas = Gas::from_tgas(5);
+/// The registry's `claim_refund`: a transfer and a 10 Tgas callback (d12a84b).
+const GAS_FOR_RECLAIM: Gas = Gas::from_tgas(25);
 const ONE_YOCTO: NearToken = NearToken::from_yoctonear(1);
 pub const MIN_LABEL_LEN: usize = 3;
 pub const MAX_LABEL_LEN: usize = 32;
@@ -221,6 +223,20 @@ impl VaultNames {
         self.pay(account, amount)
     }
 
+    /// Brings back what the registry holds for this contract: it never sends refunds straight
+    /// back, it records them for `claim_refund`. That's the padding on every rent quote
+    /// (`quote_slippage_bps`), and the whole price of a rent whose account couldn't be created,
+    /// which this contract has already refunded to its caller (N7). Anyone can call it; the NEAR
+    /// can only come here.
+    pub fn reclaim(&mut self) -> Promise {
+        Promise::new(self.registry.clone()).function_call(
+            "claim_refund".to_string(),
+            b"{}".to_vec(),
+            NearToken::from_yoctonear(0),
+            GAS_FOR_RECLAIM,
+        )
+    }
+
     /// Never panics: a caller who doesn't hold the vault gets their deposit back; otherwise the
     /// name is rented, read back from the registry and settled.
     #[private]
@@ -260,13 +276,15 @@ impl VaultNames {
                     "naming_refused",
                     json!({ "token_id": token_id, "by": p.caller, "reason": "not the vault's holder" }),
                 );
-                self.pay(p.caller, p.attached).detach();
+                self.refund(p.caller, p.attached);
             }
         }
     }
 
     /// Never panics: the name counts only if the registry now records this contract as its
-    /// owner. Otherwise the rent was refused, the registry refunded it here, and it goes back.
+    /// owner. Otherwise the rent was refused and the caller is refunded now, from this contract's
+    /// balance: a refused call's deposit comes back here on its own, a failed account creation's
+    /// waits at the registry for `reclaim`.
     #[private]
     pub fn on_rented(&mut self, token_id: TokenId) {
         let Some(p) = self.pending.remove(&token_id) else {
@@ -291,7 +309,7 @@ impl VaultNames {
                     "naming_refused",
                     json!({ "token_id": token_id, "by": p.caller, "reason": "the registry didn't rent it" }),
                 );
-                self.pay(p.caller, p.attached).detach();
+                self.refund(p.caller, p.attached);
             }
         }
     }
@@ -416,6 +434,24 @@ impl VaultNames {
             .ok()
             .and_then(|b| serde_json::from_slice::<Option<VaultSummary>>(&b).ok())
             .flatten()
+    }
+
+    /// Refunds a naming now if this contract's free balance covers it; otherwise keeps it for
+    /// `claim`, so a callback never fails on a refund it fronts (N7).
+    fn refund(&mut self, account_id: AccountId, amount: NearToken) {
+        if self.free_balance() >= amount {
+            self.pay(account_id, amount).detach();
+        } else {
+            let total = self.claimable_of(account_id.clone()).saturating_add(amount);
+            self.claimable.insert(&account_id, &total);
+            emit("refund_held", json!({ "account_id": account_id, "amount": amount }));
+        }
+    }
+
+    /// The balance not needed for this contract's own storage.
+    fn free_balance(&self) -> NearToken {
+        let reserve = env::storage_byte_cost().saturating_mul(u128::from(env::storage_usage()));
+        env::account_balance().saturating_sub(reserve)
     }
 
     fn pay(&self, account_id: AccountId, amount: NearToken) -> Promise {

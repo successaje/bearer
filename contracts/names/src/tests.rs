@@ -1,5 +1,6 @@
 use super::*;
-use near_sdk::test_utils::{get_logs, testing_env_with_promise_results, VMContextBuilder};
+use near_sdk::mock::MockAction;
+use near_sdk::test_utils::{get_created_receipts, get_logs, testing_env_with_promise_results, VMContextBuilder};
 use near_sdk::{testing_env, PromiseResult};
 
 const NAMES: &str = "names.test";
@@ -219,4 +220,60 @@ fn a_former_holder_cant_withdraw() {
     testing_env_with_promise_results(ctx(NAMES, 0).build(), PromiseResult::Successful(vault_json("bob.test", "opened")));
     c.on_vault_for_withdrawal("7".into(), acc("alice.test"), acc("alice.test"), U128(5));
     assert!(get_logs().iter().any(|l| l.contains("not the vault's holder")));
+}
+
+/* ---------- refunds this contract fronts (N7) ---------- */
+
+/// The function calls this execution scheduled, as (receiver, method).
+fn calls() -> Vec<(String, String)> {
+    get_created_receipts()
+        .into_iter()
+        .flat_map(|r| {
+            let to = r.receiver_id.to_string();
+            r.actions.into_iter().filter_map(move |a| match a {
+                MockAction::FunctionCallWeight { method_name, .. } => {
+                    Some((to.clone(), String::from_utf8(method_name).unwrap()))
+                }
+                _ => None,
+            })
+        })
+        .collect()
+}
+
+#[test]
+fn anyone_can_bring_back_what_the_registry_holds_for_the_contract() {
+    let mut c = contract();
+    testing_env!(ctx("anyone.test", 0).build());
+    let _ = c.reclaim();
+    assert_eq!(calls(), vec![("registry.tla.test".to_string(), "claim_refund".to_string())]);
+}
+
+#[test]
+fn a_refused_rent_is_refunded_now() {
+    let mut c = asked("taken-name", vault_json("alice.test", "sealed"));
+    testing_env_with_promise_results(ctx(NAMES, 0).build(), PromiseResult::Successful(b"null".to_vec()));
+    c.on_rented("7".into());
+    let paid: Vec<_> = get_created_receipts()
+        .into_iter()
+        .filter(|r| r.receiver_id == acc("alice.test"))
+        .flat_map(|r| r.actions)
+        .filter_map(|a| match a {
+            MockAction::Transfer { deposit, .. } => Some(deposit.as_yoctonear()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(paid, vec![RENT]);
+    assert_eq!(c.claimable_of(acc("alice.test")), NearToken::from_yoctonear(0));
+}
+
+#[test]
+fn a_refund_the_contract_cant_cover_yet_is_kept_for_claim() {
+    let mut c = asked("taken-name", vault_json("alice.test", "sealed"));
+    let mut poor = ctx(NAMES, 0);
+    poor.account_balance(NearToken::from_yoctonear(1));
+    testing_env_with_promise_results(poor.build(), PromiseResult::Successful(b"null".to_vec()));
+    c.on_rented("7".into());
+    assert!(c.pending_of("7".into()).is_none(), "the vault can be named again");
+    assert_eq!(c.claimable_of(acc("alice.test")), NearToken::from_yoctonear(RENT));
+    assert!(logged("refund_held"));
 }

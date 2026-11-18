@@ -5,6 +5,8 @@
  *
  *   node spike/names-testnet.ts setup   # deploy NAMES_WASM and initialise
  *   node spike/names-testnet.ts run     # name vaults, fund them, and show who can take the NEAR out
+ *   node spike/names-testnet.ts refusal # alice asks to name a vault she doesn't hold; her deposit comes back (N2, N7)
+ *   node spike/names-testnet.ts reclaim # bring back the refunds the registry holds for the contract (N7)
  *   CONFIRM_LOCK=bearer-names.testnet node spike/names-testnet.ts lock   # delete every key
  *
  * Keys come from ~/.near-credentials/testnet, never the repo. Every number in the report is
@@ -217,6 +219,35 @@ async function run() {
   saveReport("testnet-names-run", { measured_at: new Date().toISOString(), contract: NAMES, registry: REGISTRY, tla: TLA, opened_vault: OPENED_VAULT, sealed_vault: sealedId, facts, steps });
 }
 
+/** alice asks to name a vault someone else holds: refused, and refunded at once from the contract (N2, N7). */
+async function refusal() {
+  const alice = account(ALICE);
+  let target = "";
+  for (let id = 2; id <= 40 && !target; id++) {
+    const v = await view<{ owner_id: string } | null>(BEARER, "vault", { token_id: String(id) });
+    if (v && v.owner_id !== ALICE && !(await view<string | null>(NAMES, "name_of", { token_id: String(id) }))) target = String(id);
+  }
+  if (!target) throw new Error("no unnamed vault held by someone other than alice");
+  const price = BigInt((await view<{ total_yocto: string }>(REGISTRY, "get_rent_price", { tla_id: TLA, name: label(target) })).total_yocto);
+  const { r } = await tx(alice, NAMES, "name_vault", { token_id: target, label: label(target) }, price, `alice names vault ${target}, which she doesn't hold`, { event: "naming_refused", gas: 240n * TGAS });
+  const refund = r.receipts_outcome.find((x) => x.outcome.executor_id === ALICE && x.outcome.status.SuccessValue !== undefined);
+  console.log(`  name_of(${target}) = ${await view(NAMES, "name_of", { token_id: target })}; held for claim: ${await view(NAMES, "claimable_of", { account_id: ALICE })}; refund receipt to alice: ${refund ? "yes" : "no"}`);
+  saveReport("testnet-names-refusal", { measured_at: new Date().toISOString(), contract: NAMES, vault: target, attached_yocto: price.toString(), steps });
+}
+
+/** Anyone brings back what the registry holds for the names contract: the quote's padding on each rent (N7). */
+async function reclaim() {
+  const pending = async () => BigInt(await view<string>(REGISTRY, "get_pending_refund", { account_id: NAMES }));
+  const before = { pending: await pending(), balance: await balance(NAMES) };
+  console.log(`  ${REGISTRY} holds ${near(before.pending)} for ${NAMES}`);
+  if (!before.pending) return console.log("  nothing to bring back");
+  const r = await tx(account(PARENT!), NAMES, "reclaim", {}, 0n, `${PARENT} asks the registry to send it back`, { gas: 50n * TGAS });
+  await sleep(3000);
+  const after = { pending: await pending(), balance: await balance(NAMES) };
+  console.log(`  ${REGISTRY} now holds ${near(after.pending)}; ${NAMES}: ${near(before.balance)} → ${near(after.balance)}`);
+  saveReport("testnet-names-reclaim", { measured_at: new Date().toISOString(), contract: NAMES, registry: REGISTRY, pending_before_yocto: before.pending.toString(), pending_after_yocto: after.pending.toString(), balance_before_yocto: before.balance.toString(), balance_after_yocto: after.balance.toString(), tx: explorer(r.r.transaction.hash), steps });
+}
+
 /** Deletes every access key on the names account (N9). Same guards as the other contracts' locks. */
 async function lock() {
   if (process.env.CONFIRM_LOCK !== NAMES) throw new Error(`Locking ${NAMES} can't be undone. Run again with CONFIRM_LOCK=${NAMES}.`);
@@ -244,5 +275,7 @@ async function lock() {
 const [cmd] = process.argv.slice(2);
 if (cmd === "setup") await setup();
 else if (cmd === "run") await run();
+else if (cmd === "refusal") await refusal();
+else if (cmd === "reclaim") await reclaim();
 else if (cmd === "lock") await lock();
-else console.log("usage: node spike/names-testnet.ts setup|run|lock");
+else console.log("usage: node spike/names-testnet.ts setup|run|refusal|reclaim|lock");

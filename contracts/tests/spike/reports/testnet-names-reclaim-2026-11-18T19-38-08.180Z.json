@@ -1,0 +1,22 @@
+{
+  "measured_at": "2026-11-18T19:38:08.179Z",
+  "contract": "bearer-names.testnet",
+  "registry": "registry.bearer-tla.testnet",
+  "pending_before_yocto": "31620000000000000000",
+  "pending_after_yocto": "0",
+  "balance_before_yocto": "9996635871589297100000004",
+  "balance_after_yocto": "9996667491589297100000004",
+  "tx": "https://testnet.nearblocks.io/txns/4t1uPcpZx4bX7K4HAF6xuRBwcwAY1wuRZF9vGppj15g2",
+  "steps": [
+    {
+      "step": "bearer-1108-ffb3.testnet asks the registry to send it back",
+      "by": "bearer-1108-ffb3.testnet",
+      "call": "bearer-names.testnet.reclaim",
+      "tx": "https://testnet.nearblocks.io/txns/4t1uPcpZx4bX7K4HAF6xuRBwcwAY1wuRZF9vGppj15g2",
+      "tgas": 7.683,
+      "refused": null,
+      "events": [],
+      "bearer_names": []
+    }
+  ]
+}

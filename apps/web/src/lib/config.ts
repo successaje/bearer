@@ -2,13 +2,14 @@ import type { ChainTag } from "@bearer/sdk";
 
 export type Network = "mock" | "testnet";
 
-export const NETWORK: Network =
-  process.env.NEXT_PUBLIC_NETWORK === "testnet" ? "testnet" : "mock";
+/** The real contracts on testnet, unless the simulated demo is asked for by name. */
+export const NETWORK: Network = process.env.NEXT_PUBLIC_NETWORK === "mock" ? "mock" : "testnet";
 
 /** Mock mode runs entirely in the browser. Everything it shows is labelled SIMULATED. */
 export const IS_SIMULATED = NETWORK === "mock";
 
-export const BEARER_CONTRACT = process.env.NEXT_PUBLIC_BEARER_CONTRACT || "bearer-v1.testnet";
+/** The locked contract the live site runs on; its market, schedule, lending and switch contracts come with it. */
+export const BEARER_CONTRACT = process.env.NEXT_PUBLIC_BEARER_CONTRACT || "bearer.testnet";
 
 /**
  * The market contract (contracts/market) that sells this contract's vaults from escrow. On

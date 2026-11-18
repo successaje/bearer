@@ -39,7 +39,7 @@ on the paper and beside it:
 
 ## Try it
 
-1. `pnpm dev`, open `/v/42` and click **Print a bearer certificate** (under the value), or go to
+1. `NEXT_PUBLIC_NETWORK=mock pnpm dev` (the simulated demo), open `/v/42` and click **Print a bearer certificate** (under the value), or go to
    `/v/42/certificate` directly.
 2. **Print or save as PDF.** Header, footer and toolbar are hidden; the certificate fills one A4
    landscape page with exact colours (`print-color-adjust: exact`).

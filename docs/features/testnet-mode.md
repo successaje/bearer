@@ -63,7 +63,7 @@ adapter (brief 4.12) and wires the app to it:
 ## Try it
 
 ```bash
-NEXT_PUBLIC_NETWORK=testnet NEXT_PUBLIC_BEARER_CONTRACT=bearer.testnet pnpm dev
+pnpm dev    # testnet and bearer.testnet are the defaults since 18 Nov 2026
 ```
 
 On the locked contract, open `/v/1` (opened, with Base, Bitcoin and Solana signatures) or `/v/2`

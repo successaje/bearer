@@ -10,10 +10,11 @@ pnpm typecheck && pnpm lint && pnpm build
 
 ## Modes
 
-`NEXT_PUBLIC_NETWORK=mock` (default) runs against an in-browser mock of the contract with seeded demo
-cards and demo accounts (ada, tunde, mira). Its state persists in localStorage. Everything simulated is labelled
-SIMULATED. `testnet` is wired through the same `BearerClient` interface (`src/lib/bearer/client.ts`) and will use
-`@bearer/sdk` once it exists.
+`NEXT_PUBLIC_NETWORK=testnet` (the default) reads `bearer.testnet` and its escrow contracts through
+`@bearer/sdk` and signs with NEAR wallets. `NEXT_PUBLIC_NETWORK=mock` runs against an in-browser mock of
+the contracts with seeded demo vaults and demo accounts (ada, tunde, mira); its state persists in
+localStorage, and everything simulated is labelled SIMULATED. Both go through the same `BearerClient`
+interface (`src/lib/vault/client.ts`).
 
 ## Map
 

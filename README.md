@@ -293,22 +293,24 @@ workflow runs it daily with `--strict`, so its badge is green only when every cl
    testnet wallet. You're refused: `finishr.testnet` holds it. Create a vault, and its holders' page
    opens for you; transfer it, and it closes for you and opens for the new holder.
 
-**Local, simulated.** Needs Node 22.22+ (near-sandbox's minimum) and pnpm 10.2.1:
+**Local.** Needs Node 22.22+ (near-sandbox's minimum) and pnpm 10.2.1:
 
 ```bash
 pnpm install
+pnpm dev                 # the web app at localhost:3000 on testnet: the live contracts, NEAR wallets through near-connect
 pnpm demo:dry            # the whole story in ~15 s, no funds needed: ends "✓ 22/22 checks passed"
-pnpm dev                 # the web app at localhost:3000, in mock mode (everything labelled SIMULATED)
 pnpm test:contracts      # unit tests, then sandbox tests (also needs Rust and the wasm32 target)
 ```
 
+`pnpm dev` reads `bearer.testnet` and its escrow contracts by default, as the live site does.
 `demo:dry` uses the committed contracts (`contracts/res/`) and simulated ledgers; their lines start
 with `SIMULATED`. It isn't a live three-chain test.
 
-**Against testnet, locally**, with NEAR wallets through near-connect:
+**The simulated demo**, with seeded vaults and demo accounts and no wallet needed (everything
+labelled `SIMULATED`):
 
 ```bash
-NEXT_PUBLIC_NETWORK=testnet NEXT_PUBLIC_BEARER_CONTRACT=bearer.testnet pnpm dev
+NEXT_PUBLIC_NETWORK=mock pnpm dev
 ```
 
 **Rebuild the deployed contract and compare.** This needs Docker and cargo-near 0.22.0. The source

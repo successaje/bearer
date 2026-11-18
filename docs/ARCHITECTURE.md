@@ -59,4 +59,4 @@ JavaScript sandbox tests using the `near-sandbox` npm package (nearcore 2.14) an
 
 ## Web app (`apps/web`)
 
-Next.js 16. Talks to Bearer through the `BearerClient` interface; `NEXT_PUBLIC_NETWORK=mock` uses an in-browser mock, `testnet` will use `@bearer/sdk`.
+Next.js 16. Talks to Bearer through the `BearerClient` interface; `testnet` (the default) uses `@bearer/sdk` against the deployed contracts; `NEXT_PUBLIC_NETWORK=mock` uses an in-browser mock.

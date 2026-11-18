@@ -38,7 +38,7 @@ visibly intact. Nothing opens, cracks or tears in this moment; the card only arr
 
 ## Try it
 
-`pnpm dev`, connect as `mira.testnet` (demo accounts), open `/v/17` (tunde handed it to mira).
+`NEXT_PUBLIC_NETWORK=mock pnpm dev` (the simulated demo), connect as `mira.testnet` (a demo account), open `/v/17` (tunde handed it to mira).
 Or transfer any sealed vault to a demo account and open it as that account.
 
 ## Files

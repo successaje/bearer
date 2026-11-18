@@ -348,6 +348,7 @@ export function VaultDetailView() {
           {pledged ? (
             <LoanPanel
               loan={loan}
+              vault={vault}
               viewer={ready ? accountId : null}
               now={now}
               onFund={() => {

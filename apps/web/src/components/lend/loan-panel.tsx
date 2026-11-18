@@ -1,6 +1,6 @@
 "use client";
 
-import type { VaultLoan } from "@bearer/sdk";
+import type { VaultLoan, VaultView } from "@bearer/sdk";
 import { Gavel, HandCoins, Loader2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { errorCopy } from "@/lib/vault/errors";
 import { formatNear } from "@/lib/vault/format";
 import { useCancelLoanRequest, useForecloseLoan, useRepayLoan } from "@/lib/vault/hooks";
 import { dueMs, interestPercent, LendLock, lenderOf, termMs, termText } from "./lend-bits";
+import { RiskNote } from "./risk-note";
 
 /**
  * On a pledged vault's page: the loan's terms and the one thing the viewer can do. Before anyone
@@ -18,12 +19,14 @@ import { dueMs, interestPercent, LendLock, lenderOf, termMs, termText } from "./
  */
 export function LoanPanel({
   loan,
+  vault,
   viewer,
   now,
   onFund,
   onConnect,
 }: {
   loan: VaultLoan;
+  vault: VaultView;
   /** The connected account, or null. */
   viewer: string | null;
   now: number;
@@ -153,6 +156,9 @@ export function LoanPanel({
           </p>
         )}
       </div>
+      {loan.state.kind === "requested" || loan.state.kind === "active" ? (
+        <RiskNote tokenId={loan.token_id} sealed={vault.state.kind === "sealed"} signatures={vault.signatures_requested} />
+      ) : null}
       <div className="mt-4 border-t border-gold/20 pt-3.5">
         <LendLock compact />
       </div>

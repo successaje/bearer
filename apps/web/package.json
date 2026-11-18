@@ -8,13 +8,15 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "check:nearai": "node --no-warnings --import ./scripts/ts-hooks.mjs --experimental-transform-types scripts/nearai-check.mts"
   },
   "dependencies": {
     "@bearer/sdk": "workspace:*",
     "@hot-labs/near-connect": "0.11.4",
     "@noble/curves": "2.4.0",
     "@noble/hashes": "2.4.0",
+    "@phala/dcap-qvl": "0.7.1",
     "@scure/base": "2.2.0",
     "@tanstack/react-query": "^5.107.1",
     "class-variance-authority": "^0.7.1",

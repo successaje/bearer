@@ -15,7 +15,8 @@
     "spike:lend": "node --env-file-if-exists=../../.env spike/lend-testnet.ts",
     "spike:switch": "node --env-file-if-exists=../../.env spike/switch-testnet.ts",
     "spike:standing": "node --env-file-if-exists=../../.env spike/standing-testnet.ts",
-    "spike:tla": "node --env-file-if-exists=../../.env spike/tla-testnet.ts"
+    "spike:tla": "node --env-file-if-exists=../../.env spike/tla-testnet.ts",
+    "spike:names": "node --env-file-if-exists=../../.env spike/names-testnet.ts"
   },
   "devDependencies": {
     "@noble/curves": "2.4.0",

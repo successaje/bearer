@@ -1,0 +1,283 @@
+{
+  "measured_at": "2026-11-18T19:22:50.714Z",
+  "contract": "bearer-names.testnet",
+  "registry": "registry.bearer-tla.testnet",
+  "tla": "bearer-tla.testnet",
+  "opened_vault": "1",
+  "sealed_vault": "38",
+  "facts": {
+    "opened": {
+      "account": "vault-0001.bearer-tla.testnet",
+      "balance": "0.060000 NEAR",
+      "code": "impl.hosdemo.testnet",
+      "access_keys": 0,
+      "extensions": [
+        "bearer-names.testnet",
+        "ext.bearer-tla.testnet"
+      ],
+      "item_owner": "bearer-names.testnet",
+      "item_status": "Active",
+      "registry_token_owner": "bearer-names.testnet"
+    },
+    "withdrawn_yocto": "19999999999999999999999",
+    "sealed": {
+      "account": "vault-0038.bearer-tla.testnet",
+      "balance": "0.010000 NEAR",
+      "code": "impl.hosdemo.testnet",
+      "access_keys": 0,
+      "extensions": [
+        "bearer-names.testnet",
+        "ext.bearer-tla.testnet"
+      ],
+      "item_owner": "bearer-names.testnet",
+      "item_status": "Active",
+      "registry_token_owner": "bearer-names.testnet"
+    },
+    "sealed_after": {
+      "account": "vault-0038.bearer-tla.testnet",
+      "balance": "0.020000 NEAR",
+      "code": "impl.hosdemo.testnet",
+      "access_keys": 0,
+      "extensions": [
+        "bearer-names.testnet",
+        "ext.bearer-tla.testnet"
+      ],
+      "item_owner": "bearer-names.testnet",
+      "item_status": "Active",
+      "registry_token_owner": "bearer-names.testnet"
+    }
+  },
+  "steps": [
+    {
+      "step": "a stranger names vault 1 again",
+      "by": "bearer-1108-ffb3.testnet",
+      "call": "bearer-names.testnet.name_vault",
+      "tx": "https://testnet.nearblocks.io/txns/VtBRFoUdJ441AkSGe8B6FCLqDWcGG2jqB54PzLAxT73",
+      "tgas": 2.06,
+      "refused": "ERR_ALREADY_NAMED",
+      "events": [],
+      "bearer_names": []
+    },
+    {
+      "step": "alice takes NEAR out of vault 1's name",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-names.testnet.withdraw",
+      "tx": "https://testnet.nearblocks.io/txns/A4GoJ2adNybtfrEq5HexGEW6CFhNPKva4hVNRfojPSm4",
+      "tgas": 6.796,
+      "refused": null,
+      "events": [
+        "bearer_names:withdrawal_refused"
+      ],
+      "bearer_names": [
+        {
+          "standard": "bearer_names",
+          "version": "1.0.0",
+          "event": "withdrawal_refused",
+          "data": [
+            {
+              "token_id": "1",
+              "by": "alice.bearer-1108-ffb3.testnet",
+              "reason": "not the vault's holder"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": "bob, holding opened vault 1, takes out 0.02 NEAR",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-names.testnet.withdraw",
+      "tx": "https://testnet.nearblocks.io/txns/6QwhCfCELJCo21dt32qRNzjZr41bqydR3x9nruUq3PT5",
+      "tgas": 11.819,
+      "refused": null,
+      "events": [
+        "bearer_names:withdrawn"
+      ],
+      "bearer_names": [
+        {
+          "standard": "bearer_names",
+          "version": "1.0.0",
+          "event": "withdrawn",
+          "data": [
+            {
+              "token_id": "1",
+              "account_id": "vault-0001.bearer-tla.testnet",
+              "by": "bob.bearer-1108-ffb3.testnet",
+              "receiver_id": "bob.bearer-1108-ffb3.testnet",
+              "amount": "20000000000000000000000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": "alice creates a sealed vault",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.create_vault",
+      "tx": "https://testnet.nearblocks.io/txns/EJWVtxWTpusnv5JuDpEuPJ6n72x6RUv789LtJS2jFvYd",
+      "tgas": 28.193,
+      "refused": null,
+      "events": [
+        "nep171:nft_mint",
+        "bearer:vault_created",
+        "bearer:keys_set"
+      ],
+      "bearer_names": []
+    },
+    {
+      "step": "alice names vault 38 \"vault-0038\" (0.010315 NEAR)",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-names.testnet.name_vault",
+      "tx": "https://testnet.nearblocks.io/txns/5tGASDYDFemcPVFzLkeMj9SPXsdYsYkrCFf6oHzy8ZGV",
+      "tgas": 33.935,
+      "refused": null,
+      "events": [
+        "hos_tla_tenant_wallet:wallet_initialized",
+        "hos_tla_registrar:sub_account_minted",
+        "nep171:nft_mint",
+        "hos_tla_registry:sub_account_rented",
+        "bearer_names:named"
+      ],
+      "bearer_names": [
+        {
+          "standard": "bearer_names",
+          "version": "1.0.0",
+          "event": "named",
+          "data": [
+            {
+              "token_id": "38",
+              "account_id": "vault-0038.bearer-tla.testnet",
+              "by": "alice.bearer-1108-ffb3.testnet"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": "alice takes NEAR out of sealed vault 38's name",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-names.testnet.withdraw",
+      "tx": "https://testnet.nearblocks.io/txns/DakiNSYoMkyy1T2WsTP1Ybmpj1sT74edxdVX9uj188V8",
+      "tgas": 6.763,
+      "refused": null,
+      "events": [
+        "bearer_names:withdrawal_refused"
+      ],
+      "bearer_names": [
+        {
+          "standard": "bearer_names",
+          "version": "1.0.0",
+          "event": "withdrawal_refused",
+          "data": [
+            {
+              "token_id": "38",
+              "by": "alice.bearer-1108-ffb3.testnet",
+              "reason": "the vault is still sealed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": "alice hands sealed vault 38 to bob",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.nft_transfer",
+      "tx": "https://testnet.nearblocks.io/txns/2omgxDtPRSRf9JZX3iUa7ognyTD3sAgDFmpaet9ZuUML",
+      "tgas": 3.956,
+      "refused": null,
+      "events": [
+        "nep171:nft_transfer"
+      ],
+      "bearer_names": []
+    },
+    {
+      "step": "alice, its former holder, tries again",
+      "by": "alice.bearer-1108-ffb3.testnet",
+      "call": "bearer-names.testnet.withdraw",
+      "tx": "https://testnet.nearblocks.io/txns/EaKXzkjhb5vjhCqs98a8DmDpZAi3MDsP6kSD1Ffn9zUr",
+      "tgas": 6.778,
+      "refused": null,
+      "events": [
+        "bearer_names:withdrawal_refused"
+      ],
+      "bearer_names": [
+        {
+          "standard": "bearer_names",
+          "version": "1.0.0",
+          "event": "withdrawal_refused",
+          "data": [
+            {
+              "token_id": "38",
+              "by": "alice.bearer-1108-ffb3.testnet",
+              "reason": "not the vault's holder"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": "bob, holding it still sealed",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-names.testnet.withdraw",
+      "tx": "https://testnet.nearblocks.io/txns/7iEYFLzjLk983ZQF4z3ggL4QZTocWwLnvzUWDWKcgCiB",
+      "tgas": 6.779,
+      "refused": null,
+      "events": [
+        "bearer_names:withdrawal_refused"
+      ],
+      "bearer_names": [
+        {
+          "standard": "bearer_names",
+          "version": "1.0.0",
+          "event": "withdrawal_refused",
+          "data": [
+            {
+              "token_id": "38",
+              "by": "bob.bearer-1108-ffb3.testnet",
+              "reason": "the vault is still sealed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "step": "bob breaks vault 38's seal",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer.testnet.break_seal",
+      "tx": "https://testnet.nearblocks.io/txns/3E77VKrR5ij6BV51SHYbXEizi1Ji9pUpYQQi1CvYdCCc",
+      "tgas": 2.759,
+      "refused": null,
+      "events": [
+        "bearer:vault_opened"
+      ],
+      "bearer_names": []
+    },
+    {
+      "step": "bob, holding it opened, takes out 0.02 NEAR",
+      "by": "bob.bearer-1108-ffb3.testnet",
+      "call": "bearer-names.testnet.withdraw",
+      "tx": "https://testnet.nearblocks.io/txns/6dMNchZE1tbvuPfdRLpTUW3qGJyfrDG3RMZUDCFzKu3L",
+      "tgas": 11.822,
+      "refused": null,
+      "events": [
+        "bearer_names:withdrawn"
+      ],
+      "bearer_names": [
+        {
+          "standard": "bearer_names",
+          "version": "1.0.0",
+          "event": "withdrawn",
+          "data": [
+            {
+              "token_id": "38",
+              "account_id": "vault-0038.bearer-tla.testnet",
+              "by": "bob.bearer-1108-ffb3.testnet",
+              "receiver_id": "bob.bearer-1108-ffb3.testnet",
+              "amount": "20000000000000000000000"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

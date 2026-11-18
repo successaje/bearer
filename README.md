@@ -53,7 +53,7 @@ Five checks. The first three need only a browser.
    see *Contract locked* (no access keys) and a code hash that matches the reproducible build in
    `contracts/res`.
 4. **Every claim, against the chains.** Run `pnpm verify` (Node 22+, nothing to install). You'll see
-   `47 claims in … s: 47 ✓, 0 ✗`. One of them: every sealed vault on `bearer.testnet` has 0
+   `55 claims in … s: 55 ✓, 0 ✗`. One of them: every sealed vault on `bearer.testnet` has 0
    signatures.
 5. **The whole flow, offline.** Run `pnpm install && pnpm demo:dry`. You'll see it run against the
    committed contracts, with simulated chains labelled `SIMULATED`, ending `✓ 22/22 checks passed`.
@@ -74,7 +74,7 @@ find. Each item, where it is, and how far Bearer goes:
 | A history view per NFT: what it earned, what it paid out, who held it | Each vault's *History* tab lists the deposits observed at its addresses, every withdrawal and every holder ([vault No. 0001](https://bearer-near.vercel.app/v/1#history)), and every sale, loan, schedule and switch it went through, with the prices, terms and dates the escrow contracts logged ([docs/features/history.md](docs/features/history.md)) | Met |
 | Earning: payments that accrue to the holder | Anyone can pay into a vault's addresses at any time, and whatever arrives belongs to whoever holds it when it's opened, so selling a sealed vault sells future payments too. `/v/[id]/pay` turns that into a shareable payment request with wallet-ready QR codes, and shows what has arrived ([docs/features/pay.md](docs/features/pay.md)). There is no royalty split or yield | Partly |
 | A gated page only current holders can open | `/v/[id]/holders`: the holder signs a NEP-413 message, and the server checks the signature, that the key is a full-access key of the account, and that the account holds the vault now; anyone else, a former holder included, is refused ([docs/features/holders.md](docs/features/holders.md), `apps/web/src/app/api/holders/route.ts`) | Met |
-| An NFT that does something on its own: pays from its own wallet on a schedule | A vault pays a fixed amount to a named payee every period, from its own coins (`contracts/standing`). The payee collects; the contract, holding the vault, asks Bearer to sign exactly that payment; the giver can make it unstoppable. Two payments on Base Sepolia from vault No. 0037, one period apart ([NEAR](https://testnet.nearblocks.io/txns/4WpbZyGjXaxxwTs2HSb1RyMEDSAxA2ZyrfoRKz8uLgaq), [Base](https://sepolia.basescan.org/tx/0x39297f516c04f6f73e6aed05aa7e708125aca17b5ba3753ad177e88bef813037); [docs/features/standing.md](docs/features/standing.md)). Added on 18 Nov 2026, after judging began; not locked yet | Met, on `next` |
+| An NFT that does something on its own: pays from its own wallet on a schedule | A vault pays a fixed amount to a named payee every period, from its own coins (`contracts/standing`). The payee collects; the contract, holding the vault, asks Bearer to sign exactly that payment; the giver can make it unstoppable. Two payments on Base Sepolia from vault No. 0037, one period apart ([NEAR](https://testnet.nearblocks.io/txns/4WpbZyGjXaxxwTs2HSb1RyMEDSAxA2ZyrfoRKz8uLgaq), [Base](https://sepolia.basescan.org/tx/0x39297f516c04f6f73e6aed05aa7e708125aca17b5ba3753ad177e88bef813037); [docs/features/standing.md](docs/features/standing.md)). Added on 18 Nov 2026, after judging began; reproducibly built and locked | Met, on `next` |
 | Dynamic NFTs | NEP-177 metadata whose media is a live image of the vault's seal (`lib.rs`) | Met |
 | Sub-accounts | Not used for vaults; a Bearer link is an implicit NEAR account made from a key | Not used |
 
@@ -261,7 +261,7 @@ keys and sends nothing:
 pnpm verify        # or: node scripts/verify.mjs  (Node 22+, nothing to install)
 ```
 
-You should see 47 ✓ in under a minute, ending `47 claims in … s: 47 ✓, 0 ✗`. Among them:
+You should see 55 ✓ in under a minute, ending `55 claims in … s: 55 ✓, 0 ✗`. Among them:
 
 - each of the five contracts has no access keys, runs the wasm committed in `contracts/res/`, and
   names a commit that is in this repository;
@@ -385,7 +385,8 @@ What people could use them for:
   from its own coins; they collect each payment, and nobody can send more, sooner or anywhere else.
   The first payment opens the vault, so a paying vault stays with the standing-payments contract
   and can't change hands ([docs/features/standing.md](docs/features/standing.md)). It runs on
-  `bearer-standing.testnet`, not locked yet: two payments on Base Sepolia (docs/SPIKES.md).
+  `bearer-standing.testnet`, reproducibly built and locked: two payments on Base Sepolia
+  (docs/SPIKES.md).
 - **Collectibles.** A named, finished vault with a printable certificate, holding native assets,
   that can be handed on again while sealed.
 
@@ -433,8 +434,8 @@ publicly. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **Trust.** It relies on NEAR, its MPC signing network, the deployed contracts and each external
   chain's normal operation. Bearer's, the market's, the schedule's, the lending and the switch
   contracts are open source, reproducibly built and locked: none has a key, so nobody can change
-  them. The standing-payments contract, added on 18 Nov 2026, is open source but not locked yet: its
-  deployer's key could still act as the owner of every vault in it (P12).
+  them. The standing-payments contract, added on 18 Nov 2026, is the sixth, built and locked the
+  same way.
 - **Opened is final.** Once opened, a vault can't be transferred or sealed again.
 - **Balances.** The ones shown come from public data sources (Blockstream Esplora, Base Sepolia RPC,
   Solana devnet RPC), with their source, time and confirmation status. They can lag or be

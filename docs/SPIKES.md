@@ -3,15 +3,27 @@
 **For:** whoever builds the next contract or SDK piece. What has been proven on testnet, with
 measured numbers (N stated) and links you can check. Newest first.
 
-## 2026-11-18 · Standing payments: a vault paying on Base Sepolia, on the locked contract
+## 2026-11-18 · Standing payments: a vault paying on Base Sepolia, then locked
 
-`bearer-standing.testnet` (faucet-created) runs the `contracts/build.sh` wasm of `853211f` (code hash
-`4d9yeQhS…5M63`), initialised with `nft_contract = bearer.testnet` and a 0.01 NEAR plan deposit
-([tx](https://testnet.nearblocks.io/txns/6gdJ9BomfUGQfVH9yuTsNUBvSz5qBqzx6Gz4S7VcVYFq)). **Not locked**: it
-still has its deployer's key, and the build isn't the reproducible one yet (the cargo-near 0.22.0
-binary the other contracts were built with wasn't on this machine).
+`bearer-standing.testnet` (faucet-created) runs `contracts/res/standing.wasm`, the reproducible build
+of `f4420f1` with cargo-near 0.22.0 (the official release, checksum checked against its own
+`.sha256` and `sha256.sum`): two builds from fresh clones gave identical bytes (265,090 bytes, sha256
+`9acd6a44…5095`); on-chain code hash `BRHTRhTM…LNck`, which matches. It was first deployed from the
+`build.sh` wasm of `853211f` (code hash `4d9yeQhS…5M63`) and initialised with
+`nft_contract = bearer.testnet` and a 0.01 NEAR plan deposit
+([tx](https://testnet.nearblocks.io/txns/6gdJ9BomfUGQfVH9yuTsNUBvSz5qBqzx6Gz4S7VcVYFq)); the run below
+used that build. The same contract source was then rebuilt reproducibly and redeployed over it: the
+15 sandbox tests passed on the reproducible wasm first, vault No. 0037's plan read back unchanged
+afterwards, and `bob.` collecting from the ended plan was refused `ERR_ENDED`
+([tx](https://testnet.nearblocks.io/txns/BZVEhVXZ5fxyK4zGt9mKZHLhsuXwMuKMFFUeCPUb8Qxx)).
 
-`pnpm spike:standing`:
+**Locked**, with the owner's go-ahead: `CONFIRM_LOCK=bearer-standing.testnet pnpm spike:standing lock`
+checked the deployed code hash against `contracts/res/standing.wasm`, then deleted the only key, a
+full-access key ([tx](https://testnet.nearblocks.io/txns/AomwgGxHemBz2St6vCoRooPnSje7ZnGr2cYsfUkrrviX)). Afterwards three RPCs (rpc.testnet.near.org,
+test.rpc.fastnear.com, archival-rpc.testnet.fastnear.com) reported 0 keys and the same code hash.
+Report: [`testnet-standing-lock-2026-11-18T17-12-52.553Z.json`](../contracts/tests/spike/reports/testnet-standing-lock-2026-11-18T17-12-52.553Z.json).
+
+`pnpm spike:standing`, on the first build:
 
 - **Funded.** `alice.` created vault No. 0037, sealed. `bob.` paid 0.0002 Base Sepolia ETH into it
   from his opened vault No. 0001 ([NEAR](https://testnet.nearblocks.io/txns/5pzt1wUNBQMRv86hEV6trJFido5deLratupu1QbraaBA),

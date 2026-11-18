@@ -6,6 +6,7 @@ import type {
   HandoverSchedule,
   MarketListing,
   VaultLoan,
+  StandingPlan,
   VaultSwitch,
   VaultView,
 } from "@bearer/sdk";
@@ -21,7 +22,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Callout, FieldMessage, Input, Label, Skeleton } from "@/components/ui/primitives";
 import { SegmentedList, SegmentedRoot, SegmentedTrigger } from "@/components/ui/segmented";
-import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
+import { IS_SIMULATED, LEND_CONTRACT, MARKET_CONTRACT, SCHEDULE_CONTRACT, STANDING_CONTRACT, SWITCH_CONTRACT } from "@/lib/config";
 import {
   CHAIN_META,
   chunkAddress,
@@ -32,7 +33,7 @@ import {
   shortAccount,
   vaultNumber,
 } from "@/lib/vault/format";
-import { useListing, useLoan, useNow, useObservation, useSchedule, useSwitch, useVault } from "@/lib/vault/hooks";
+import { useListing, useLoan, useNow, useObservation, useSchedule, useStandingPlan, useSwitch, useVault } from "@/lib/vault/hooks";
 import { exactAmount, NOTE_MAX, parsePayRequest, payPath, paymentUri, type PayRequest } from "@/lib/vault/pay";
 import { isSealed } from "@/lib/vault/report";
 
@@ -57,6 +58,7 @@ function RequestView({ request }: { request: PayRequest }) {
   const schedule = useSchedule(id).data ?? null;
   const loan = useLoan(id).data ?? null;
   const sw = useSwitch(id).data ?? null;
+  const plan = useStandingPlan(id).data ?? null;
   const [picked, setPicked] = useState<ChainTag | null>(null);
   const now = useNow(30_000);
 
@@ -198,7 +200,7 @@ function RequestView({ request }: { request: PayRequest }) {
       <section className="border-line bg-surface mt-5 rounded-[22px] border p-6 md:p-8">
         <h2 className="text-[17px] font-semibold tracking-[-0.01em]">Who gets paid</h2>
         <div className="text-fg-2 mt-3 space-y-3 text-[14.5px] leading-relaxed">
-          <Payee vault={vault} listing={listing} schedule={schedule} loan={loan} sw={sw} now={now} />
+          <Payee vault={vault} listing={listing} schedule={schedule} loan={loan} sw={sw} plan={plan} now={now} />
         </div>
       </section>
 
@@ -223,6 +225,7 @@ function Payee({
   schedule,
   loan,
   sw,
+  plan,
   now,
 }: {
   vault: VaultView;
@@ -230,6 +233,7 @@ function Payee({
   schedule: HandoverSchedule | null;
   loan: VaultLoan | null;
   sw: VaultSwitch | null;
+  plan: StandingPlan | null;
   /** ms since epoch, from useNow: decides whether a loan or a schedule's date has passed. */
   now: number;
 }) {
@@ -300,6 +304,13 @@ function Payee({
         they go quiet, it passes to {who(sw.beneficiary)}, with what you pay.
       </>
     );
+  } else if (plan && vault.owner_id === STANDING_CONTRACT) {
+    where = (
+      <>
+        It {b("pays")} {who(plan.payee)} a fixed amount every period, set up by {who(plan.giver)}. What you pay tops it
+        up: it can fund those payments, and {who(plan.giver)} can withdraw what&apos;s left once the plan lets them.
+      </>
+    );
   } else {
     where = <>It&apos;s held by {who(vault.owner_id)}.</>;
   }
@@ -318,7 +329,8 @@ function Payee({
       ) : vault.state.kind === "opened" ? (
         <p>
           Its seal was broken on {formatDate(nsToMs(vault.state.at_ns))}, so its holder can withdraw whenever they like.
-          An opened vault can&apos;t be handed on, so payments stay with {who(vault.owner_id)}.
+          An opened vault can&apos;t be handed on, so payments stay with{" "}
+          {plan && vault.owner_id === STANDING_CONTRACT ? "it" : who(vault.owner_id)}.
         </p>
       ) : null}
     </>

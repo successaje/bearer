@@ -1,8 +1,9 @@
 # Feature: standing payments
 
 **Branch:** `next` · **Where:** a vault's page ("Pay someone regularly"), and the panel on a vault
-that pays · **Contract:** `contracts/standing`, deployed on `bearer-standing.testnet` (not locked
-yet) · **Status:** built on 18 Nov 2026, after the hackathon's judging window; not on `main`
+that pays · **Contract:** `contracts/standing`, on `bearer-standing.testnet`, reproducibly built
+and locked · **Status:** built on 18 Nov 2026, after the code window closed and while judging ran;
+not on `main`
 
 **For:** whoever decides whether this ships, and anyone checking what "an NFT that does something"
 means here. What it does, what it can't do, and why it's shaped this way.
@@ -82,6 +83,14 @@ Vault No. 0037 (`alice.` → `bearer-standing.testnet`, payee `bob.`): 0.00005 B
   (`ERR_NOT_GIVER`). Reports in `contracts/tests/spike/reports/testnet-standing-*`.
 - The third payment wasn't collected within its period, so the plan ended after two, as designed.
 
+## Locked
+
+`bearer-standing.testnet` runs `contracts/res/standing.wasm`, cargo-near 0.22.0's reproducible build
+of `f4420f1` in the pinned image: 265,090 bytes, sha256 `9acd6a44…5095`, code hash `BRHTRhTM…LNck`.
+Two builds from fresh clones gave the same bytes. Its only key was deleted on 18 Nov 2026
+([tx](https://testnet.nearblocks.io/txns/AomwgGxHemBz2St6vCoRooPnSje7ZnGr2cYsfUkrrviX)), so nobody, its deployer included, can change it or act as the owner of the vaults
+it holds. `pnpm verify` checks both, and the vault page reads the lock live beside every plan.
+
 ## Try it
 
 - **Simulated demo:** `NEXT_PUBLIC_NETWORK=mock pnpm dev`, connect as `mira.testnet` and open
@@ -98,9 +107,6 @@ Vault No. 0037 (`alice.` → `bearer-standing.testnet`, payee `bob.`): 0.00005 B
   the vault can't cover is refused by Bearer or fails on its chain; a payment signed but never
   broadcast still counts, because the payee holds a valid signed transaction.
 - **A paying vault can't be sold or handed on.** It's opened; that's Bearer's core rule.
-- **Not locked yet.** `bearer-standing.testnet` still has its deployer's key, and runs the
-  `contracts/build.sh` build, not a reproducible one. The page says so beside the plan. Locking it
-  is `CONFIRM_LOCK=bearer-standing.testnet pnpm spike:standing lock`, after a reproducible build.
 
 ## Files
 

@@ -6,7 +6,7 @@ name: Locked contracts
 
 on:
   push:
-    branches: [main]
+    branches: [main, next]
     paths:
       - "contracts/res/**"
       - ".github/workflows/locked-contracts.yml"

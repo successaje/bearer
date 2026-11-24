@@ -6,6 +6,7 @@ import { ChainIcon } from "@/components/brand/chain-icon";
 import { RevealObserver } from "@/components/landing/motion";
 import { GasChart, LatencyChart } from "@/components/proof/charts";
 import { LiveChecks } from "@/components/proof/live-checks";
+import { LockedContracts } from "@/components/proof/locked-contracts";
 import { ThreatTable } from "@/components/proof/threat-table";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Eyebrow } from "@/components/ui/primitives";
@@ -51,15 +52,24 @@ export default function ProofPage() {
       </Section>
 
       <Section
-        id="signing"
+        id="contracts"
         n="02"
+        title="Every contract, locked"
+        sub="Bearer is seven contracts. Each runs the reproducible build committed in contracts/res, names the commit it came from, and has no keys, so nobody can change it. Read live, like the checks above; pnpm verify and the Locked contracts workflow check the same facts."
+      >
+        <LockedContracts />
+      </Section>
+
+      <Section
+        id="signing"
+        n="03"
         title="Timed on testnet"
         sub={`Every bar is one real transaction on testnet, timed from submitting it. The handover ran on bearer.testnet and needs no signature; the withdrawals were signed by NEAR's MPC network on the spike contract (${SPIKE_CONTRACT}). Click a time to see its transaction.`}
       >
         <LatencyChart />
       </Section>
 
-      <Section id="landed" n="03" title="Where the withdrawals landed" sub={`A signature only matters once the other chain accepts it. The first run used the locked contract and real wallets; the three cards after it used the spike contract (${SPIKE_CONTRACT}), whose vault numbers are its own.`}>
+      <Section id="landed" n="04" title="Where the withdrawals landed" sub={`A signature only matters once the other chain accepts it. The first run used the locked contract and real wallets; the three cards after it used the spike contract (${SPIKE_CONTRACT}), whose vault numbers are its own.`}>
         <HeadlineRun />
         <div className="mt-4 grid gap-4 md:grid-cols-3">
           {LANDED.map((l) => (
@@ -142,15 +152,15 @@ export default function ProofPage() {
         </div>
       </Section>
 
-      <Section id="gas" n="04" title="Gas, measured" sub="Bitcoin is the heaviest withdrawal: one signature per input, all checked in a single callback.">
+      <Section id="gas" n="05" title="Gas, measured" sub="Bitcoin is the heaviest withdrawal: one signature per input, all checked in a single callback.">
         <GasChart />
       </Section>
 
-      <Section id="threats" n="05" title="Every attack we know of" sub="docs/THREAT_MODEL.md. A row is proven only when its test passes.">
+      <Section id="threats" n="06" title="Every attack we know of" sub="docs/THREAT_MODEL.md. A row is proven only when its test passes.">
         <ThreatTable />
       </Section>
 
-      <Section id="run" n="06" title="Run it yourself" sub="The same checks, on your machine. You need Rust, Node and pnpm.">
+      <Section id="run" n="07" title="Run it yourself" sub="The same checks, on your machine. You need Rust, Node and pnpm.">
         <ul className="flex flex-col gap-3">
           {RUN_IT.map((r) => (
             <li key={r.cmd} className="rounded-panel border border-line bg-surface p-4">

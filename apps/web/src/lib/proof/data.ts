@@ -461,6 +461,63 @@ export const THREATS: Threat[] = [
   },
 ];
 
+export interface LockedContract {
+  account: string;
+  name: string;
+  /** What it holds or does, in a few words. */
+  role: string;
+  /** contracts/res/<wasm>, the reproducible build, whose sha256 is in contracts/res/SHA256SUMS. */
+  wasm: string;
+  /** base58(sha256(wasm)): NEAR's code hash for that build. */
+  codeHash: string;
+  /** The commit the build came from; the contract's own source metadata names it too. */
+  commit: string;
+  /** The transaction that deleted its last key. */
+  lockTx: string;
+}
+
+/**
+ * Every Bearer contract on testnet: each one's code is the reproducible build in contracts/res,
+ * and its keys were deleted. The Locked contracts workflow rebuilds each from its commit; pnpm
+ * verify checks the same facts this page reads live.
+ */
+export const LOCKED_CONTRACTS: LockedContract[] = [
+  { account: "bearer.testnet", name: "Vaults", role: "Mints vaults, keeps the seal, asks NEAR's MPC network to sign withdrawals", wasm: "bearer.wasm", codeHash: "PEsHBVDKpZ3fdpmfsJekrt52amLARnwRLWNXLQDVq1S", commit: "71f194ec6a5ade7fd8f3bc37b30b11c47981652d", lockTx: "J87dPH7D1LG7PLwvyzqwFbBKMsQ7pAd7Nxfn1DrvsaVT" },
+  { account: "bearer-market.testnet", name: "Market", role: "Holds a listed vault in escrow until it sells", wasm: "market.wasm", codeHash: "7joKh4WSVFGb6EEsUpS6BeC1wtp3pepG2FQwBuAJqt7P", commit: "579df21fca6b54092a88711014e58a2b98cb547b", lockTx: "G8t9cc9xKa7ymc84hCtk8xeRG2JKBao8auFLKLg1SHVK" },
+  { account: "bearer-schedule.testnet", name: "Scheduled handover", role: "Hands a vault on, sealed, on a set date", wasm: "schedule.wasm", codeHash: "9sLo27AU3jr3fSRSpQrNmCSDJKorpPN5huoNarJpJSkE", commit: "47b5d255a9187619e627f06576a39c344d3dfa32", lockTx: "6wAyfjD218s7DvCwuzK7nEtAdLDQK5eZujY3caDJRekx" },
+  { account: "bearer-lend.testnet", name: "Lending", role: "Holds a pledged vault until the loan is repaid or due", wasm: "lend.wasm", codeHash: "9CP3cAHgpWBusdZeJCmhMVHuCGJm2sppZVP6sdprGmyU", commit: "883873deaa4da9208461327ec1cbc0bca22faa9b", lockTx: "Cia5mDdMobJJCPWUx6kgcAhuNDiYhBxBPukb1XW4ZFuX" },
+  { account: "bearer-switch.testnet", name: "Dead man's switch", role: "Hands a vault on if its owner stops checking in", wasm: "switch.wasm", codeHash: "8UD16nKpgh2aZFd3SB6WUwZB29yBN5U7UxzsgBkonFhh", commit: "c74b2c8868ba98f309ea73c0f62bec69b35d9551", lockTx: "GyLmqGMPoCNf83WzN7BWvsy9EtK3KLxsDeQpvdtUfbnZ" },
+  { account: "bearer-standing.testnet", name: "Standing payments", role: "Pays a fixed amount from a vault every period", wasm: "standing.wasm", codeHash: "BRHTRhTM4Y6WLGYncnyH5hJaGLJisCpDbXVWhiqvLNck", commit: "f4420f175f22dd05d77a0da5e5bb197107ffdc7d", lockTx: "AomwgGxHemBz2St6vCoRooPnSje7ZnGr2cYsfUkrrviX" },
+  { account: "bearer-names.testnet", name: "Vault names", role: "Holds the lease on a vault's NEAR account name", wasm: "names.wasm", codeHash: "8DGCVLJV76K5eke8k5LeZWvTutm6DmaKGiK6jfiPzMxc", commit: "adfc12a501a6b1b6fbd920b9eb9f46dd9df40382", lockTx: "7TBFWa5Wo8xCb3AFRPU56ERs5fWkKTjUyzJpNbYfzwT9" },
+];
+
+export interface FleetAccount {
+  account: string;
+  role: string;
+  /** House of Stake's code it runs, pinned by hash; null for the council, a plain account. */
+  codeHash: string | null;
+  lockTx: string;
+}
+
+/**
+ * The TLA fleet vault names rent from: House of Stake's own contracts (houseofstake/tla-contracts,
+ * the bytes on hosdemo.testnet), deployed by Bearer under bearer-tla.testnet, renewed to 2127, then
+ * every key deleted, the council's last (docs/features/names.md, threats N8 and N10).
+ */
+export const TLA_FLEET = {
+  root: "bearer-tla.testnet",
+  registry: "registry.bearer-tla.testnet",
+  /** House of Stake's shared wallet code that every name runs. Not Bearer's: its keys stay. */
+  walletImpl: "impl.hosdemo.testnet",
+  accounts: [
+    { account: "bearer-tla.testnet", role: "The TLA, running the registrar", codeHash: "FDJaArRGydBTN5XyvnViokgXE4Qn81rhupNA81xXKhuv", lockTx: "A4U59yad3fa35Bh17rLhCyie2BoxDXpkZdeMt55fgtue" },
+    { account: "registry.bearer-tla.testnet", role: "Leases and renewals", codeHash: "DYKXJSzjoAbJHfN9bpR3u3ggAaZoMA8hp1bWaswcUak6", lockTx: "9HmAcnvaqjftNTTZWs8CV7QZHpEVzhf96n6Wj3Vo4poA" },
+    { account: "ext.bearer-tla.testnet", role: "House of Stake's extension", codeHash: "FYqeTgwQXv6Q7y1vcF63S6QB3YqVMpJYakGB32Ln7qZt", lockTx: "CwnQnti793ioNJMbztAxsRzH9HQsE49GCJ8cS1Z1x55X" },
+    { account: "rec.bearer-tla.testnet", role: "Recovery, with unusable watchers", codeHash: "GqFi2eCNZ3K6VZphTe9E3nJkTfKPvVQyDAunhebbiZAm", lockTx: "CrTZogQo5iZz5KZDufhURN4LRAPJgm8jRcQi6CRB7iqD" },
+    { account: "council.bearer-tla.testnet", role: "Every admin role: fees, rate, renewing the TLA", codeHash: null, lockTx: "6kRoSYoCihjdyUQfQTKR744q5j5Eag5FjF93ruTSDqYf" },
+  ] satisfies FleetAccount[],
+};
+
 export const RUN_IT = [
   { label: "Unit tests (vectors: BIP143, BIP173/350, RLP, low-S, Solana shortvec)", cmd: "cargo test --manifest-path contracts/Cargo.toml" },
   { label: "Sandbox tests (bitcoinjs-lib, noble and @solana/web3.js check every signature)", cmd: "pnpm test:contracts" },

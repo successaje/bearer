@@ -290,7 +290,9 @@ workflow runs it daily with `--strict`, so its badge is green only when every cl
 1. Open [/proof](https://bearer-near.vercel.app/proof). It reads, from your browser:
    - that the contract has no access keys;
    - that its code hash matches the reproducible build;
-   - the MPC signer's version and the deployed settings.
+   - the MPC signer's version and the deployed settings;
+   - for all seven contracts and the TLA fleet vault names rent from: no keys, the code hash of the
+     build in `contracts/res`, and the commit each one names.
 
    Then follow the evidence, with its limits next to it.
 2. Open vault [No. 0001](https://bearer-near.vercel.app/v/1) (opened, with signatures for all three
@@ -412,7 +414,7 @@ standing payments and vault names are testnet prototypes.
 | `/claim` | Open a Bearer link: see the vault it holds, pass it on as a new link, send it to a NEAR account, or break the seal and withdraw, with no wallet |
 | `/v/[id]/handover` | Hand a vault over in person: a QR code for the recipient, and the card flips when the transfer lands |
 | `/v/[id]/certificate` | A printable bearer certificate, one A4 page, with a QR code to the live seal |
-| `/proof` | Live checks against NEAR testnet, every measured number, and the threat table |
+| `/proof` | Live checks against NEAR testnet, every locked contract's keys and build, every measured number, and the threat table |
 | `/derive` | Recompute a vault's three addresses in the browser from the MPC root keys |
 | `/nft/[id].svg` | The vault NFT's image, drawn from its live state: seal intact, or broken once opened |
 

@@ -7,3 +7,7 @@ f97e6d260fc8f7dc094f5bcc644eef3472fcdfd9:contracts/tests/spike/reports/testnet-s
 9f79b9f411ed759b73f8c64afbd365acc9e961ce:contracts/tests/spike/reports/testnet-sign-2026-11-08T21-40-03.590Z.json:generic-api-key:86
 # a made-up lookup key in the first simulated demo; never a key on any chain
 c0566f1c47ca1c6f088c749e779d8fc41b15bbde:apps/web/src/lib/bearer/mock-data.ts:generic-api-key:33
+# prose: "no access keys, `vault-0038.bearer-tla.testnet`", a public NEAR account name; reworded since
+adfc12a501a6b1b6fbd920b9eb9f46dd9df40382:docs/DECISIONS.md:generic-api-key:8
+# the same sentence, unchanged by this commit's edit to that line
+2b92624c70e8070e1ef65f9cb5e2f2b2b9275523:docs/DECISIONS.md:generic-api-key:8

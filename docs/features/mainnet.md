@@ -1,9 +1,9 @@
 # Feature: one vault on mainnet
 
-**Branch:** `next` · **Where:** `contracts/tests/spike/mainnet.ts` (`pnpm spike:mainnet`) and the
+**Branch:** `main`, built on `next` · **Where:** `contracts/tests/spike/mainnet.ts` (`pnpm spike:mainnet`) and the
 token images at `/nft/mainnet/{id}.svg` · **Contract:** `contracts/res/bearer.wasm`, the build
 locked on `bearer.testnet`, on a mainnet sub-account of the project's owner · **Status:** tooling
-built on 18 Nov 2026, while judging ran; not deployed yet; not on `main`
+built on 18 Nov 2026, while judging ran, and on `main` since 28 Nov 2026; not run on mainnet yet
 
 **For:** whoever checks that Bearer works with real money, not only testnet coins, and whoever runs
 the steps. What it proves, what it costs, and the commands.

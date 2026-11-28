@@ -1,9 +1,9 @@
 # Feature: vault names
 
-**Branch:** `next` · **Where:** a vault's page ("Its NEAR account") · **Contracts:** `contracts/names`
+**Branch:** `main`, built on `next` · **Where:** a vault's page ("Its NEAR account") · **Contracts:** `contracts/names`
 on `bearer-names.testnet` (reproducibly built and locked), renting from House of Stake's TLA
 contracts under `bearer-tla.testnet` (locked too) · **Status:** built on 18 Nov 2026, after the code window closed and while
-judging ran; not on `main`
+judging ran; on `main` since 28 Nov 2026
 
 **For:** whoever decides whether this ships, and anyone checking what it trusts. What it does, what
 it costs, what it depends on, and why it's shaped this way.

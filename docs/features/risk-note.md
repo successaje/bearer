@@ -1,8 +1,9 @@
 # Feature: a risk note from an attested model
 
-**Branch:** `next` · **Where:** the loan panel on a pledged vault's page ("Risk note · NEAR AI") ·
+**Branch:** `main`, built on `next` · **Where:** the loan panel on a pledged vault's page ("Risk note · NEAR AI") ·
 **Server:** `apps/web/src/app/api/risk-note/route.ts`, `apps/web/src/lib/nearai/` · **Status:** built on
-18 Nov 2026, while judging ran; not on `main`
+18 Nov 2026, while judging ran; on `main` since 28 Nov 2026. The deployment needs `NEAR_AI_API_KEY`
+to ask for notes; without it the button is off and the enclave check still works
 
 **For:** whoever decides whether this ships, and anyone checking how Bearer uses NEAR AI. What it
 does, what it proves, and what it doesn't.

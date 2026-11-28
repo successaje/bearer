@@ -1,9 +1,9 @@
 # Feature: standing payments
 
-**Branch:** `next` · **Where:** a vault's page ("Pay someone regularly"), and the panel on a vault
+**Branch:** `main`, built on `next` · **Where:** a vault's page ("Pay someone regularly"), and the panel on a vault
 that pays · **Contract:** `contracts/standing`, on `bearer-standing.testnet`, reproducibly built
 and locked · **Status:** built on 18 Nov 2026, after the code window closed and while judging ran;
-not on `main`
+on `main` since 28 Nov 2026
 
 **For:** whoever decides whether this ships, and anyone checking what "an NFT that does something"
 means here. What it does, what it can't do, and why it's shaped this way.
